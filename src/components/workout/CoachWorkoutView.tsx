@@ -1,9 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { AiFeedbackComposer } from "@/components/workout/AiFeedbackComposer";
 import { PlannedVsCompleted } from "@/components/workout/PlannedVsCompleted";
-import { WorkoutPrescription } from "@/components/workout/WorkoutPrescription";
+import { WorkoutPrescriptionEditor, type PlannedMetrics } from "@/components/workout/WorkoutPrescriptionEditor";
 import { ZonesChart } from "@/components/workout/ZonesChart";
 import { buildWhatsAppLink, buildWorkoutWhatsAppMessage } from "@/lib/whatsapp";
 import type { MockWorkoutDetail } from "@/lib/mock-data";
@@ -14,18 +17,30 @@ interface CoachWorkoutViewProps {
 }
 
 /**
- * Visão do treinador: painel completo e analítico (Planejado vs. Concluído,
- * TSS/IF, zonas de potência/FC) — mantém toda a densidade que a visão do
- * atleta abandona.
+ * Visão do treinador: painel completo e analítico. O treinador edita a
+ * prescrição (descrição, blocos, vídeo, métricas planejadas) e vê o
+ * comparativo com o Concluído, as zonas de potência/FC e o composer de
+ * feedback com IA — tudo para o aluno selecionado (via navegação a partir
+ * da listagem do cockpit). TODO: persistir as edições em workouts via
+ * Supabase quando o projeto estiver conectado.
  */
 export function CoachWorkoutView({ workout }: CoachWorkoutViewProps) {
-  const sendToAthleteLink = buildWhatsAppLink(workout.athletePhone, buildWorkoutWhatsAppMessage(workout));
+  const [description, setDescription] = useState(workout.description);
+  const [prescription, setPrescription] = useState(workout.prescription);
+  const [planned, setPlanned] = useState<PlannedMetrics>(workout.planned);
+  const [saved, setSaved] = useState(false);
+
+  const currentWorkout: MockWorkoutDetail = { ...workout, description, prescription, planned };
+  const sendToAthleteLink = buildWhatsAppLink(
+    workout.athletePhone,
+    buildWorkoutWhatsAppMessage(currentWorkout)
+  );
 
   const draftInput: FeedbackDraftInput = {
     athleteName: workout.athleteName,
     workoutTitle: workout.title,
     discipline: workout.discipline,
-    planned: workout.planned,
+    planned,
     completed: {
       durationSeconds: workout.completed?.durationSeconds ?? null,
       tss: workout.completed?.tss ?? null,
@@ -59,15 +74,30 @@ export function CoachWorkoutView({ workout }: CoachWorkoutViewProps) {
         </div>
       </header>
 
-      <WorkoutPrescription prescription={workout.prescription} />
-      <PlannedVsCompleted
-        discipline={workout.discipline}
-        planned={workout.planned}
-        completed={workout.completed}
+      <WorkoutPrescriptionEditor
+        description={description}
+        prescription={prescription}
+        planned={planned}
+        onDescriptionChange={(value) => {
+          setDescription(value);
+          setSaved(false);
+        }}
+        onPrescriptionChange={(patch) => {
+          setPrescription((prev) => ({ ...prev, ...patch }));
+          setSaved(false);
+        }}
+        onPlannedChange={(patch) => {
+          setPlanned((prev) => ({ ...prev, ...patch }));
+          setSaved(false);
+        }}
+        onSave={() => setSaved(true)}
+        saved={saved}
       />
-      {workout.powerZones.length > 0 && (
-        <ZonesChart title="Zonas de potência" data={workout.powerZones} />
-      )}
+
+      <PlannedVsCompleted discipline={workout.discipline} planned={planned} completed={workout.completed} />
+
+      {workout.powerZones.length > 0 && <ZonesChart title="Zonas de potência" data={workout.powerZones} />}
+
       <AiFeedbackComposer
         draftInput={draftInput}
         initialValue={workout.completed?.coachFeedback ?? workout.completed?.aiFeedbackDraft ?? ""}

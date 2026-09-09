@@ -12,6 +12,7 @@ export function buildWorkoutWhatsAppMessage(workout: MockWorkoutDetail): string 
   const lines = [
     `*Treino de hoje — ${workout.title}*`,
     `${workout.discipline} · ${workout.scheduledDateLabel}`,
+    workout.description,
     "",
     `🔥 Aquecimento: ${workout.prescription.warmup}`,
     `💪 Parte principal: ${workout.prescription.mainSet}`,

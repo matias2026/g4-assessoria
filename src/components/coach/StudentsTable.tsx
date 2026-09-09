@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { StatusDot } from "@/components/ui/StatusDot";
-import { DEMO_WORKOUT_ID, type MockStudent } from "@/lib/mock-data";
+import type { MockStudent } from "@/lib/mock-data";
 
 interface StudentsTableProps {
   students: MockStudent[];
@@ -15,22 +15,27 @@ export function StudentsTable({ students }: StudentsTableProps) {
           <tr>
             <th className="px-4 py-3 font-medium">Atleta</th>
             <th className="px-4 py-3 font-medium">Modalidade</th>
-            <th className="px-4 py-3 font-medium">Semana</th>
-            <th className="px-4 py-3 font-medium">Última atividade (Strava)</th>
+            <th className="px-4 py-3 font-medium">Treino de hoje</th>
+            <th className="px-4 py-3 font-medium">Strava</th>
+            <th className="px-4 py-3 font-medium">Última atividade</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-g4-border bg-g4-surface">
           {students.map((student) => (
             <tr key={student.id} className="hover:bg-g4-surface-alt/60">
               <td className="px-4 py-3 font-medium text-g4-ink">
-                {/* TODO: apontar para o treino do dia real do aluno, não o id de demonstração. */}
-                <Link href={`/cockpit/treinos/${DEMO_WORKOUT_ID}`} className="hover:text-lime-deep">
+                <Link href={`/cockpit/treinos/${student.id}`} className="hover:text-lime-deep">
                   {student.name}
                 </Link>
               </td>
               <td className="px-4 py-3 text-g4-muted">{student.discipline}</td>
               <td className="px-4 py-3">
-                <StatusDot status={student.weeklyStatus} />
+                <StatusDot status={student.todayStatus} />
+              </td>
+              <td className="px-4 py-3">
+                <Badge tone={student.stravaSynced ? "lime" : "neutral"}>
+                  {student.stravaSynced ? "Sincronizado" : "Não conectado"}
+                </Badge>
               </td>
               <td className="px-4 py-3">
                 {student.lastActivity ? (
