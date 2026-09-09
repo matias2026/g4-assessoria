@@ -8,7 +8,7 @@ export default function CoachCockpitPage() {
     <main className="mx-auto max-w-6xl px-6 py-8">
       <header className="mb-6">
         <p className="text-sm text-g4-muted">Cockpit do treinador</p>
-        <h1 className="text-2xl font-bold text-white">Alunos ({mockStudents.length})</h1>
+        <h1 className="text-2xl font-bold text-g4-ink">Alunos ({mockStudents.length})</h1>
       </header>
 
       <StudentsTable students={mockStudents} />

@@ -8,7 +8,7 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const toneClasses: Record<BadgeTone, string> = {
-  lime: "bg-lime/10 text-lime border-lime/30",
+  lime: "bg-lime/15 text-lime-deep border-lime/40",
   neutral: "bg-g4-surface-alt text-g4-muted border-g4-border",
   danger: "bg-status-missed/10 text-status-missed border-status-missed/30",
 };

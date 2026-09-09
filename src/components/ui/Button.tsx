@@ -8,9 +8,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-lime text-g4-bg hover:bg-lime-soft",
-  secondary: "bg-g4-surface-alt text-white border border-g4-border hover:border-lime/60",
-  ghost: "bg-transparent text-white hover:bg-g4-surface-alt",
+  primary: "bg-lime text-g4-ink hover:brightness-95",
+  secondary:
+    "bg-white text-g4-ink border border-g4-border hover:border-lime-deep/50 hover:bg-g4-surface-alt",
+  ghost: "bg-transparent text-g4-ink hover:bg-g4-surface-alt",
 };
 
 // Classes compartilhadas para uso em <button> (Button) e em elementos não

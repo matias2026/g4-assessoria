@@ -10,7 +10,7 @@ export default function AthleteDashboardPage() {
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-4 py-6">
       <header>
         <p className="text-sm text-g4-muted">Olá,</p>
-        <h1 className="text-2xl font-bold text-white">Atleta G4</h1>
+        <h1 className="text-2xl font-bold text-g4-ink">Atleta G4</h1>
       </header>
 
       <WorkoutOfDayCard workout={mockWorkoutOfDay} />

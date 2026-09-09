@@ -6,6 +6,8 @@ export type ProfileRole = "athlete" | "coach";
 
 export type WorkoutStatus = "pending" | "done" | "missed";
 
+export type WorkoutCompletionSource = "strava" | "manual";
+
 export interface Database {
   public: {
     Tables: {
@@ -63,6 +65,17 @@ export interface Database {
           discipline: string;
           scheduled_date: string;
           status: WorkoutStatus;
+          warmup_text: string | null;
+          main_set_text: string | null;
+          cooldown_text: string | null;
+          video_url: string | null;
+          planned_duration_seconds: number | null;
+          planned_distance_meters: number | null;
+          planned_tss: number | null;
+          planned_if: number | null;
+          planned_hr_min: number | null;
+          planned_hr_avg: number | null;
+          planned_hr_max: number | null;
           created_at: string;
         };
         Insert: {
@@ -74,9 +87,60 @@ export interface Database {
           discipline?: string;
           scheduled_date: string;
           status?: WorkoutStatus;
+          warmup_text?: string | null;
+          main_set_text?: string | null;
+          cooldown_text?: string | null;
+          video_url?: string | null;
+          planned_duration_seconds?: number | null;
+          planned_distance_meters?: number | null;
+          planned_tss?: number | null;
+          planned_if?: number | null;
+          planned_hr_min?: number | null;
+          planned_hr_avg?: number | null;
+          planned_hr_max?: number | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["workouts"]["Insert"]>;
+        Relationships: [];
+      };
+      workout_completions: {
+        Row: {
+          id: string;
+          workout_id: string;
+          profile_id: string;
+          source: WorkoutCompletionSource;
+          strava_activity_id: string | null;
+          duration_seconds: number | null;
+          distance_meters: number | null;
+          tss: number | null;
+          if_score: number | null;
+          hr_min: number | null;
+          hr_avg: number | null;
+          hr_max: number | null;
+          rpe: number | null;
+          feeling: number | null;
+          comments: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          workout_id: string;
+          profile_id: string;
+          source?: WorkoutCompletionSource;
+          strava_activity_id?: string | null;
+          duration_seconds?: number | null;
+          distance_meters?: number | null;
+          tss?: number | null;
+          if_score?: number | null;
+          hr_min?: number | null;
+          hr_avg?: number | null;
+          hr_max?: number | null;
+          rpe?: number | null;
+          feeling?: number | null;
+          comments?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["workout_completions"]["Insert"]>;
         Relationships: [];
       };
       strava_activities: {

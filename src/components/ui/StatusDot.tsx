@@ -2,9 +2,9 @@ import { cn } from "@/lib/utils";
 import type { WorkoutStatus } from "@/lib/supabase/types";
 
 const statusConfig: Record<WorkoutStatus, { label: string; dot: string; text: string }> = {
-  done: { label: "Concluído", dot: "bg-status-done", text: "text-status-done" },
-  pending: { label: "Pendente", dot: "bg-status-pending", text: "text-status-pending" },
-  missed: { label: "Perdido", dot: "bg-status-missed", text: "text-status-missed" },
+  done: { label: "Concluído", dot: "bg-status-done-dot", text: "text-status-done" },
+  pending: { label: "Pendente", dot: "bg-status-pending-dot", text: "text-status-pending" },
+  missed: { label: "Perdido", dot: "bg-status-missed-dot", text: "text-status-missed" },
 };
 
 interface StatusDotProps {

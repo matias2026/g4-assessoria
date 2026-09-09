@@ -4,17 +4,17 @@
 
 @layer base {
   body {
-    @apply bg-g4-bg text-white antialiased;
+    @apply bg-g4-bg text-g4-ink antialiased;
   }
 
   ::selection {
-    @apply bg-lime text-g4-bg;
+    @apply bg-lime text-g4-ink;
   }
 }
 
 @layer components {
-  /* Foco visível consistente para navegação por teclado, mantendo contraste no fundo escuro. */
+  /* Foco visível consistente para navegação por teclado sobre fundo claro. */
   .focus-ring {
-    @apply outline-none ring-2 ring-lime ring-offset-2 ring-offset-g4-bg;
+    @apply outline-none ring-2 ring-lime-deep ring-offset-2 ring-offset-g4-bg;
   }
 }

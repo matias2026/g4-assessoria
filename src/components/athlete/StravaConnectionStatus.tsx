@@ -10,7 +10,7 @@ export function StravaConnectionStatus({ connected }: StravaConnectionStatusProp
   return (
     <Card className="flex items-center justify-between">
       <div>
-        <p className="text-sm font-medium text-white">Strava</p>
+        <p className="text-sm font-medium text-g4-ink">Strava</p>
         <Badge tone={connected ? "lime" : "neutral"} className="mt-1">
           {connected ? "Conectado" : "Não conectado"}
         </Badge>

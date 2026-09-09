@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { StatusDot } from "@/components/ui/StatusDot";
-import type { MockStudent } from "@/lib/mock-data";
+import { DEMO_WORKOUT_ID, type MockStudent } from "@/lib/mock-data";
 
 interface StudentsTableProps {
   students: MockStudent[];
@@ -21,7 +22,12 @@ export function StudentsTable({ students }: StudentsTableProps) {
         <tbody className="divide-y divide-g4-border bg-g4-surface">
           {students.map((student) => (
             <tr key={student.id} className="hover:bg-g4-surface-alt/60">
-              <td className="px-4 py-3 font-medium text-white">{student.name}</td>
+              <td className="px-4 py-3 font-medium text-g4-ink">
+                {/* TODO: apontar para o treino do dia real do aluno, não o id de demonstração. */}
+                <Link href={`/cockpit/treinos/${DEMO_WORKOUT_ID}`} className="hover:text-lime-deep">
+                  {student.name}
+                </Link>
+              </td>
               <td className="px-4 py-3 text-g4-muted">{student.discipline}</td>
               <td className="px-4 py-3">
                 <StatusDot status={student.weeklyStatus} />
