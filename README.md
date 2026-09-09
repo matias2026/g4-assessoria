@@ -187,3 +187,13 @@ ver `tailwind.config.ts`. No gráfico de zonas, planejado/concluído usam o
 mesmo matiz em dois tons (`lime-dim` / `lime-deep`), validado com o script
 de acessibilidade de cor da skill de dataviz. Fonte
 [Inter](https://fonts.google.com/specimen/Inter) carregada via `next/font`.
+
+### Logo
+
+- `public/logo-g4-full.png` — logo completa (emblema escuro + verde), usada
+  na entrada principal do site (`/`).
+- `public/logo-g4-icon.png` / `logo-g4-icon-dumbbell.png` — marca "G4"
+  compacta (com/sem o detalhe do haltere), fundo transparente; o componente
+  `Logo` (`src/components/ui/Logo.tsx`) usa a versão sem haltere nos
+  cabeçalhos de `/dashboard` e `/cockpit`.
+- `src/app/icon.png` — favicon, gerado a partir da marca compacta.

@@ -1,15 +1,21 @@
+import Image from "next/image";
 import { LinkButton } from "@/components/ui/LinkButton";
 
 export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-widest text-lime">G4</p>
-        <h1 className="mt-1 text-3xl font-bold text-g4-ink">Assessoria Esportiva</h1>
-        <p className="mt-2 max-w-sm text-sm text-g4-muted">
-          Ciclismo, corrida e academia: treinos prescritos e dados do Strava em um só lugar.
-        </p>
-      </div>
+      <Image
+        src="/logo-g4-full.png"
+        alt="G4 Assessoria Esportiva — Treine com propósito. Supere seus limites."
+        width={1254}
+        height={1254}
+        priority
+        className="h-52 w-52 rounded-3xl shadow-lg sm:h-60 sm:w-60"
+      />
+
+      <p className="max-w-sm text-sm text-g4-muted">
+        Ciclismo, corrida e academia: treinos prescritos e dados do Strava em um só lugar.
+      </p>
 
       <div className="flex gap-3">
         <LinkButton href="/dashboard" variant="primary">
