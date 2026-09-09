@@ -4,6 +4,7 @@ import { Card, CardTitle } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { CoachFeedbackCard } from "@/components/workout/CoachFeedbackCard";
+import { DeviceTutorial } from "@/components/workout/DeviceTutorial";
 import { DownloadZwoButton } from "@/components/workout/DownloadZwoButton";
 import { canExportZwo } from "@/lib/workout-export";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
@@ -71,6 +72,8 @@ export function AthleteWorkoutView({ workout }: AthleteWorkoutViewProps) {
             💬 Falar com {workout.coachName} no WhatsApp
           </LinkButton>
         </div>
+
+        <DeviceTutorial />
       </Card>
 
       {/* Feedback do professor (híbrido: treinador + apoio de IA) + RPE */}

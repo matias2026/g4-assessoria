@@ -113,6 +113,11 @@ O botão "Abrir no Garmin Connect" aponta para `connect.garmin.com/modern/`
 — em um celular com o app instalado, o link universal abre o app; sem o
 app, abre o painel web.
 
+Como nem todo aluno usa Garmin, o `DeviceTutorial` (abaixo do botão de
+download, na visão do atleta) deixa escolher a marca do GPS — Garmin,
+iGPSPORT ou Wahoo/Outros — e abre um mini tutorial curto de importação
+específico para cada uma.
+
 ## WhatsApp
 
 `src/lib/whatsapp.ts` monta links `wa.me` com o texto já preenchido:
@@ -155,6 +160,7 @@ src/
       CoachWorkoutView            Prescrição + Planejado vs. Concluído + zonas + composer de IA
       ZonesChart                  Zonas de potência/FC (planejado vs. concluído)
       DownloadZwoButton           Exporta .ZWO no navegador
+      DeviceTutorial              Seletor de GPS (Garmin/iGPSPORT/Wahoo) + mini tutorial
       AiFeedbackComposer          Gera/edita/envia feedback (treinador)
       CoachFeedbackCard           Feedback exibido ao atleta
   lib/
