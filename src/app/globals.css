@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-g4-bg text-white antialiased;
+  }
+
+  ::selection {
+    @apply bg-lime text-g4-bg;
+  }
+}
+
+@layer components {
+  /* Foco visível consistente para navegação por teclado, mantendo contraste no fundo escuro. */
+  .focus-ring {
+    @apply outline-none ring-2 ring-lime ring-offset-2 ring-offset-g4-bg;
+  }
+}
