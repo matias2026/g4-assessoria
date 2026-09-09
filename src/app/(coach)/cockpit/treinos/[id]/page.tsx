@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { WorkoutDetail } from "@/components/workout/WorkoutDetail";
+import { CoachWorkoutView } from "@/components/workout/CoachWorkoutView";
 import { mockWorkoutDetails } from "@/lib/mock-data";
 
 // TODO: substituir a busca mock por consulta real a workouts + workout_completions
@@ -16,7 +16,7 @@ export default async function CoachWorkoutDetailPage({
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
-      <WorkoutDetail workout={workout} showAthleteName />
+      <CoachWorkoutView workout={workout} />
     </main>
   );
 }

@@ -8,6 +8,16 @@ export type WorkoutStatus = "pending" | "done" | "missed";
 
 export type WorkoutCompletionSource = "strava" | "manual";
 
+export type WorkoutIntervalType = "warmup" | "steady" | "interval" | "recovery" | "cooldown";
+
+/** Segmento de treino estruturado (base para gerar o arquivo .ZWO). Alvo em %FTP. */
+export interface WorkoutInterval {
+  type: WorkoutIntervalType;
+  durationSeconds: number;
+  targetLowPct: number;
+  targetHighPct: number;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -17,6 +27,7 @@ export interface Database {
           full_name: string;
           role: ProfileRole;
           avatar_url: string | null;
+          phone: string | null;
           created_at: string;
         };
         Insert: {
@@ -24,6 +35,7 @@ export interface Database {
           full_name: string;
           role?: ProfileRole;
           avatar_url?: string | null;
+          phone?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
@@ -76,6 +88,7 @@ export interface Database {
           planned_hr_min: number | null;
           planned_hr_avg: number | null;
           planned_hr_max: number | null;
+          structured_intervals: WorkoutInterval[] | null;
           created_at: string;
         };
         Insert: {
@@ -98,6 +111,7 @@ export interface Database {
           planned_hr_min?: number | null;
           planned_hr_avg?: number | null;
           planned_hr_max?: number | null;
+          structured_intervals?: WorkoutInterval[] | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["workouts"]["Insert"]>;
@@ -120,6 +134,8 @@ export interface Database {
           rpe: number | null;
           feeling: number | null;
           comments: string | null;
+          ai_feedback_draft: string | null;
+          coach_feedback: string | null;
           created_at: string;
         };
         Insert: {
@@ -138,6 +154,8 @@ export interface Database {
           rpe?: number | null;
           feeling?: number | null;
           comments?: string | null;
+          ai_feedback_draft?: string | null;
+          coach_feedback?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["workout_completions"]["Insert"]>;

@@ -2,7 +2,8 @@
 // real com Supabase/Strava. Substitua pelas consultas em src/lib/supabase
 // assim que o projeto Supabase estiver provisionado.
 
-import type { WorkoutCompletionSource, WorkoutStatus } from "./supabase/types";
+import type { WorkoutCompletionSource, WorkoutInterval, WorkoutStatus } from "./supabase/types";
+import type { ZoneDatum } from "@/components/workout/ZonesChart";
 
 export interface MockWorkoutOfDay {
   title: string;
@@ -25,6 +26,9 @@ export const mockWorkoutOfDay: MockWorkoutOfDay = {
 export interface MockWorkoutDetail {
   id: string;
   athleteName: string;
+  athletePhone: string;
+  coachName: string;
+  coachPhone: string;
   title: string;
   discipline: string;
   scheduledDateLabel: string;
@@ -35,6 +39,8 @@ export interface MockWorkoutDetail {
     cooldown: string;
     videoUrl: string | null;
   };
+  structuredIntervals: WorkoutInterval[];
+  powerZones: ZoneDatum[];
   planned: {
     durationSeconds: number | null;
     distanceMeters: number | null;
@@ -56,6 +62,8 @@ export interface MockWorkoutDetail {
     rpe: number | null;
     feeling: number | null;
     comments: string | null;
+    aiFeedbackDraft: string | null;
+    coachFeedback: string | null;
   } | null;
 }
 
@@ -65,6 +73,9 @@ export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = {
   [DEMO_WORKOUT_ID]: {
     id: DEMO_WORKOUT_ID,
     athleteName: "Atleta G4",
+    athletePhone: "+5584999990001",
+    coachName: "Treinador G4",
+    coachPhone: "+5584999990000",
     title: "Intervalado de limiar",
     discipline: "Ciclismo",
     scheduledDateLabel: "Hoje · 09/09",
@@ -75,6 +86,28 @@ export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = {
       cooldown: "10min soltando em Z1, cadência livre.",
       videoUrl: "https://www.youtube.com/watch?v=exemplo-preleção",
     },
+    structuredIntervals: [
+      { type: "warmup", durationSeconds: 15 * 60, targetLowPct: 50, targetHighPct: 70 },
+      { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
+      { type: "recovery", durationSeconds: 3 * 60, targetLowPct: 45, targetHighPct: 45 },
+      { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
+      { type: "recovery", durationSeconds: 3 * 60, targetLowPct: 45, targetHighPct: 45 },
+      { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
+      { type: "recovery", durationSeconds: 3 * 60, targetLowPct: 45, targetHighPct: 45 },
+      { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
+      { type: "recovery", durationSeconds: 3 * 60, targetLowPct: 45, targetHighPct: 45 },
+      { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
+      { type: "recovery", durationSeconds: 3 * 60, targetLowPct: 45, targetHighPct: 45 },
+      { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
+      { type: "cooldown", durationSeconds: 10 * 60, targetLowPct: 40, targetHighPct: 50 },
+    ],
+    powerZones: [
+      { zone: "Z1", label: "Recuperação", plannedMinutes: 25, completedMinutes: 20 },
+      { zone: "Z2", label: "Resistência", plannedMinutes: 10, completedMinutes: 10 },
+      { zone: "Z3", label: "Ritmo", plannedMinutes: 5, completedMinutes: 6 },
+      { zone: "Z4", label: "Limiar", plannedMinutes: 30, completedMinutes: 34 },
+      { zone: "Z5", label: "VO2max", plannedMinutes: 0, completedMinutes: 4 },
+    ],
     planned: {
       durationSeconds: 70 * 60,
       distanceMeters: 32000,
@@ -96,6 +129,10 @@ export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = {
       rpe: 7,
       feeling: 4,
       comments: "Últimas duas séries pesaram mais, mas consegui segurar a potência alvo.",
+      aiFeedbackDraft:
+        "Rascunho (IA): o atleta superou o TSS planejado (+4) e o IF (+0.02) mantendo a FC média estável, sinal de boa adaptação ao limiar. RPE 7 e sensação boa sugerem espaço para progressão na próxima semana.",
+      coachFeedback:
+        "Excelente sessão! Você segurou a potência mesmo com a fadiga das últimas séries — é exatamente esse tipo de resposta que buscamos. Próxima semana subimos 1 série.",
     },
   },
 };
