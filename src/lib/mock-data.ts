@@ -1,6 +1,12 @@
 // Dados de exemplo usados apenas para visualizar as telas antes da integração
 // real com Supabase/Strava. Substitua pelas consultas em src/lib/supabase
 // assim que o projeto Supabase estiver provisionado.
+//
+// O Cockpit do treinador roda com um único aluno de exemplo (Carlos Silva) —
+// suficiente para validar todas as abas (cadastro, prescrição, acompanhamento
+// e análise) sem o ruído de uma lista fictícia grande. Novos alunos
+// cadastrados pela aba "Alunos cadastrados" entram em memória (useState),
+// até a persistência real via Supabase.
 
 import type { WorkoutCompletionSource, WorkoutInterval, WorkoutStatus } from "./supabase/types";
 import type { ZoneDatum } from "@/components/workout/ZonesChart";
@@ -19,9 +25,10 @@ export const mockWorkoutOfDay: MockWorkoutOfDay = {
   status: "pending",
 };
 
-// Treino exibido na tela de detalhes (Planejado vs. Concluído), no padrão
-// TrainingPeaks. Um registro por aluno em mockWorkoutDetails, com o mesmo id
-// do aluno em mockStudents, até o treino real ser resolvido via Supabase.
+// Treino exibido na aba "Analisar treino do aluno" (Planejado vs. Concluído),
+// no padrão TrainingPeaks. Um registro por aluno em mockWorkoutDetails, com
+// o mesmo id do aluno em mockStudents, até o treino real ser resolvido via
+// Supabase.
 export interface MockWorkoutDetail {
   id: string;
   athleteName: string;
@@ -69,9 +76,9 @@ export interface MockWorkoutDetail {
 
 export const DEMO_WORKOUT_ID = "1";
 
-// Um modelo de treino por modalidade — usado para gerar os 15 registros de
-// mockWorkoutDetails abaixo (cada aluno com sua própria prescrição editável).
-interface WorkoutTemplate {
+// Um modelo de treino por modalidade — usado como ponto de partida na aba
+// "Criar/Prescrever treino" quando o treinador escolhe a modalidade.
+export interface WorkoutTemplate {
   title: string;
   discipline: string;
   description: string;
@@ -82,7 +89,7 @@ interface WorkoutTemplate {
   completedTemplate: NonNullable<MockWorkoutDetail["completed"]>;
 }
 
-const TEMPLATE_CICLISMO: WorkoutTemplate = {
+export const TEMPLATE_CICLISMO: WorkoutTemplate = {
   title: "Intervalado de limiar",
   discipline: "Ciclismo",
   description: "Sessão de limiar para elevar o FTP, mantendo potência estável em cada tiro.",
@@ -142,7 +149,7 @@ const TEMPLATE_CICLISMO: WorkoutTemplate = {
   },
 };
 
-const TEMPLATE_CORRIDA: WorkoutTemplate = {
+export const TEMPLATE_CORRIDA: WorkoutTemplate = {
   title: "Rodagem longa com progressão",
   discipline: "Corrida",
   description: "Trabalho de resistência aeróbica, fechando em ritmo de prova de 10km.",
@@ -182,7 +189,7 @@ const TEMPLATE_CORRIDA: WorkoutTemplate = {
   },
 };
 
-const TEMPLATE_ACADEMIA: WorkoutTemplate = {
+export const TEMPLATE_ACADEMIA: WorkoutTemplate = {
   title: "Treino de força — membros inferiores",
   discipline: "Academia",
   description: "Foco em força máxima e potência de pernas, para transferir para o pedal/corrida.",
@@ -222,88 +229,94 @@ const TEMPLATE_ACADEMIA: WorkoutTemplate = {
   },
 };
 
-const TEMPLATES = [TEMPLATE_CICLISMO, TEMPLATE_CORRIDA, TEMPLATE_ACADEMIA];
-const TODAY_STATUSES: WorkoutStatus[] = ["done", "pending", "missed"];
+export const TEMPLATES: WorkoutTemplate[] = [TEMPLATE_CICLISMO, TEMPLATE_CORRIDA, TEMPLATE_ACADEMIA];
 
-// Nomes reais dos 15 alunos da G4 — evita a sensação de dados genéricos
-// ("Atleta 1", "Atleta 2") em uma tela que deve parecer um cockpit de
-// produção, não um placeholder.
-const STUDENT_NAMES = [
-  "Carlos Silva",
-  "Mariana Souza",
-  "Bruno Lima",
-  "Fernanda Costa",
-  "Rafael Oliveira",
-  "Juliana Santos",
-  "Diego Almeida",
-  "Camila Ferreira",
-  "Thiago Rodrigues",
-  "Patrícia Gomes",
-  "Lucas Martins",
-  "Beatriz Carvalho",
-  "Eduardo Barbosa",
-  "Larissa Ribeiro",
-  "Gustavo Pereira",
-];
-
-function lastActivityName(discipline: string): string {
-  if (discipline === "Ciclismo") return "Pedal matinal";
-  if (discipline === "Corrida") return "Corrida matinal";
-  return "Treino de força";
+export function templateForDiscipline(discipline: string): WorkoutTemplate {
+  return TEMPLATES.find((t) => t.discipline === discipline) ?? TEMPLATE_CICLISMO;
 }
 
+// Aluno cadastrado no Cockpit — os campos de FTP/peso/altura/zonas vêm do
+// cadastro na aba "Alunos cadastrados" e alimentam a prescrição estruturada.
 export interface MockStudent {
   id: string;
   name: string;
+  phone: string;
   discipline: string;
+  ftpWatts: number | null;
+  weightKg: number | null;
+  heightCm: number | null;
+  zonesSummary: string;
   todayStatus: WorkoutStatus;
   stravaSynced: boolean;
   lastActivity: { name: string; distanceKm: number; date: string } | null;
 }
 
-export const mockStudents: MockStudent[] = Array.from({ length: 15 }, (_, i) => {
-  const template = TEMPLATES[i % TEMPLATES.length];
-  // Ciclismo/Corrida sincronizam via Strava; Academia não tem GPS, então
-  // fica sempre fora do Strava, refletindo a integração real.
-  const stravaSynced = template.discipline !== "Academia" && i % 4 !== 3;
+// Único aluno de exemplo — Carlos Silva — usado para validar todas as
+// funcionalidades do cockpit (cadastro, prescrição, acompanhamento e análise).
+export const mockStudents: MockStudent[] = [
+  {
+    id: "1",
+    name: "Carlos Silva",
+    phone: "+5584999990001",
+    discipline: "Ciclismo",
+    ftpWatts: 260,
+    weightKg: 74,
+    heightCm: 178,
+    zonesSummary: "Z1 <143W · Z2 143-195W · Z3 196-221W · Z4 222-247W · Z5 248W+",
+    todayStatus: "done",
+    stravaSynced: true,
+    lastActivity: { name: "Pedal matinal", distanceKm: 33, date: "hoje" },
+  },
+];
+
+export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = {
+  "1": {
+    id: "1",
+    athleteName: "Carlos Silva",
+    athletePhone: "+5584999990001",
+    coachName: "Treinador G4",
+    coachPhone: "+5584999990000",
+    title: TEMPLATE_CICLISMO.title,
+    discipline: TEMPLATE_CICLISMO.discipline,
+    scheduledDateLabel: "Hoje · 09/09",
+    status: "done",
+    description: TEMPLATE_CICLISMO.description,
+    prescription: TEMPLATE_CICLISMO.prescription,
+    structuredIntervals: TEMPLATE_CICLISMO.structuredIntervals,
+    powerZones: TEMPLATE_CICLISMO.powerZones,
+    planned: TEMPLATE_CICLISMO.planned,
+    completed: { ...TEMPLATE_CICLISMO.completedTemplate },
+  },
+};
+
+// Monta um rascunho de treino a partir do modelo da modalidade — ponto de
+// partida na aba "Criar/Prescrever treino" para um aluno sem prescrição
+// prévia (ou ao trocar a modalidade).
+export function buildWorkoutDraft(
+  student: MockStudent,
+  discipline: string,
+  scheduledDateLabel: string
+): MockWorkoutDetail {
+  const template = templateForDiscipline(discipline);
 
   return {
-    id: String(i + 1),
-    name: STUDENT_NAMES[i],
+    id: student.id,
+    athleteName: student.name,
+    athletePhone: student.phone,
+    coachName: "Treinador G4",
+    coachPhone: "+5584999990000",
+    title: template.title,
     discipline: template.discipline,
-    todayStatus: TODAY_STATUSES[i % TODAY_STATUSES.length],
-    stravaSynced,
-    lastActivity: stravaSynced
-      ? { name: lastActivityName(template.discipline), distanceKm: 20 + i * 3, date: "hoje" }
-      : null,
+    scheduledDateLabel,
+    status: "pending",
+    description: template.description,
+    prescription: template.prescription,
+    structuredIntervals: template.structuredIntervals,
+    powerZones: template.powerZones,
+    planned: template.planned,
+    completed: null,
   };
-});
-
-export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = Object.fromEntries(
-  mockStudents.map((student, i) => {
-    const template = TEMPLATES[i % TEMPLATES.length];
-
-    const detail: MockWorkoutDetail = {
-      id: student.id,
-      athleteName: student.name,
-      athletePhone: `+5584${999990000 + i + 1}`,
-      coachName: "Treinador G4",
-      coachPhone: "+5584999990000",
-      title: template.title,
-      discipline: template.discipline,
-      scheduledDateLabel: "Hoje · 09/09",
-      status: student.todayStatus,
-      description: template.description,
-      prescription: template.prescription,
-      structuredIntervals: template.structuredIntervals,
-      powerZones: template.powerZones,
-      planned: template.planned,
-      completed: student.todayStatus === "done" ? { ...template.completedTemplate } : null,
-    };
-
-    return [student.id, detail];
-  })
-);
+}
 
 export const mockWeeklyHistory: { day: string; status: WorkoutStatus }[] = [
   { day: "Seg", status: "done" },

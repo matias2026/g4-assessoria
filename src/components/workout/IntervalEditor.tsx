@@ -6,7 +6,7 @@ interface IntervalEditorProps {
   onChange: (intervals: WorkoutInterval[]) => void;
 }
 
-const TYPE_LABELS: Record<WorkoutIntervalType, string> = {
+export const TYPE_LABELS: Record<WorkoutIntervalType, string> = {
   warmup: "Aquecimento",
   steady: "Ritmo constante",
   interval: "Tiro",
