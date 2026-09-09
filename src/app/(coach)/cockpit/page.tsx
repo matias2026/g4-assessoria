@@ -1,4 +1,5 @@
 import { Logo } from "@/components/ui/Logo";
+import { CockpitStats } from "@/components/coach/CockpitStats";
 import { StudentsTable } from "@/components/coach/StudentsTable";
 import { mockStudents } from "@/lib/mock-data";
 
@@ -15,7 +16,11 @@ export default function CoachCockpitPage() {
         </div>
       </header>
 
-      <StudentsTable students={mockStudents} />
+      <CockpitStats students={mockStudents} />
+
+      <div className="mt-6">
+        <StudentsTable students={mockStudents} />
+      </div>
     </main>
   );
 }

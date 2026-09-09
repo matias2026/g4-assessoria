@@ -7,10 +7,12 @@ As visões de atleta e treinador são deliberadamente diferentes:
   Botões de Ação (concluir, exportar para o relógio, abrir no Garmin Connect,
   falar com o treinador) e Feedback do Professor.
 - **Treinador** — painel completo e analítico, estilo
-  [TrainingPeaks](https://www.trainingpeaks.com/): cockpit com os 15 alunos
-  (status do treino do dia e sincronização do Strava), edição da prescrição
-  por aluno (descrição, blocos estruturados, vídeo, métricas planejadas) e
-  comparação Planejado vs. Concluído (Duração, Distância, TSS, IF, FC e
+  [TrainingPeaks](https://www.trainingpeaks.com/): cockpit em grid de cards
+  com os 15 alunos (avatar, status do treino do dia com borda de acento e
+  sincronização do Strava) e uma barra de estatísticas rápidas no topo,
+  edição da prescrição por aluno (descrição, blocos estruturados, editor de
+  intervalos por %FTP/zona, vídeo, métricas planejadas) e comparação
+  Planejado vs. Concluído (Duração, Distância, TSS, IF, FC e
   ritmo/velocidade).
 
 Construído para rodar 100% em planos gratuitos: **Vercel** (hospedagem),
@@ -155,14 +157,17 @@ src/
     api/ai/draft-feedback/        Rascunho de feedback via Gemini
     layout.tsx, page.tsx          Layout raiz e landing
   components/
-    ui/                           Button, Card, Badge, StatusDot — base visual G4
+    ui/                           Button, Card, Badge, StatusDot, Avatar — base visual G4
     athlete/                      Componentes da Home do atleta
     coach/
-      StudentsTable                Lista dos alunos: treino de hoje, status do Strava, última atividade
+      StudentsTable                Grid de cards dos 15 alunos (mobile e desktop)
+      StudentCard                  Card individual: avatar, status com borda de acento, Strava
+      CockpitStats                 Barra de estatísticas: concluídos, pendentes, sem Strava
     workout/
       AthleteWorkoutView          Treino do Dia + Ações + Feedback do Professor
       CoachWorkoutView            Edição da prescrição + Planejado vs. Concluído + zonas + composer de IA
       WorkoutPrescriptionEditor   Descrição, blocos estruturados, vídeo e métricas planejadas (editável)
+      IntervalEditor               Blocos por %FTP/zona (aquecimento, tiros, recuperação) — ciclismo
       ZonesChart                  Zonas de potência/FC (planejado vs. concluído)
       DownloadZwoButton           Exporta .ZWO no navegador
       DeviceTutorial              Seletor de GPS (Garmin/iGPSPORT/Wahoo) + mini tutorial

@@ -225,6 +225,27 @@ const TEMPLATE_ACADEMIA: WorkoutTemplate = {
 const TEMPLATES = [TEMPLATE_CICLISMO, TEMPLATE_CORRIDA, TEMPLATE_ACADEMIA];
 const TODAY_STATUSES: WorkoutStatus[] = ["done", "pending", "missed"];
 
+// Nomes reais dos 15 alunos da G4 — evita a sensação de dados genéricos
+// ("Atleta 1", "Atleta 2") em uma tela que deve parecer um cockpit de
+// produção, não um placeholder.
+const STUDENT_NAMES = [
+  "Carlos Silva",
+  "Mariana Souza",
+  "Bruno Lima",
+  "Fernanda Costa",
+  "Rafael Oliveira",
+  "Juliana Santos",
+  "Diego Almeida",
+  "Camila Ferreira",
+  "Thiago Rodrigues",
+  "Patrícia Gomes",
+  "Lucas Martins",
+  "Beatriz Carvalho",
+  "Eduardo Barbosa",
+  "Larissa Ribeiro",
+  "Gustavo Pereira",
+];
+
 function lastActivityName(discipline: string): string {
   if (discipline === "Ciclismo") return "Pedal matinal";
   if (discipline === "Corrida") return "Corrida matinal";
@@ -248,7 +269,7 @@ export const mockStudents: MockStudent[] = Array.from({ length: 15 }, (_, i) => 
 
   return {
     id: String(i + 1),
-    name: `Atleta ${i + 1}`,
+    name: STUDENT_NAMES[i],
     discipline: template.discipline,
     todayStatus: TODAY_STATUSES[i % TODAY_STATUSES.length],
     stravaSynced,
