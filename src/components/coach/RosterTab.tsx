@@ -84,50 +84,48 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
         ))}
       </div>
 
-      {/* Desktop/tablet: tabela completa. */}
+      {/* Desktop/tablet: tabela completa, cabe sem rolagem no espaço disponível. */}
       <Card className="hidden overflow-hidden p-0 sm:block">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-g4-surface-alt text-g4-muted">
-              <tr>
-                <th className="px-5 py-3 font-medium">Aluno</th>
-                <th className="px-5 py-3 font-medium">Modalidade</th>
-                <th className="px-5 py-3 font-medium">FTP</th>
-                <th className="px-5 py-3 font-medium">Peso</th>
-                <th className="px-5 py-3 font-medium">Status do dia</th>
-                <th className="px-5 py-3 font-medium">Strava</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-g4-border">
-              {students.map((student) => (
-                <tr key={student.id}>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={student.name} className="h-9 w-9" />
-                      <div>
-                        <p className="font-medium text-g4-ink">{student.name}</p>
-                        <p className="text-xs text-g4-muted">{student.phone}</p>
-                      </div>
+        <table className="w-full text-left text-sm">
+          <thead className="bg-g4-surface-alt text-g4-muted">
+            <tr>
+              <th className="px-5 py-3 font-medium">Aluno</th>
+              <th className="px-5 py-3 font-medium">Modalidade</th>
+              <th className="px-5 py-3 font-medium">FTP</th>
+              <th className="px-5 py-3 font-medium">Peso</th>
+              <th className="px-5 py-3 font-medium">Status do dia</th>
+              <th className="px-5 py-3 font-medium">Strava</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-g4-border">
+            {students.map((student) => (
+              <tr key={student.id}>
+                <td className="px-5 py-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={student.name} className="h-9 w-9" />
+                    <div>
+                      <p className="font-medium text-g4-ink">{student.name}</p>
+                      <p className="text-xs text-g4-muted">{student.phone}</p>
                     </div>
-                  </td>
-                  <td className="px-5 py-3 text-g4-muted">{student.discipline}</td>
-                  <td className="px-5 py-3 text-g4-muted">{formatFtp(student)}</td>
-                  <td className="px-5 py-3 text-g4-muted">
-                    {student.weightKg != null ? `${student.weightKg} kg` : "—"}
-                  </td>
-                  <td className="px-5 py-3">
-                    <StatusDot status={student.todayStatus} />
-                  </td>
-                  <td className="px-5 py-3">
-                    <Badge tone={student.stravaSynced ? "lime" : "neutral"}>
-                      {student.stravaSynced ? "Sincronizado" : "Não conectado"}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </td>
+                <td className="px-5 py-3 text-g4-muted">{student.discipline}</td>
+                <td className="px-5 py-3 text-g4-muted">{formatFtp(student)}</td>
+                <td className="px-5 py-3 text-g4-muted">
+                  {student.weightKg != null ? `${student.weightKg} kg` : "—"}
+                </td>
+                <td className="px-5 py-3">
+                  <StatusDot status={student.todayStatus} />
+                </td>
+                <td className="px-5 py-3">
+                  <Badge tone={student.stravaSynced ? "lime" : "neutral"}>
+                    {student.stravaSynced ? "Sincronizado" : "Não conectado"}
+                  </Badge>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Card>
     </div>
   );

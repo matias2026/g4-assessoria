@@ -49,7 +49,10 @@ export function DeviceTutorial() {
     <div className="mt-3 border-t border-g4-border pt-3">
       <p className="text-sm font-medium text-g4-ink">Qual seu dispositivo?</p>
 
-      <div className="mt-2 flex gap-2">
+      {/* Empilhado no celular — três botões numa linha só espremeriam o
+          texto ("Wahoo / Outros" quebrando ao meio); em telas maiores cabem
+          lado a lado sem problema. */}
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
         {DEVICES.map((device) => {
           const isActive = device.key === selected;
           return (
@@ -59,7 +62,7 @@ export function DeviceTutorial() {
               onClick={() => setSelected(isActive ? null : device.key)}
               aria-expanded={isActive}
               className={cn(
-                "flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors focus-ring",
+                "rounded-xl border px-3 py-2 text-sm font-semibold transition-colors focus-ring sm:flex-1",
                 isActive
                   ? "border-lime bg-lime text-g4-ink"
                   : "border-g4-border bg-white text-g4-ink hover:border-lime-deep/50 hover:bg-g4-surface-alt"
