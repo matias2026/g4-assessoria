@@ -10,8 +10,10 @@ const LINKS = [
 
 // Admin tem acesso de verdade às três áreas (permitido no proxy e no RLS) —
 // esse nav é só a porta visível pra alternar entre elas. Coach/atleta nunca
-// veem isso: cada um só acessa a própria área.
-export async function RoleNav() {
+// veem isso: cada um só acessa a própria área. Não mostra o link da própria
+// página atual (currentPath) — só faz sentido oferecer pra onde ir, não pra
+// onde você já está.
+export async function RoleNav({ currentPath }: { currentPath: string }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,13 +24,16 @@ export async function RoleNav() {
   const profile = data as { role: ProfileRole } | null;
   if (profile?.role !== "admin") return null;
 
+  const links = LINKS.filter((link) => link.href !== currentPath);
+  if (links.length === 0) return null;
+
   return (
-    <nav className="flex flex-wrap gap-1.5 rounded-xl bg-g4-surface-alt p-1 text-xs">
-      {LINKS.map((link) => (
+    <nav className="flex gap-1.5 overflow-x-auto rounded-xl bg-g4-surface-alt p-1 text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {links.map((link) => (
         <Link
           key={link.href}
           href={link.href}
-          className="rounded-lg px-2.5 py-1.5 font-medium text-g4-muted transition-colors hover:bg-white hover:text-g4-ink"
+          className="shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-medium text-g4-muted transition-colors hover:bg-white hover:text-g4-ink"
         >
           {link.label}
         </Link>

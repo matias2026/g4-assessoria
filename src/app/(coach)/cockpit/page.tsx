@@ -8,20 +8,19 @@ import { mockStudents, mockWorkoutDetails } from "@/lib/mock-data";
 // (profiles com role = 'coach', workouts da semana e strava_activities recentes).
 export default function CoachCockpitPage() {
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <main className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8">
+      {/* Header minimalista: só logo + título e o botão de sair isolado.
+          O switcher de área (admin) fica numa faixa própria abaixo, sem
+          disputar espaço aqui. */}
+      <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Logo className="h-9" />
-          <div>
-            <p className="text-sm text-g4-muted">Cockpit do treinador</p>
-            <h1 className="text-2xl font-bold text-g4-ink">G4 Assessoria Esportiva</h1>
-          </div>
+          <h1 className="text-lg font-bold text-g4-ink sm:text-xl">Cockpit do treinador</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <RoleNav />
-          <LogoutButton />
-        </div>
+        <LogoutButton />
       </header>
+
+      <RoleNav currentPath="/cockpit" />
 
       <CockpitTabs initialStudents={mockStudents} initialWorkouts={mockWorkoutDetails} />
     </main>

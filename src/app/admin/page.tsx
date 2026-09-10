@@ -40,18 +40,17 @@ export default async function AdminPage() {
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-g4-ink">Painel administrador</h1>
           <p className="text-sm text-g4-muted">
             Aprove pedidos de /solicitar-acesso ou crie contas direto — sem outro jeito de entrar no site.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <RoleNav />
-          <LogoutButton />
-        </div>
+        <LogoutButton />
       </div>
+
+      <RoleNav currentPath="/admin" />
 
       <Card className="p-5">
         <div className="flex items-center justify-between">

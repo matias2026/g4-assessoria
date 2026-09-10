@@ -31,7 +31,7 @@ export default function AthleteDashboardPage() {
         </div>
       </header>
 
-      <RoleNav />
+      <RoleNav currentPath="/dashboard" />
 
       <AthleteWorkoutView workout={workout} />
       <WeeklyHistory days={mockWeeklyHistory} />

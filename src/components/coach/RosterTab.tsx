@@ -34,12 +34,12 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-bold text-g4-ink">Alunos cadastrados ({students.length})</h2>
           <p className="text-sm text-g4-muted">Cadastro geral: FTP, peso, modalidade e status do dia.</p>
         </div>
-        <Button variant="primary" className="px-4" onClick={() => setShowForm(true)}>
+        <Button variant="primary" className="w-full sm:w-auto sm:px-4" onClick={() => setShowForm(true)}>
           + Adicionar novo aluno
         </Button>
       </div>
