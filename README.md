@@ -3,9 +3,12 @@
 Plataforma web para a assessoria esportiva G4 (ciclismo, corrida e academia).
 As visões de atleta e treinador são deliberadamente diferentes:
 
-- **Atleta** — extremamente simples, pensada para o celular: Treino do Dia,
-  Botões de Ação (concluir, exportar para o relógio, abrir no Garmin Connect,
-  falar com o treinador) e Feedback do Professor.
+- **Atleta** — extremamente simples, pensada para o celular, em um fluxo
+  único (sem cards soltos e desconectados): Treino do Dia (com o status do
+  Strava integrado ao card, não isolado), Ações — baixar o treino
+  estruturado em **.FIT** ou **.ZWO**, abrir no Garmin Connect, marcar como
+  concluído (abre um modal de RPE + sensação + observações) — tutorial de
+  dispositivo (Garmin/iGPSPORT/Wahoo) e Feedback do Professor.
 - **Treinador** — painel completo e analítico, estilo
   [TrainingPeaks](https://www.trainingpeaks.com/), organizado em 4 abas para
   não misturar cadastro, prescrição, acompanhamento e análise na mesma tela:
@@ -118,21 +121,37 @@ com o Authorization Callback Domain apontando para seu domínio (ou
 
 ## Exportação para GPS (Garmin/Wahoo)
 
-`src/lib/workout-export.ts` gera um arquivo **.ZWO** (formato de treino
-estruturado do Zwift, importável em relógios Garmin/Wahoo) a partir de
-`workouts.structured_intervals` — potência sempre em %FTP. O download roda
-inteiro no navegador (`DownloadZwoButton`), sem round-trip ao servidor. Hoje
-cobre só ciclismo; corrida/academia usariam zonas de ritmo, fora do escopo
-atual (`canExportZwo` esconde o botão quando não aplicável).
+`src/lib/workout-export.ts` gera o treino estruturado em dois formatos,
+ambos direto no navegador (sem round-trip ao servidor), a partir de
+`workouts.structured_intervals` — potência sempre em %FTP:
+
+- **.ZWO** — formato do Zwift, importável em Garmin/Wahoo (`DownloadZwoButton`).
+- **.FIT** — formato binário nativo Garmin, gerado com o SDK oficial
+  ([`@garmin/fitsdk`](https://www.npmjs.com/package/@garmin/fitsdk)) via
+  `buildFitWorkout` (`DownloadFitButton`) — mensagens `workout`/`workoutStep`
+  com os números de campo/enum do FIT Profile embutido no pacote, validado
+  com round-trip real (`Decoder.checkIntegrity()`) durante o desenvolvimento.
+
+Hoje cobre só ciclismo; corrida/academia usariam zonas de ritmo, fora do
+escopo atual (`canExportStructuredWorkout` esconde os botões quando não
+aplicável).
 
 O botão "Abrir no Garmin Connect" aponta para `connect.garmin.com/modern/`
 — em um celular com o app instalado, o link universal abre o app; sem o
 app, abre o painel web.
 
-Como nem todo aluno usa Garmin, o `DeviceTutorial` (abaixo do botão de
-download, na visão do atleta) deixa escolher a marca do GPS — Garmin,
-iGPSPORT ou Wahoo/Outros — e abre um mini tutorial curto de importação
-específico para cada uma.
+Como nem todo aluno usa Garmin, o `DeviceTutorial` (na visão do atleta)
+deixa escolher a marca do GPS — Garmin, iGPSPORT ou Wahoo/Outros — e abre
+um mini tutorial curto de importação específico para cada uma.
+
+## Feedback pós-treino (RPE)
+
+Ao clicar em "Marcar como concluído" na visão do atleta, o
+`RpeFeedbackModal` pede a percepção de esforço (RPE 1–10), a sensação geral
+(emoji, 1–5) e observações livres — sem round-trip ao servidor ainda (TODO:
+persistir em `workout_completions` via Supabase). O resultado aparece
+imediatamente no `CoachFeedbackCard`, junto com o que o treinador ainda vai
+comentar.
 
 ## WhatsApp
 
@@ -171,7 +190,7 @@ src/
     layout.tsx, page.tsx          Layout raiz e landing
   components/
     ui/                           Button, Card, Badge, StatusDot, Avatar — base visual G4
-    athlete/                      Componentes da Home do atleta
+    athlete/                      WeeklyHistory (Home do atleta)
     coach/
       CockpitTabs                  Shell: estado do roster/prescrições + navegação das 4 abas
       RosterTab                    Aba "Alunos cadastrados": tabela geral + cadastro de aluno
@@ -181,19 +200,21 @@ src/
       CockpitStats                 Barra de estatísticas: concluídos, pendentes, sem Strava
       IntervalTimeline             Gráfico de blocos do treino (duração x %FTP)
     workout/
-      AthleteWorkoutView          Treino do Dia + Ações + Feedback do Professor
+      AthleteWorkoutView          Treino do Dia + Ações (exportar/concluir) + Feedback do Professor
       WorkoutPrescriptionEditor   Descrição, blocos estruturados, vídeo e métricas planejadas (editável)
       IntervalEditor               Blocos por %FTP/zona (aquecimento, tiros, recuperação) — ciclismo
       ZonesChart                  Zonas de potência/FC (planejado vs. concluído)
+      DownloadFitButton           Exporta .FIT (SDK oficial Garmin) no navegador
       DownloadZwoButton           Exporta .ZWO no navegador
       DeviceTutorial              Seletor de GPS (Garmin/iGPSPORT/Wahoo) + mini tutorial
+      RpeFeedbackModal             Modal de RPE/sensação/observações pós-treino
       AiFeedbackComposer          Gera/edita/envia feedback (treinador)
       CoachFeedbackCard           Feedback exibido ao atleta
   lib/
     supabase/                     Clientes (browser, server, admin) e tipos do banco
     strava/                       Cliente OAuth/API do Strava
     ai/gemini.ts                  Cliente da API do Gemini
-    workout-export.ts             Gerador do arquivo .ZWO
+    workout-export.ts             Geradores dos arquivos .FIT (@garmin/fitsdk) e .ZWO
     whatsapp.ts                   Links wa.me e texto formatado do treino
     workout-metrics.ts            Formatação de duração, pace/velocidade, RPE, sensação
     mock-data.ts                  Aluno de exemplo, templates por modalidade e prescrições

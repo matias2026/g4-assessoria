@@ -30,8 +30,9 @@ function zoneForPct(pct: number): (typeof ZONES)[number] {
 }
 
 const fieldClass =
-  "w-full rounded-lg border border-g4-border bg-white p-2 text-sm text-g4-ink focus-ring";
-const miniLabelClass = "block text-[10px] font-semibold uppercase tracking-wide text-g4-muted";
+  "mt-1 w-full rounded-lg border border-g4-border bg-white p-2 text-sm text-g4-ink focus-ring";
+const miniLabelClass =
+  "block text-[11px] font-semibold uppercase tracking-wide text-g4-muted lg:whitespace-nowrap";
 
 const EMPTY_INTERVAL: WorkoutInterval = {
   type: "interval",
@@ -71,7 +72,7 @@ export function IntervalEditor({ intervals, onChange }: IntervalEditorProps) {
           return (
             <div
               key={index}
-              className="grid grid-cols-2 gap-3 rounded-xl border border-g4-border bg-g4-surface-alt/50 p-3 sm:grid-cols-[1.1fr_0.8fr_1fr_0.85fr_0.85fr_auto] sm:items-end sm:gap-2"
+              className="grid grid-cols-2 gap-x-3 gap-y-3 rounded-2xl border border-g4-border bg-g4-surface-alt/60 p-4 shadow-sm lg:grid-cols-[1.1fr_0.85fr_1.15fr_0.85fr_0.85fr_auto] lg:items-end lg:gap-3"
             >
               <label className="block">
                 <span className={miniLabelClass}>Tipo</span>
@@ -147,7 +148,7 @@ export function IntervalEditor({ intervals, onChange }: IntervalEditorProps) {
                 type="button"
                 onClick={() => removeRow(index)}
                 aria-label="Remover bloco"
-                className="justify-self-end rounded-lg px-2 py-2 text-xs font-medium text-status-missed hover:bg-status-missed/10 sm:justify-self-center"
+                className="col-span-2 rounded-lg border border-status-missed/30 px-2 py-2 text-xs font-medium text-status-missed hover:bg-status-missed/10 lg:col-span-1 lg:border-0 lg:justify-self-center"
               >
                 Remover
               </button>
