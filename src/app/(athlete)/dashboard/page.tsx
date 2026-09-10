@@ -23,7 +23,7 @@ export default function AthleteDashboardPage() {
             <h1 className="truncate text-2xl font-bold text-g4-ink">{workout.athleteName}</h1>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-2">
           <LinkButton href={talkToCoachLink} target="_blank" rel="noreferrer" variant="ghost" className="px-3 text-xs">
             💬 Treinador
           </LinkButton>
