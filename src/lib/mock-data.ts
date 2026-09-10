@@ -99,19 +99,14 @@ export const TEMPLATE_CICLISMO: WorkoutTemplate = {
     cooldown: "10min soltando em Z1, cadência livre.",
     videoUrl: "https://www.youtube.com/watch?v=exemplo-preleção",
   },
+  // Um representante de cada bloco (aquecimento/tiro/recuperação/
+  // desaquecimento) — a repetição "6x5min" já está descrita em texto livre
+  // no mainSet acima; a lista estruturada não precisa duplicar a série
+  // inteira linha a linha.
   structuredIntervals: [
     { type: "warmup", durationSeconds: 15 * 60, targetLowPct: 50, targetHighPct: 70 },
     { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
     { type: "recovery", durationSeconds: 3 * 60, targetLowPct: 45, targetHighPct: 45 },
-    { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
-    { type: "recovery", durationSeconds: 3 * 60, targetLowPct: 45, targetHighPct: 45 },
-    { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
-    { type: "recovery", durationSeconds: 3 * 60, targetLowPct: 45, targetHighPct: 45 },
-    { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
-    { type: "recovery", durationSeconds: 3 * 60, targetLowPct: 45, targetHighPct: 45 },
-    { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
-    { type: "recovery", durationSeconds: 3 * 60, targetLowPct: 45, targetHighPct: 45 },
-    { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
     { type: "cooldown", durationSeconds: 10 * 60, targetLowPct: 40, targetHighPct: 50 },
   ],
   powerZones: [
@@ -235,6 +230,20 @@ export function templateForDiscipline(discipline: string): WorkoutTemplate {
   return TEMPLATES.find((t) => t.discipline === discipline) ?? TEMPLATE_CICLISMO;
 }
 
+// Ponto de partida de um treino novo: um único bloco limpo — o treinador
+// adiciona os demais manualmente ("+ Adicionar bloco"), em vez de a tela já
+// nascer poluída com uma série inteira gerada automaticamente.
+const DEFAULT_INTERVAL: WorkoutInterval = {
+  type: "warmup",
+  durationSeconds: 10 * 60,
+  targetLowPct: 50,
+  targetHighPct: 70,
+};
+
+export function defaultIntervalsForDiscipline(discipline: string): WorkoutInterval[] {
+  return discipline === "Ciclismo" ? [{ ...DEFAULT_INTERVAL }] : [];
+}
+
 // Aluno cadastrado no Cockpit — os campos de FTP/peso/altura/zonas vêm do
 // cadastro na aba "Alunos cadastrados" e alimentam a prescrição estruturada.
 export interface MockStudent {
@@ -311,7 +320,7 @@ export function buildWorkoutDraft(
     status: "pending",
     description: template.description,
     prescription: template.prescription,
-    structuredIntervals: template.structuredIntervals,
+    structuredIntervals: defaultIntervalsForDiscipline(template.discipline),
     powerZones: template.powerZones,
     planned: template.planned,
     completed: null,

@@ -6,7 +6,7 @@ import { LinkButton } from "@/components/ui/LinkButton";
 import { IntervalEditor } from "@/components/workout/IntervalEditor";
 import { WorkoutPrescriptionEditor, type PlannedMetrics } from "@/components/workout/WorkoutPrescriptionEditor";
 import { buildWhatsAppLink, buildWorkoutWhatsAppMessage } from "@/lib/whatsapp";
-import { buildWorkoutDraft, templateForDiscipline } from "@/lib/mock-data";
+import { buildWorkoutDraft, defaultIntervalsForDiscipline, templateForDiscipline } from "@/lib/mock-data";
 import type { MockStudent, MockWorkoutDetail } from "@/lib/mock-data";
 import type { WorkoutInterval } from "@/lib/supabase/types";
 
@@ -19,6 +19,34 @@ interface PrescribeTabProps {
 }
 
 const DISCIPLINES = ["Ciclismo", "Corrida", "Academia"];
+
+// Títulos pré-estabelecidos por modalidade — evita treino de corrida
+// aparecendo prescrito para um aluno de ciclismo (ou vice-versa). O treinador
+// ainda pode trocar a modalidade manualmente (ex.: aluno com Ciclismo de
+// manhã + Academia à tarde), e a lista de títulos acompanha a troca.
+const WORKOUT_TITLES: Record<string, string[]> = {
+  Ciclismo: [
+    "Intervalado de limiar",
+    "Rodagem longa em Z2",
+    "Tiros de VO2max",
+    "Treino de força em Z3 (subida)",
+    "Recuperação ativa",
+  ],
+  Corrida: [
+    "Rodagem longa com progressão",
+    "Tiros de velocidade",
+    "Fartlek",
+    "Rodagem regenerativa",
+    "Treino de ritmo de prova",
+  ],
+  Academia: [
+    "Treino de força — membros inferiores",
+    "Treino de força — membros superiores",
+    "Treino de core e estabilidade",
+    "Treino funcional / circuito",
+  ],
+};
+
 const fieldClass =
   "mt-1 w-full rounded-xl border border-g4-border bg-white p-2.5 text-sm text-g4-ink focus-ring";
 const labelClass = "text-xs font-medium text-g4-muted";
@@ -112,11 +140,11 @@ function PrescriptionForm({ student, existingWorkout, onSaveWorkout }: Prescript
   function handleDisciplineChange(next: string) {
     const template = templateForDiscipline(next);
     setDiscipline(next);
-    setTitle(template.title);
+    setTitle(WORKOUT_TITLES[next][0]);
     setDescription(template.description);
     setPrescription(template.prescription);
     setPlanned(template.planned);
-    setStructuredIntervals(template.structuredIntervals);
+    setStructuredIntervals(defaultIntervalsForDiscipline(next));
     setSaved(false);
   }
 
@@ -145,14 +173,20 @@ function PrescriptionForm({ student, existingWorkout, onSaveWorkout }: Prescript
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="block">
             <span className={labelClass}>Título do treino</span>
-            <input
+            <select
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
                 setSaved(false);
               }}
               className={fieldClass}
-            />
+            >
+              {WORKOUT_TITLES[discipline].map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block">
             <span className={labelClass}>Data do treino</span>
