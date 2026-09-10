@@ -18,6 +18,7 @@ export async function signIn(_prevState: LoginState, formData: FormData): Promis
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const next = String(formData.get("next") ?? "");
+  const expectedRole = String(formData.get("expected_role") ?? "");
 
   if (!email || !password) {
     return { error: "Preencha e-mail e senha." };
@@ -44,6 +45,12 @@ export async function signIn(_prevState: LoginState, formData: FormData): Promis
   if (!profile || profile.role === "admin") {
     await supabase.auth.signOut();
     return { error: "Esta conta não tem acesso por aqui. Administradores usam /admin/login." };
+  }
+
+  if (expectedRole && profile.role !== expectedRole) {
+    await supabase.auth.signOut();
+    const correct = profile.role === "coach" ? "treinador" : "aluno";
+    return { error: `Essa conta é de ${correct}. Selecione a opção "Sou ${correct}" acima.` };
   }
 
   redirect(next && next.startsWith("/") ? next : homePathForRole(profile.role));
