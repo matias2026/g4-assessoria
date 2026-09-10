@@ -74,30 +74,48 @@ Veja `.env.example`. Resumo:
 | `SUPABASE_SERVICE_ROLE_KEY` | Idem (uso exclusivo em servidor) |
 | `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` | App em strava.com/settings/api |
 | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (camada gratuita) |
+| `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` | [google.com/recaptcha/admin](https://www.google.com/recaptcha/admin) (reCAPTCHA v2, gratuito). Opcional: sem elas, `/solicitar-acesso` funciona normalmente, só sem a verificação. |
 
 Rate limiting não precisa de variável nova — roda no próprio Postgres do
 Supabase que você já configurou acima (ver seção Segurança).
 
 ## Segurança
 
-Site fechado: **não existe cadastro público**. Toda conta (treinador, aluno
-ou admin) só passa a existir se alguém com acesso ao painel `/admin` criar.
+Site fechado: **ninguém entra sem conta**, e nenhuma conta se cria sozinha.
+Existem só duas portas de entrada pra uma conta nova, ambas atrás do login
+do admin: o admin cria direto em `/admin`, ou aprova um pedido enviado por
+`/solicitar-acesso` (tela pública, sem login — é só um formulário de
+interesse, não dá acesso a nada até o admin aprovar).
 
 - **Autenticação real (Supabase Auth)** — `/login` (treinador/aluno) e
   `/admin/login` (administrador, login separado — não uma chave secreta
   compartilhada). `src/proxy.ts` (convenção do Next.js 16 para o antigo
   `middleware.ts`) barra `/dashboard`, `/cockpit` e `/admin` no servidor:
   sem sessão válida ou com o papel errado, redireciona pro login certo.
+- **Pedido de acesso** (`/solicitar-acesso`) — nome, e-mail, WhatsApp
+  (opcional) e "sou aluno/treinador"; cai numa fila em `/admin` com botões
+  **Aprovar** (cria a conta de verdade e mostra uma senha provisória, uma
+  única vez, pro admin repassar) e **Negar**. Protegida por rate limit (3
+  pedidos/hora por IP), reCAPTCHA v2 e botão travado durante o envio (sem
+  duplo clique) — é a tela mais exposta do site, já que não exige login. O
+  insert no banco (`access_requests`) só acontece pela Server Action, com a
+  service role; não existe policy de insert pra `anon`, então nem chamando a
+  API do Supabase direto dá pra burlar essas travas.
+- **Suspender conta** (`/admin`, botão por linha) — marca `profiles.active =
+  false`. Login passa a recusar na hora; RLS também corta o acesso de quem
+  já tinha sessão aberta (não é só bloqueio no login). Um admin não
+  consegue suspender a própria conta.
 - **RLS no Supabase, com políticas reais** (não só habilitada): `profiles`
   — cada usuário só lê/edita o próprio registro; `alunos`/`treinos` —
-  treinador e admin enxergam/gerenciam tudo, aluno só o próprio registro
-  (via `alunos.user_id`) e só atualiza pra registrar a execução do treino.
-  Cadastro em `profiles` não tem policy de insert — só a service role
-  (painel admin) cria conta.
-- **Trava de 50 atletas**: reforçada duas vezes — no formulário do painel
-  admin (pré-checagem) e num trigger no banco
-  (`enforce_athlete_cap()`, em `profiles`) que recusa o 51º perfil com
-  `role = 'athlete'` mesmo se alguém inserir direto via SQL/service role.
+  treinador e admin (ativos) enxergam/gerenciam tudo, aluno (ativo) só o
+  próprio registro (via `alunos.user_id`) e só atualiza pra registrar a
+  execução do treino. Cadastro em `profiles`/`access_requests` não tem
+  policy de insert pra `anon`/`authenticated` — só a service role cria.
+- **Trava de 50 atletas**: reforçada duas vezes — na aprovação/criação
+  (pré-checagem, tanto no formulário direto quanto ao aprovar um pedido) e
+  num trigger no banco (`enforce_athlete_cap()`, em `profiles`) que recusa
+  o 51º perfil com `role = 'athlete'` mesmo se alguém inserir direto via
+  SQL/service role.
 - **Rate limiting por IP** direto no Postgres do Supabase — sem serviço
   externo, sem variável de ambiente nova. A função `check_rate_limit`
   (`supabase/migrations/0006_rate_limit_via_postgres.sql`) conta
@@ -105,18 +123,32 @@ ou admin) só passa a existir se alguém com acesso ao painel `/admin` criar.
   (`rate_limit_buckets`, só a service role acessa); `src/lib/rate-limit.ts`
   chama essa função via RPC. Limites: 5 tentativas de login a cada 5 min
   por IP, 30 requisições/min por IP nas rotas de API (`/api/*`, incluindo
-  o proxy). Login roda como Server Action (não client-side direto no
-  Supabase), justamente pra esse rate limit valer de verdade. Como reforço
-  adicional (já ativo por padrão, sem configuração): o próprio Supabase
-  Auth tem rate limit embutido nos endpoints de login/cadastro.
+  o proxy), 3 pedidos de acesso/hora por IP. Login e pedido de acesso
+  rodam como Server Action (não client-side direto no Supabase),
+  justamente pra esse rate limit valer de verdade. Como reforço adicional
+  (já ativo por padrão, sem configuração): o próprio Supabase Auth tem
+  rate limit embutido nos endpoints de login/cadastro.
+- **reCAPTCHA v2** em `/solicitar-acesso` (`src/lib/recaptcha.ts`) — o
+  token do widget é verificado no servidor contra a API do Google antes de
+  gravar o pedido. Sem `RECAPTCHA_SECRET_KEY` configurada, o formulário
+  funciona normalmente sem a verificação (log de aviso, não quebra o
+  deploy antes da chave existir).
 - **Cabeçalhos HTTP** (`next.config.mjs`, aplicados a toda resposta):
-  `Content-Security-Policy`, `X-Frame-Options: DENY` (anti-clickjacking),
+  `Content-Security-Policy` (com exceção pontual pro script/iframe do
+  reCAPTCHA), `X-Frame-Options: DENY` (anti-clickjacking),
   `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`
   (bloqueia câmera/microfone/geolocalização, não usados pelo app) e
   `Strict-Transport-Security`.
 - **`/api/ai/draft-feedback`** verifica não só que há um usuário
   autenticado, mas que o `profiles.role` dele é `coach` (ou `admin`) —
   rascunho de IA é uma ferramenta do treinador, não do atleta.
+- **XSS/links**: auditado — nenhum `dangerouslySetInnerHTML`/`innerHTML`
+  no código, todo `target="_blank"` já usa `rel="noreferrer"` (evita
+  reverse tabnabbing), e o link do WhatsApp (`buildWhatsAppLink`) filtra o
+  telefone pra só dígitos antes de montar a URL.
+- **Duplo clique**: todo Server Action de escrita (login, criar/aprovar/
+  negar conta, suspender, pedido de acesso) desabilita o próprio botão
+  enquanto a requisição está em voo (`pending`/`useTransition`).
 - `SUPABASE_SERVICE_ROLE_KEY` só é usada em `src/lib/supabase/admin.ts`
   (rotas/Server Actions de servidor — inclui o painel admin, que precisa
   do Auth Admin API pra criar contas); nunca é referenciada em código que

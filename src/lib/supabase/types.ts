@@ -4,6 +4,10 @@
 
 export type ProfileRole = "athlete" | "coach" | "admin";
 
+export type AccessRequestRole = "athlete" | "coach";
+
+export type AccessRequestStatus = "pending" | "approved" | "denied";
+
 export type WorkoutStatus = "pending" | "done" | "missed";
 
 export type WorkoutCompletionSource = "strava" | "manual";
@@ -99,6 +103,34 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["treinos"]["Insert"]>;
+        Relationships: [];
+      };
+      access_requests: {
+        Row: {
+          id: string;
+          full_name: string;
+          email: string;
+          phone: string | null;
+          role_requested: AccessRequestRole;
+          message: string | null;
+          status: AccessRequestStatus;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          full_name: string;
+          email: string;
+          phone?: string | null;
+          role_requested: AccessRequestRole;
+          message?: string | null;
+          status?: AccessRequestStatus;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["access_requests"]["Insert"]>;
         Relationships: [];
       };
       strava_tokens: {

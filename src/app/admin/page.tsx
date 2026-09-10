@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { CreateAccountForm } from "./CreateAccountForm";
 import { ToggleActiveButton } from "./ToggleActiveButton";
+import { RequestActions } from "./RequestActions";
 
 // Sempre busca dados frescos (lista de contas, contagem de atletas) — sem
 // isso o Next poderia pré-renderizar a página estaticamente no build e
@@ -28,12 +29,22 @@ export default async function AdminPage() {
   const list = profiles ?? [];
   const athleteCount = list.filter((p) => p.role === "athlete").length;
 
+  const { data: pendingRequests } = await admin
+    .from("access_requests")
+    .select("id, full_name, email, phone, role_requested, message, created_at")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  const requests = pendingRequests ?? [];
+
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-g4-ink">Painel administrador</h1>
-          <p className="text-sm text-g4-muted">Criação de contas — não há cadastro público no site.</p>
+          <p className="text-sm text-g4-muted">
+            Aprove pedidos de /solicitar-acesso ou crie contas direto — sem outro jeito de entrar no site.
+          </p>
         </div>
         <LogoutButton />
       </div>
@@ -57,7 +68,32 @@ export default async function AdminPage() {
       </Card>
 
       <Card className="p-5">
-        <h2 className="text-sm font-bold text-g4-ink">Criar conta</h2>
+        <h2 className="text-sm font-bold text-g4-ink">Pedidos de acesso pendentes ({requests.length})</h2>
+        {requests.length === 0 ? (
+          <p className="mt-2 text-sm text-g4-muted">Nenhum pedido novo.</p>
+        ) : (
+          <div className="mt-3 flex flex-col gap-3">
+            {requests.map((r) => (
+              <div key={r.id} className="flex flex-col gap-2 rounded-xl border border-g4-border p-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="font-medium text-g4-ink">
+                    {r.full_name} <span className="font-normal text-g4-muted">· {r.email}</span>
+                  </p>
+                  <p className="text-xs text-g4-muted">
+                    {r.role_requested === "coach" ? "Quer entrar como treinador" : "Quer entrar como aluno"}
+                    {r.phone ? ` · ${r.phone}` : ""}
+                  </p>
+                  {r.message && <p className="mt-1 text-sm text-g4-ink">&ldquo;{r.message}&rdquo;</p>}
+                </div>
+                <RequestActions requestId={r.id} />
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="text-sm font-bold text-g4-ink">Criar conta direto</h2>
         <CreateAccountForm />
       </Card>
 

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { LinkButton } from "@/components/ui/LinkButton";
 
 export default function HomePage() {
@@ -23,7 +24,11 @@ export default function HomePage() {
         </LinkButton>
       </div>
       <p className="text-xs text-g4-muted">
-        Acesso restrito a treinador e aluno cadastrado — sem cadastro público.
+        Ainda não tem conta?{" "}
+        <Link href="/solicitar-acesso" className="font-medium text-g4-ink underline">
+          Peça acesso
+        </Link>
+        . O treinador revisa antes de liberar o login.
       </p>
     </main>
   );
