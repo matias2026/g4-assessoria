@@ -87,11 +87,15 @@ do admin: o admin cria direto em `/admin`, ou aprova um pedido enviado por
 `/solicitar-acesso` (tela pública, sem login — é só um formulário de
 interesse, não dá acesso a nada até o admin aprovar).
 
-- **Autenticação real (Supabase Auth)** — `/login` (treinador/aluno) e
-  `/admin/login` (administrador, login separado — não uma chave secreta
-  compartilhada). `src/proxy.ts` (convenção do Next.js 16 para o antigo
-  `middleware.ts`) barra `/dashboard`, `/cockpit` e `/admin` no servidor:
-  sem sessão válida ou com o papel errado, redireciona pro login certo.
+- **Autenticação real (Supabase Auth), login único** — `/login` serve
+  treinador, aluno e admin (o toggle "Sou aluno/Sou treinador" é só uma
+  conveniência de UX, não uma trava real). `src/proxy.ts` (convenção do
+  Next.js 16 para o antigo `middleware.ts`) barra `/dashboard`, `/cockpit`
+  e `/admin` no servidor: sem sessão válida ou com o papel errado,
+  redireciona pro login. Admin tem acesso liberado às três áreas (não só
+  ao painel) — `src/components/auth/RoleNav.tsx` mostra os atalhos
+  "Cockpit / Área do atleta / Painel admin" só pra quem é admin; cai no
+  Cockpit por padrão depois do login.
 - **Pedido de acesso** (`/solicitar-acesso`) — nome, e-mail, WhatsApp
   (opcional) e "sou aluno/treinador"; cai numa fila em `/admin` com botões
   **Aprovar** (cria a conta de verdade e mostra uma senha provisória, uma

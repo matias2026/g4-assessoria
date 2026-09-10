@@ -11,9 +11,10 @@ export interface LoginState {
   error: string | null;
 }
 
-// Login de treinador/atleta. Não existe autocadastro — a conta só existe se
-// o painel /admin criou. Roda no servidor (Server Action) para que o rate
-// limit por IP seja real, e não algo que um client malicioso pode ignorar.
+// Login único (treinador, atleta ou admin). Não existe autocadastro — a
+// conta só existe se o painel /admin criou. Roda no servidor (Server
+// Action) para que o rate limit por IP seja real, e não algo que um client
+// malicioso pode ignorar.
 export async function signIn(_prevState: LoginState, formData: FormData): Promise<LoginState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
@@ -46,9 +47,9 @@ export async function signIn(_prevState: LoginState, formData: FormData): Promis
   // o shape é conhecido (profiles.role/active) então a asserção é segura.
   const profile = profileData as { role: ProfileRole; active: boolean } | null;
 
-  if (!profile || profile.role === "admin") {
+  if (!profile) {
     await supabase.auth.signOut();
-    return { error: "Esta conta não tem acesso por aqui. Administradores usam /admin/login." };
+    return { error: "Esta conta não tem acesso ao site." };
   }
 
   if (!profile.active) {
@@ -56,7 +57,10 @@ export async function signIn(_prevState: LoginState, formData: FormData): Promis
     return { error: "Esta conta está suspensa. Fale com seu treinador." };
   }
 
-  if (expectedRole && profile.role !== expectedRole) {
+  // Admin entra por qualquer uma das duas abas — o toggle é só uma
+  // conveniência pra treinador/atleta, não uma trava real pra quem tem
+  // acesso a tudo.
+  if (expectedRole && profile.role !== expectedRole && profile.role !== "admin") {
     await supabase.auth.signOut();
     const correct = profile.role === "coach" ? "treinador" : "aluno";
     return { error: `Essa conta é de ${correct}. Selecione a opção "Sou ${correct}" acima.` };

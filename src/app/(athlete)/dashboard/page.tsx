@@ -1,6 +1,7 @@
 import { LinkButton } from "@/components/ui/LinkButton";
 import { Logo } from "@/components/ui/Logo";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { RoleNav } from "@/components/auth/RoleNav";
 import { WeeklyHistory } from "@/components/athlete/WeeklyHistory";
 import { AthleteWorkoutView } from "@/components/workout/AthleteWorkoutView";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
@@ -29,6 +30,8 @@ export default function AthleteDashboardPage() {
           <LogoutButton />
         </div>
       </header>
+
+      <RoleNav />
 
       <AthleteWorkoutView workout={workout} />
       <WeeklyHistory days={mockWeeklyHistory} />

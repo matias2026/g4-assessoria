@@ -14,10 +14,6 @@ const PROTECTED_PREFIXES: { prefix: string; roles: ProfileRole[] }[] = [
   { prefix: "/dashboard", roles: ["athlete", "admin"] },
 ];
 
-function loginPathFor(pathname: string): string {
-  return pathname.startsWith("/admin") ? "/admin/login" : "/login";
-}
-
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -29,12 +25,6 @@ export async function proxy(request: NextRequest) {
     if (!success) {
       return NextResponse.json({ error: "Muitas requisições. Tente novamente em instantes." }, { status: 429 });
     }
-  }
-
-  // /admin/login é a própria página de login do admin — não pode exigir
-  // sessão de admin, senão vira um loop de redirecionamento.
-  if (pathname === "/admin/login") {
-    return NextResponse.next();
   }
 
   const match = PROTECTED_PREFIXES.find((entry) => pathname.startsWith(entry.prefix));
@@ -67,7 +57,7 @@ export async function proxy(request: NextRequest) {
 
   if (!user) {
     const url = request.nextUrl.clone();
-    url.pathname = loginPathFor(pathname);
+    url.pathname = "/login";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
@@ -79,7 +69,7 @@ export async function proxy(request: NextRequest) {
 
   if (!profile || !match.roles.includes(profile.role)) {
     const url = request.nextUrl.clone();
-    url.pathname = loginPathFor(pathname);
+    url.pathname = "/login";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
