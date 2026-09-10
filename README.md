@@ -74,26 +74,72 @@ Veja `.env.example`. Resumo:
 | `SUPABASE_SERVICE_ROLE_KEY` | Idem (uso exclusivo em servidor) |
 | `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` | App em strava.com/settings/api |
 | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (camada gratuita) |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Banco Redis gratuito em [console.upstash.com](https://console.upstash.com) — usado pro rate limiting. Opcional: sem eles o app funciona, só sem o limite de requisições. |
 
 ## Segurança
 
+Site fechado: **não existe cadastro público**. Toda conta (treinador, aluno
+ou admin) só passa a existir se alguém com acesso ao painel `/admin` criar.
+
+- **Autenticação real (Supabase Auth)** — `/login` (treinador/aluno) e
+  `/admin/login` (administrador, login separado — não uma chave secreta
+  compartilhada). `src/proxy.ts` (convenção do Next.js 16 para o antigo
+  `middleware.ts`) barra `/dashboard`, `/cockpit` e `/admin` no servidor:
+  sem sessão válida ou com o papel errado, redireciona pro login certo.
+- **RLS no Supabase, com políticas reais** (não só habilitada): `profiles`
+  — cada usuário só lê/edita o próprio registro; `alunos`/`treinos` —
+  treinador e admin enxergam/gerenciam tudo, aluno só o próprio registro
+  (via `alunos.user_id`) e só atualiza pra registrar a execução do treino.
+  Cadastro em `profiles` não tem policy de insert — só a service role
+  (painel admin) cria conta.
+- **Trava de 50 atletas**: reforçada duas vezes — no formulário do painel
+  admin (pré-checagem) e num trigger no banco
+  (`enforce_athlete_cap()`, em `profiles`) que recusa o 51º perfil com
+  `role = 'athlete'` mesmo se alguém inserir direto via SQL/service role.
+- **Rate limiting por IP** (`@upstash/ratelimit` + Upstash Redis, via
+  `src/lib/rate-limit.ts`): 5 tentativas de login a cada 5 min por IP, 30
+  requisições/min por IP nas rotas de API (`/api/*`, incluindo o proxy).
+  Sem as credenciais do Upstash configuradas, cai para "sempre permite"
+  com um aviso no log — o deploy não quebra antes do Upstash existir.
+  Login roda como Server Action (não client-side direto no Supabase),
+  justamente pra esse rate limit valer de verdade.
 - **Cabeçalhos HTTP** (`next.config.mjs`, aplicados a toda resposta):
   `Content-Security-Policy`, `X-Frame-Options: DENY` (anti-clickjacking),
   `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`
   (bloqueia câmera/microfone/geolocalização, não usados pelo app) e
   `Strict-Transport-Security`.
-- **RLS no Supabase**: toda tabela em `public` tem Row Level Security
-  habilitada — nenhuma fica exposta à `anon key` sem política explícita.
-  Ao criar uma tabela nova, sempre habilite RLS antes de expor dados reais
-  e defina as políticas de acordo com quem deve ler/escrever cada linha.
 - **`/api/ai/draft-feedback`** verifica não só que há um usuário
-  autenticado, mas que o `profiles.role` dele é `coach` — rascunho de IA é
-  uma ferramenta do treinador, não do atleta.
+  autenticado, mas que o `profiles.role` dele é `coach` (ou `admin`) —
+  rascunho de IA é uma ferramenta do treinador, não do atleta.
 - `SUPABASE_SERVICE_ROLE_KEY` só é usada em `src/lib/supabase/admin.ts`
-  (rotas de servidor); nunca é referenciada em código que roda no
-  navegador. `.env*.local` está no `.gitignore`.
+  (rotas/Server Actions de servidor — inclui o painel admin, que precisa
+  do Auth Admin API pra criar contas); nunca é referenciada em código que
+  roda no navegador. `.env*.local` está no `.gitignore`.
+
+### Criando o primeiro administrador
+
+O painel `/admin` cria contas de treinador e aluno, mas o **primeiro**
+admin precisa existir antes de alguém conseguir entrar em `/admin`. Duas
+opções:
+
+1. No painel do Supabase → Authentication → Add user, crie o login com
+   e-mail/senha. Depois rode no SQL Editor:
+   ```sql
+   insert into public.profiles (id, role, full_name)
+   values ('<uuid do usuário criado>', 'admin', 'Seu nome');
+   ```
+2. Ou peça pra eu criar (preciso do e-mail e uma senha provisória que você
+   escolher).
 
 ## Banco de dados
+
+> **Nota**: o projeto Supabase real hoje só tem `alunos`, `treinos` e
+> `profiles` (usados pela autenticação/RLS, ver seção Segurança) — as
+> tabelas abaixo (`workouts`, `strava_tokens`, etc.) são o schema
+> desenhado em `supabase/migrations/` mas **ainda não aplicado**; a
+> integração com Strava está pausada até decidir se adota esse schema ou
+> adapta `alunos`/`treinos`. O Cockpit e a Home do atleta ainda rodam em
+> cima de dados mock (`src/lib/mock-data.ts`), não do banco real.
 
 O schema está em `supabase/migrations/`:
 

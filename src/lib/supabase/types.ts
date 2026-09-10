@@ -2,7 +2,7 @@
 // supabase/migrations/0001_init.sql (ou gere via `supabase gen types typescript`
 // quando o projeto Supabase estiver provisionado).
 
-export type ProfileRole = "athlete" | "coach";
+export type ProfileRole = "athlete" | "coach" | "admin";
 
 export type WorkoutStatus = "pending" | "done" | "missed";
 
@@ -24,21 +24,79 @@ export interface Database {
       profiles: {
         Row: {
           id: string;
-          full_name: string;
           role: ProfileRole;
-          avatar_url: string | null;
-          phone: string | null;
+          full_name: string;
           created_at: string;
         };
         Insert: {
           id: string;
-          full_name: string;
-          role?: ProfileRole;
-          avatar_url?: string | null;
-          phone?: string | null;
+          role: ProfileRole;
+          full_name?: string;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+        Relationships: [];
+      };
+      alunos: {
+        Row: {
+          id: string;
+          nome: string;
+          whatsapp: string | null;
+          modalidade: string | null;
+          ftp: number | null;
+          peso: number | null;
+          altura: number | null;
+          user_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          nome: string;
+          whatsapp?: string | null;
+          modalidade?: string | null;
+          ftp?: number | null;
+          peso?: number | null;
+          altura?: number | null;
+          user_id?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["alunos"]["Insert"]>;
+        Relationships: [];
+      };
+      treinos: {
+        Row: {
+          id: string;
+          aluno_id: string | null;
+          data: string;
+          modalidade: string | null;
+          descricao: string | null;
+          duracao_planejada: string | null;
+          distancia_planejada: number | null;
+          tss_planejado: number | null;
+          concluido: boolean | null;
+          duracao_real: string | null;
+          distancia_real: number | null;
+          tss_real: number | null;
+          rpe_esforco: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          aluno_id?: string | null;
+          data: string;
+          modalidade?: string | null;
+          descricao?: string | null;
+          duracao_planejada?: string | null;
+          distancia_planejada?: number | null;
+          tss_planejado?: number | null;
+          concluido?: boolean | null;
+          duracao_real?: string | null;
+          distancia_real?: number | null;
+          tss_real?: number | null;
+          rpe_esforco?: number | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["treinos"]["Insert"]>;
         Relationships: [];
       };
       strava_tokens: {

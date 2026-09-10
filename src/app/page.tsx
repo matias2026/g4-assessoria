@@ -18,13 +18,13 @@ export default function HomePage() {
       </p>
 
       <div className="flex gap-3">
-        <LinkButton href="/dashboard" variant="primary">
-          Área do atleta
-        </LinkButton>
-        <LinkButton href="/cockpit" variant="secondary">
-          Cockpit do treinador
+        <LinkButton href="/login" variant="primary">
+          Entrar
         </LinkButton>
       </div>
+      <p className="text-xs text-g4-muted">
+        Acesso restrito a treinador e aluno cadastrado — sem cadastro público.
+      </p>
     </main>
   );
 }

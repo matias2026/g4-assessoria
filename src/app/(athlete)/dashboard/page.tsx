@@ -1,5 +1,6 @@
 import { LinkButton } from "@/components/ui/LinkButton";
 import { Logo } from "@/components/ui/Logo";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import { WeeklyHistory } from "@/components/athlete/WeeklyHistory";
 import { AthleteWorkoutView } from "@/components/workout/AthleteWorkoutView";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
@@ -21,9 +22,12 @@ export default function AthleteDashboardPage() {
             <h1 className="text-2xl font-bold text-g4-ink">{workout.athleteName}</h1>
           </div>
         </div>
-        <LinkButton href={talkToCoachLink} target="_blank" rel="noreferrer" variant="ghost" className="px-3 text-xs">
-          💬 Falar com o treinador
-        </LinkButton>
+        <div className="flex items-center gap-1">
+          <LinkButton href={talkToCoachLink} target="_blank" rel="noreferrer" variant="ghost" className="px-3 text-xs">
+            💬 Falar com o treinador
+          </LinkButton>
+          <LogoutButton />
+        </div>
       </header>
 
       <AthleteWorkoutView workout={workout} />
