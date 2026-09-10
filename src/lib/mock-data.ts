@@ -230,17 +230,80 @@ export function defaultIntervalsForDiscipline(discipline: string): WorkoutInterv
   return discipline === "Ciclismo" ? [{ ...DEFAULT_INTERVAL }] : [];
 }
 
-// Aluno cadastrado no Cockpit — os campos de FTP/peso/altura/zonas vêm do
-// cadastro na aba "Alunos cadastrados" e alimentam a prescrição estruturada.
+// Sexo do aluno (dado corporal geral, usado só como referência do treinador).
+export type StudentSex = "Masculino" | "Feminino" | "Outro";
+
+// Objetivo principal do aluno na Academia/Força.
+export type StrengthGoal = "Hipertrofia" | "Emagrecimento" | "Fortalecimento para endurance";
+
+// Composição corporal — opcional, complementa peso/altura.
+export interface BodyComposition {
+  bodyFatPct: number | null;
+  muscleMassKg: number | null;
+  waistCm: number | null;
+}
+
+// Perfil físico específico de ciclismo — só preenchido quando o aluno
+// pratica a modalidade (principal ou adicional). FTP mora aqui (não mais
+// solto em MockStudent) porque é um dado de ciclismo, não um dado geral.
+export interface CyclingProfile {
+  ftpWatts: number | null;
+  hrMax: number | null;
+  hrRest: number | null;
+  hrThreshold: number | null;
+  preferredCadence: number | null;
+  peakPowerShort: number | null; // pico curto (sprint), watts
+  peakPowerLong: number | null; // pico longo (~20min), watts
+  mtbNotes: string; // histórico de MTB (altimetria, TSS, IF) — texto livre
+}
+
+// Perfil físico específico de corrida.
+export interface RunningProfile {
+  thresholdPace: string; // "4:15" (min/km) — texto livre, sem cálculo
+  vo2max: number | null;
+  hrMax: number | null;
+  hrThreshold: number | null;
+  pr5k: string;
+  pr10k: string;
+  prHalfMarathon: string;
+  cadence: number | null; // passos/min
+  strideLengthCm: number | null;
+  verticalOscillationCm: number | null;
+}
+
+// Perfil físico específico de academia/força.
+export interface StrengthProfile {
+  goal: StrengthGoal | null;
+  squat1RM: number | null;
+  deadlift1RM: number | null;
+  benchPress1RM: number | null;
+  legPress1RM: number | null;
+  focusNotes: string; // foco dos treinos
+  asymmetryNotes: string; // assimetrias musculares relatadas
+}
+
+// Aluno cadastrado no Cockpit. `discipline` é a modalidade principal (dirige
+// o treino do dia e o resto do app, como sempre); `secondaryDisciplines`
+// cobre casos de dupla modalidade (ex.: Ciclismo de manhã + Academia à
+// tarde) e decide quais seções de perfil aparecem no cadastro. Cada perfil
+// (`cycling`/`running`/`strength`) só é preenchido quando a modalidade
+// correspondente está entre a principal + as adicionais.
 export interface MockStudent {
   id: string;
   name: string;
   phone: string;
   discipline: string;
-  ftpWatts: number | null;
-  weightKg: number | null;
+  secondaryDisciplines: string[];
+  age: number | null;
+  sex: StudentSex | null;
   heightCm: number | null;
-  zonesSummary: string;
+  weightKg: number | null;
+  bodyComposition: BodyComposition;
+  weightHistoryNotes: string;
+  medicalNotes: string;
+  cycling: CyclingProfile | null;
+  running: RunningProfile | null;
+  strength: StrengthProfile | null;
   todayStatus: WorkoutStatus;
   stravaSynced: boolean;
   lastActivity: { name: string; distanceKm: number; date: string } | null;
@@ -254,10 +317,26 @@ export const mockStudents: MockStudent[] = [
     name: "Carlos Silva",
     phone: "+5584999990001",
     discipline: "Ciclismo",
-    ftpWatts: 260,
-    weightKg: 74,
+    secondaryDisciplines: [],
+    age: 34,
+    sex: "Masculino",
     heightCm: 178,
-    zonesSummary: "Z1 <143W · Z2 143-195W · Z3 196-221W · Z4 222-247W · Z5 248W+",
+    weightKg: 74,
+    bodyComposition: { bodyFatPct: 14, muscleMassKg: 61, waistCm: 82 },
+    weightHistoryNotes: "Estável em 73-75kg nos últimos 6 meses.",
+    medicalNotes: "Sem restrições médicas. Leve desconforto no joelho direito em subidas longas.",
+    cycling: {
+      ftpWatts: 260,
+      hrMax: 188,
+      hrRest: 52,
+      hrThreshold: 168,
+      preferredCadence: 88,
+      peakPowerShort: 850,
+      peakPowerLong: 275,
+      mtbNotes: "Prova de MTB em julho: 45km, 900m de altimetria, TSS 210, IF 0.78.",
+    },
+    running: null,
+    strength: null,
     todayStatus: "done",
     stravaSynced: true,
     lastActivity: { name: "Pedal matinal", distanceKm: 33, date: "hoje" },

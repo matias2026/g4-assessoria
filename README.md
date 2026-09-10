@@ -12,8 +12,16 @@ As visões de atleta e treinador são deliberadamente diferentes:
 - **Treinador** — painel completo e analítico, estilo
   [TrainingPeaks](https://www.trainingpeaks.com/), organizado em 4 abas para
   não misturar cadastro, prescrição, acompanhamento e análise na mesma tela:
-  1. **Alunos cadastrados** — tabela geral (FTP, peso, modalidade, status do
-     dia, Strava) e cadastro de novo aluno.
+  1. **Alunos cadastrados** — tabela geral (FTP com W/kg calculado, peso,
+     modalidade, status do dia, Strava) e cadastro de novo aluno em um modal
+     com dados de nível profissional: gerais (idade, sexo, altura, peso,
+     composição corporal, histórico/restrições) + seções específicas por
+     modalidade — Ciclismo (FTP, FC máx/repouso/limiar, cadência, picos de
+     potência, histórico de MTB), Corrida (pace limiar, VO2max, FC, recordes
+     pessoais, biomecânica) e Academia (objetivo, cargas de referência,
+     foco/assimetrias) — mostradas dinamicamente conforme a modalidade
+     principal e as adicionais escolhidas, em seções que abrem/fecham para
+     não poluir a tela.
   2. **Criar/Prescrever treino** — aluno, data, modalidade, blocos
      estruturados (aquecimento/tiros/desaquecimento), editor de intervalos
      por %FTP/zona, metas de TSS/IF, vídeo/preleção e envio direto por
@@ -193,7 +201,8 @@ src/
     athlete/                      WeeklyHistory (Home do atleta)
     coach/
       CockpitTabs                  Shell: estado do roster/prescrições + navegação das 4 abas
-      RosterTab                    Aba "Alunos cadastrados": tabela geral + cadastro de aluno
+      RosterTab                    Aba "Alunos cadastrados": tabela geral + aciona o AddStudentModal
+      AddStudentModal               Cadastro completo (dados gerais + perfil por modalidade) em accordion
       PrescribeTab                 Aba "Criar/Prescrever treino": formulário completo + WhatsApp
       TodayOverviewTab             Aba "Acompanhamento do dia": visão geral rápida
       AnalyzeTab                   Aba "Analisar treino do aluno": painel analítico completo

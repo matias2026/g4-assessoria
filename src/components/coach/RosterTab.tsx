@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
+import { AddStudentModal } from "@/components/coach/AddStudentModal";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, CardTitle } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { StatusDot } from "@/components/ui/StatusDot";
 import type { MockStudent } from "@/lib/mock-data";
 
@@ -13,58 +14,23 @@ interface RosterTabProps {
   onAddStudent: (student: MockStudent) => void;
 }
 
-const DISCIPLINES = ["Ciclismo", "Corrida", "Academia"];
-
-const fieldClass =
-  "mt-1 w-full rounded-xl border border-g4-border bg-white p-2.5 text-sm text-g4-ink focus-ring";
-const labelClass = "text-xs font-medium text-g4-muted";
+function formatFtp(student: MockStudent): string {
+  const ftp = student.cycling?.ftpWatts;
+  if (ftp == null) return "—";
+  if (student.weightKg != null) {
+    return `${ftp} W · ${(ftp / student.weightKg).toFixed(2)} W/kg`;
+  }
+  return `${ftp} W`;
+}
 
 /**
- * Aba "Alunos cadastrados": a lista geral de alunos gerenciados (FTP, peso,
- * modalidade, status do dia) com o cadastro de um novo aluno. Fica em
- * memória (useState no CockpitTabs) até a persistência real via Supabase.
+ * Aba "Alunos cadastrados": a lista geral de alunos gerenciados (FTP/W-kg,
+ * peso, modalidade, status do dia) com o cadastro de um novo aluno (modal
+ * completo em AddStudentModal). Fica em memória (useState no CockpitTabs)
+ * até a persistência real via Supabase.
  */
 export function RosterTab({ students, onAddStudent }: RosterTabProps) {
   const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [discipline, setDiscipline] = useState(DISCIPLINES[0]);
-  const [ftp, setFtp] = useState("");
-  const [weight, setWeight] = useState("");
-  const [height, setHeight] = useState("");
-  const [zones, setZones] = useState("");
-
-  function resetForm() {
-    setName("");
-    setPhone("");
-    setDiscipline(DISCIPLINES[0]);
-    setFtp("");
-    setWeight("");
-    setHeight("");
-    setZones("");
-  }
-
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!name.trim() || !phone.trim()) return;
-
-    onAddStudent({
-      id: String(Date.now()),
-      name: name.trim(),
-      phone: phone.trim(),
-      discipline,
-      ftpWatts: ftp.trim() === "" ? null : Number(ftp),
-      weightKg: weight.trim() === "" ? null : Number(weight),
-      heightCm: height.trim() === "" ? null : Number(height),
-      zonesSummary: zones.trim(),
-      todayStatus: "pending",
-      stravaSynced: false,
-      lastActivity: null,
-    });
-
-    resetForm();
-    setShowForm(false);
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -73,99 +39,16 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
           <h2 className="text-lg font-bold text-g4-ink">Alunos cadastrados ({students.length})</h2>
           <p className="text-sm text-g4-muted">Cadastro geral: FTP, peso, modalidade e status do dia.</p>
         </div>
-        <Button variant="primary" className="px-4" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? "Cancelar" : "+ Adicionar novo aluno"}
+        <Button variant="primary" className="px-4" onClick={() => setShowForm(true)}>
+          + Adicionar novo aluno
         </Button>
       </div>
 
-      {showForm && (
-        <Card>
-          <CardTitle>Novo aluno</CardTitle>
-          <form onSubmit={handleSubmit} className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className={labelClass}>Nome</span>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className={fieldClass}
-                placeholder="Nome completo"
-              />
-            </label>
-            <label className="block">
-              <span className={labelClass}>WhatsApp</span>
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-                className={fieldClass}
-                placeholder="+55 84 99999-0000"
-              />
-            </label>
-            <label className="block">
-              <span className={labelClass}>Modalidade</span>
-              <select
-                value={discipline}
-                onChange={(e) => setDiscipline(e.target.value)}
-                className={fieldClass}
-              >
-                {DISCIPLINES.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className={labelClass}>FTP (watts)</span>
-              <input
-                type="number"
-                min={0}
-                value={ftp}
-                onChange={(e) => setFtp(e.target.value)}
-                className={fieldClass}
-                placeholder="Ex.: 260"
-              />
-            </label>
-            <label className="block">
-              <span className={labelClass}>Peso (kg)</span>
-              <input
-                type="number"
-                min={0}
-                step={0.1}
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                className={fieldClass}
-              />
-            </label>
-            <label className="block">
-              <span className={labelClass}>Altura (cm)</span>
-              <input
-                type="number"
-                min={0}
-                value={height}
-                onChange={(e) => setHeight(e.target.value)}
-                className={fieldClass}
-              />
-            </label>
-            <label className="block sm:col-span-2">
-              <span className={labelClass}>Zonas (FTP/FC)</span>
-              <input
-                value={zones}
-                onChange={(e) => setZones(e.target.value)}
-                className={fieldClass}
-                placeholder="Ex.: Z1 <150W · Z2 150-200W · Z3 201-225W · Z4 226-250W · Z5 251W+"
-              />
-            </label>
-
-            <div className="sm:col-span-2">
-              <Button type="submit" variant="primary" className="px-5">
-                Salvar aluno
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
+      <AddStudentModal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        onAddStudent={onAddStudent}
+      />
 
       {/* Celular: cards empilhados — a tabela larga (6 colunas) esconderia FTP,
           peso e Strava sem indicação de rolagem. */}
@@ -185,7 +68,7 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
                 Modalidade <span className="text-g4-ink">{student.discipline}</span>
               </p>
               <p className="text-g4-muted">
-                FTP <span className="text-g4-ink">{student.ftpWatts != null ? `${student.ftpWatts} W` : "—"}</span>
+                FTP <span className="text-g4-ink">{formatFtp(student)}</span>
               </p>
               <p className="text-g4-muted">
                 Peso <span className="text-g4-ink">{student.weightKg != null ? `${student.weightKg} kg` : "—"}</span>
@@ -228,9 +111,7 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
                     </div>
                   </td>
                   <td className="px-5 py-3 text-g4-muted">{student.discipline}</td>
-                  <td className="px-5 py-3 text-g4-muted">
-                    {student.ftpWatts != null ? `${student.ftpWatts} W` : "—"}
-                  </td>
+                  <td className="px-5 py-3 text-g4-muted">{formatFtp(student)}</td>
                   <td className="px-5 py-3 text-g4-muted">
                     {student.weightKg != null ? `${student.weightKg} kg` : "—"}
                   </td>
