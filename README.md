@@ -75,6 +75,24 @@ Veja `.env.example`. Resumo:
 | `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` | App em strava.com/settings/api |
 | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (camada gratuita) |
 
+## Segurança
+
+- **Cabeçalhos HTTP** (`next.config.mjs`, aplicados a toda resposta):
+  `Content-Security-Policy`, `X-Frame-Options: DENY` (anti-clickjacking),
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`
+  (bloqueia câmera/microfone/geolocalização, não usados pelo app) e
+  `Strict-Transport-Security`.
+- **RLS no Supabase**: toda tabela em `public` tem Row Level Security
+  habilitada — nenhuma fica exposta à `anon key` sem política explícita.
+  Ao criar uma tabela nova, sempre habilite RLS antes de expor dados reais
+  e defina as políticas de acordo com quem deve ler/escrever cada linha.
+- **`/api/ai/draft-feedback`** verifica não só que há um usuário
+  autenticado, mas que o `profiles.role` dele é `coach` — rascunho de IA é
+  uma ferramenta do treinador, não do atleta.
+- `SUPABASE_SERVICE_ROLE_KEY` só é usada em `src/lib/supabase/admin.ts`
+  (rotas de servidor); nunca é referenciada em código que roda no
+  navegador. `.env*.local` está no `.gitignore`.
+
 ## Banco de dados
 
 O schema está em `supabase/migrations/`:
