@@ -74,7 +74,9 @@ Veja `.env.example`. Resumo:
 | `SUPABASE_SERVICE_ROLE_KEY` | Idem (uso exclusivo em servidor) |
 | `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` | App em strava.com/settings/api |
 | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (camada gratuita) |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Banco Redis gratuito em [console.upstash.com](https://console.upstash.com) — usado pro rate limiting. Opcional: sem eles o app funciona, só sem o limite de requisições. |
+
+Rate limiting não precisa de variável nova — roda no próprio Postgres do
+Supabase que você já configurou acima (ver seção Segurança).
 
 ## Segurança
 
@@ -96,13 +98,17 @@ ou admin) só passa a existir se alguém com acesso ao painel `/admin` criar.
   admin (pré-checagem) e num trigger no banco
   (`enforce_athlete_cap()`, em `profiles`) que recusa o 51º perfil com
   `role = 'athlete'` mesmo se alguém inserir direto via SQL/service role.
-- **Rate limiting por IP** (`@upstash/ratelimit` + Upstash Redis, via
-  `src/lib/rate-limit.ts`): 5 tentativas de login a cada 5 min por IP, 30
-  requisições/min por IP nas rotas de API (`/api/*`, incluindo o proxy).
-  Sem as credenciais do Upstash configuradas, cai para "sempre permite"
-  com um aviso no log — o deploy não quebra antes do Upstash existir.
-  Login roda como Server Action (não client-side direto no Supabase),
-  justamente pra esse rate limit valer de verdade.
+- **Rate limiting por IP** direto no Postgres do Supabase — sem serviço
+  externo, sem variável de ambiente nova. A função `check_rate_limit`
+  (`supabase/migrations/0006_rate_limit_via_postgres.sql`) conta
+  tentativas por janela de tempo numa tabela própria
+  (`rate_limit_buckets`, só a service role acessa); `src/lib/rate-limit.ts`
+  chama essa função via RPC. Limites: 5 tentativas de login a cada 5 min
+  por IP, 30 requisições/min por IP nas rotas de API (`/api/*`, incluindo
+  o proxy). Login roda como Server Action (não client-side direto no
+  Supabase), justamente pra esse rate limit valer de verdade. Como reforço
+  adicional (já ativo por padrão, sem configuração): o próprio Supabase
+  Auth tem rate limit embutido nos endpoints de login/cadastro.
 - **Cabeçalhos HTTP** (`next.config.mjs`, aplicados a toda resposta):
   `Content-Security-Policy`, `X-Frame-Options: DENY` (anti-clickjacking),
   `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`

@@ -1,60 +1,42 @@
-import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-// Rate limit por IP usando Upstash Redis (compartilhado entre as execuções
-// serverless da Vercel — um Map em memória não funciona porque cada
-// invocação pode cair numa instância diferente). Sem as credenciais
-// configuradas o app não quebra: cai para "sempre permite" com um aviso no
-// log, então o deploy funciona antes do Upstash ser configurado.
-const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
-
-if (!redis && process.env.NODE_ENV !== "test") {
-  console.warn(
-    "[rate-limit] UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN não configurados — " +
-      "rate limiting está DESATIVADO (todas as requisições são permitidas)."
-  );
-}
-
+// Rate limit por IP usando o próprio Postgres do Supabase (função
+// check_rate_limit, ver supabase/migrations/0006_rate_limit_via_postgres.sql)
+// — nenhum serviço externo novo, roda no mesmo banco que o app já usa. Um
+// Map em memória não serve porque a Vercel roda cada requisição numa
+// instância serverless separada; o banco é o único estado compartilhado.
 type LimiterName = "login" | "api";
 
-const limiters: Record<LimiterName, Ratelimit | null> = {
-  // Login: 5 tentativas a cada 5 minutos por IP — protege contra força bruta
-  // sem travar um usuário legítimo que errou a senha uma ou duas vezes.
-  login: redis
-    ? new Ratelimit({
-        redis,
-        limiter: Ratelimit.slidingWindow(5, "5 m"),
-        prefix: "g4:ratelimit:login",
-        analytics: true,
-      })
-    : null,
+const WINDOWS: Record<LimiterName, { windowSeconds: number; max: number }> = {
+  // Login: 5 tentativas a cada 5 minutos por IP — protege contra força
+  // bruta sem travar alguém que errou a senha uma ou duas vezes.
+  login: { windowSeconds: 300, max: 5 },
   // Demais rotas de API (ex.: geração de feedback com IA): 30 req/min por IP.
-  api: redis
-    ? new Ratelimit({
-        redis,
-        limiter: Ratelimit.slidingWindow(30, "1 m"),
-        prefix: "g4:ratelimit:api",
-        analytics: true,
-      })
-    : null,
+  api: { windowSeconds: 60, max: 30 },
 };
 
 export interface RateLimitResult {
   success: boolean;
-  limit: number;
-  remaining: number;
 }
 
 export async function checkRateLimit(name: LimiterName, identifier: string): Promise<RateLimitResult> {
-  const limiter = limiters[name];
-  if (!limiter) {
-    return { success: true, limit: 0, remaining: 0 };
+  const { windowSeconds, max } = WINDOWS[name];
+  const admin = createAdminClient();
+
+  const { data, error } = await admin.rpc("check_rate_limit", {
+    p_key: `${name}:${identifier}`,
+    p_window_seconds: windowSeconds,
+    p_max: max,
+  });
+
+  if (error) {
+    // Se o banco estiver fora do ar, não é motivo pra derrubar login/API —
+    // loga e deixa passar (falha aberta), a checagem de auth continua valendo.
+    console.error("[rate-limit] falha ao checar limite, permitindo por padrão:", error.message);
+    return { success: true };
   }
-  const { success, limit, remaining } = await limiter.limit(identifier);
-  return { success, limit, remaining };
+
+  return { success: data === true };
 }
 
 // Extrai o IP real do cliente a partir dos headers que a Vercel injeta

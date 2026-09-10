@@ -253,6 +253,11 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      check_rate_limit: {
+        Args: { p_key: string; p_window_seconds: number; p_max: number };
+        Returns: boolean;
+      };
+    };
   };
 }
