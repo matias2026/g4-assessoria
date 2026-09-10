@@ -11,20 +11,6 @@
 import type { WorkoutCompletionSource, WorkoutInterval, WorkoutStatus } from "./supabase/types";
 import type { ZoneDatum } from "@/components/workout/ZonesChart";
 
-export interface MockWorkoutOfDay {
-  title: string;
-  discipline: string;
-  description: string;
-  status: WorkoutStatus;
-}
-
-export const mockWorkoutOfDay: MockWorkoutOfDay = {
-  title: "Intervalado de limiar",
-  discipline: "Ciclismo",
-  description: "6x5min a 90% FTP, recuperação de 3min entre séries.",
-  status: "pending",
-};
-
 // Treino exibido na aba "Analisar treino do aluno" (Planejado vs. Concluído),
 // no padrão TrainingPeaks. Um registro por aluno em mockWorkoutDetails, com
 // o mesmo id do aluno em mockStudents, até o treino real ser resolvido via
