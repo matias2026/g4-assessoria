@@ -26,12 +26,14 @@ export interface Database {
           id: string;
           role: ProfileRole;
           full_name: string;
+          active: boolean;
           created_at: string;
         };
         Insert: {
           id: string;
           role: ProfileRole;
           full_name?: string;
+          active?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;

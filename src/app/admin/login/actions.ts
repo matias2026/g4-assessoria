@@ -30,14 +30,23 @@ export async function signInAdmin(_prevState: LoginState, formData: FormData): P
     return { error: "E-mail ou senha inválidos." };
   }
 
-  const { data: profileData } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("role, active")
+    .eq("id", data.user.id)
+    .single();
   // O generic da tabela via @supabase/ssr não propaga o tipo da coluna aqui;
-  // o shape é conhecido (profiles.role: ProfileRole) então a asserção é segura.
-  const profile = profileData as { role: ProfileRole } | null;
+  // o shape é conhecido (profiles.role/active) então a asserção é segura.
+  const profile = profileData as { role: ProfileRole; active: boolean } | null;
 
   if (profile?.role !== "admin") {
     await supabase.auth.signOut();
     return { error: "Esta conta não é de administrador." };
+  }
+
+  if (!profile.active) {
+    await supabase.auth.signOut();
+    return { error: "Esta conta de administrador está suspensa." };
   }
 
   redirect("/admin");

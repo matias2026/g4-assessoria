@@ -37,14 +37,23 @@ export async function signIn(_prevState: LoginState, formData: FormData): Promis
     return { error: "E-mail ou senha inválidos." };
   }
 
-  const { data: profileData } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("role, active")
+    .eq("id", data.user.id)
+    .single();
   // O generic da tabela via @supabase/ssr não propaga o tipo da coluna aqui;
-  // o shape é conhecido (profiles.role: ProfileRole) então a asserção é segura.
-  const profile = profileData as { role: ProfileRole } | null;
+  // o shape é conhecido (profiles.role/active) então a asserção é segura.
+  const profile = profileData as { role: ProfileRole; active: boolean } | null;
 
   if (!profile || profile.role === "admin") {
     await supabase.auth.signOut();
     return { error: "Esta conta não tem acesso por aqui. Administradores usam /admin/login." };
+  }
+
+  if (!profile.active) {
+    await supabase.auth.signOut();
+    return { error: "Esta conta está suspensa. Fale com seu treinador." };
   }
 
   if (expectedRole && profile.role !== expectedRole) {

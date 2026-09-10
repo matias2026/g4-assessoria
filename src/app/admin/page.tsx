@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { CreateAccountForm } from "./CreateAccountForm";
+import { ToggleActiveButton } from "./ToggleActiveButton";
 
 // Sempre busca dados frescos (lista de contas, contagem de atletas) — sem
 // isso o Next poderia pré-renderizar a página estaticamente no build e
@@ -21,7 +22,7 @@ export default async function AdminPage() {
   const admin = createAdminClient();
   const { data: profiles } = await admin
     .from("profiles")
-    .select("id, role, full_name, created_at")
+    .select("id, role, full_name, active, created_at")
     .order("created_at", { ascending: false });
 
   const list = profiles ?? [];
@@ -66,7 +67,9 @@ export default async function AdminPage() {
             <tr>
               <th className="px-5 py-3 font-medium">Nome</th>
               <th className="px-5 py-3 font-medium">Papel</th>
+              <th className="px-5 py-3 font-medium">Status</th>
               <th className="px-5 py-3 font-medium">Criado em</th>
+              <th className="px-5 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-g4-border">
@@ -76,12 +79,18 @@ export default async function AdminPage() {
                 <td className="px-5 py-3">
                   <Badge tone="neutral">{roleLabel[p.role] ?? p.role}</Badge>
                 </td>
+                <td className="px-5 py-3">
+                  <Badge tone={p.active ? "lime" : "danger"}>{p.active ? "Ativa" : "Suspensa"}</Badge>
+                </td>
                 <td className="px-5 py-3 text-g4-muted">{new Date(p.created_at).toLocaleDateString("pt-BR")}</td>
+                <td className="px-5 py-3 text-right">
+                  <ToggleActiveButton profileId={p.id} active={p.active} />
+                </td>
               </tr>
             ))}
             {list.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-5 py-6 text-center text-g4-muted">
+                <td colSpan={5} className="px-5 py-6 text-center text-g4-muted">
                   Nenhuma conta criada ainda.
                 </td>
               </tr>

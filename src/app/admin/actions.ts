@@ -12,18 +12,19 @@ export interface CreateAccountState {
 
 const initialState: CreateAccountState = { error: null, success: null };
 
-async function requireAdmin() {
+async function requireAdmin(): Promise<string> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado.");
 
-  const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  const { data } = await supabase.from("profiles").select("role, active").eq("id", user.id).single();
   // O generic da tabela via @supabase/ssr não propaga o tipo da coluna aqui;
-  // o shape é conhecido (profiles.role: ProfileRole) então a asserção é segura.
-  const profile = data as { role: ProfileRole } | null;
-  if (profile?.role !== "admin") throw new Error("Acesso restrito ao administrador.");
+  // o shape é conhecido (profiles.role/active) então a asserção é segura.
+  const profile = data as { role: ProfileRole; active: boolean } | null;
+  if (profile?.role !== "admin" || !profile.active) throw new Error("Acesso restrito ao administrador.");
+  return user.id;
 }
 
 // Cria login de treinador ou aluno. Não existe autocadastro no site — esta é
@@ -87,4 +88,22 @@ export async function createAccount(
 
   revalidatePath("/admin");
   return { error: null, success: `Conta de ${role === "coach" ? "treinador" : role === "admin" ? "administrador" : "aluno"} criada.` };
+}
+
+// Suspende/reativa uma conta. Suspensa: login passa a ser recusado (checagem
+// nos Server Actions de login) e o RLS corta o acesso mesmo pra quem já
+// tinha sessão aberta. Um admin não pode suspender a própria conta (evita
+// se trancar pra fora do painel).
+export async function toggleActive(profileId: string, active: boolean): Promise<void> {
+  const adminId = await requireAdmin();
+
+  if (profileId === adminId) {
+    throw new Error("Você não pode suspender a própria conta.");
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("profiles").update({ active }).eq("id", profileId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin");
 }
