@@ -255,9 +255,12 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-g4-surface p-5 shadow-lg sm:max-w-2xl sm:rounded-2xl"
+        className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-g4-surface shadow-lg sm:max-w-2xl sm:rounded-2xl"
       >
-        <div className="flex items-center justify-between">
+        {/* Cabeçalho fixo (fora da área de rolagem) — em vez de rolar junto
+            com o formulário, o que fazia o título sumir/cortar no topo
+            (pior ainda com a barra do Safari no iOS). */}
+        <div className="flex shrink-0 items-center justify-between border-b border-g4-border p-5">
           <h2 className="text-lg font-bold text-g4-ink">Novo aluno</h2>
           <button
             type="button"
@@ -269,7 +272,7 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 overflow-y-auto p-5">
           {/* Dados gerais */}
           <details open className={sectionClass}>
             <summary className={summaryClass}>Dados gerais</summary>
