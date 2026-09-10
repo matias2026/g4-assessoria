@@ -1,6 +1,6 @@
 import { Logo } from "@/components/ui/Logo";
-import { StudentsTable } from "@/components/coach/StudentsTable";
-import { mockStudents } from "@/lib/mock-data";
+import { CockpitTabs } from "@/components/coach/CockpitTabs";
+import { mockStudents, mockWorkoutDetails } from "@/lib/mock-data";
 
 // TODO: substituir os dados mock por consultas reais via src/lib/supabase/server
 // (profiles com role = 'coach', workouts da semana e strava_activities recentes).
@@ -11,11 +11,11 @@ export default function CoachCockpitPage() {
         <Logo className="h-9" />
         <div>
           <p className="text-sm text-g4-muted">Cockpit do treinador</p>
-          <h1 className="text-2xl font-bold text-g4-ink">Alunos ({mockStudents.length})</h1>
+          <h1 className="text-2xl font-bold text-g4-ink">G4 Assessoria Esportiva</h1>
         </div>
       </header>
 
-      <StudentsTable students={mockStudents} />
+      <CockpitTabs initialStudents={mockStudents} initialWorkouts={mockWorkoutDetails} />
     </main>
   );
 }

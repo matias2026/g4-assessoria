@@ -7,11 +7,24 @@ As visões de atleta e treinador são deliberadamente diferentes:
   Botões de Ação (concluir, exportar para o relógio, abrir no Garmin Connect,
   falar com o treinador) e Feedback do Professor.
 - **Treinador** — painel completo e analítico, estilo
-  [TrainingPeaks](https://www.trainingpeaks.com/): cockpit com os 15 alunos
-  (status do treino do dia e sincronização do Strava), edição da prescrição
-  por aluno (descrição, blocos estruturados, vídeo, métricas planejadas) e
-  comparação Planejado vs. Concluído (Duração, Distância, TSS, IF, FC e
-  ritmo/velocidade).
+  [TrainingPeaks](https://www.trainingpeaks.com/), organizado em 4 abas para
+  não misturar cadastro, prescrição, acompanhamento e análise na mesma tela:
+  1. **Alunos cadastrados** — tabela geral (FTP, peso, modalidade, status do
+     dia, Strava) e cadastro de novo aluno.
+  2. **Criar/Prescrever treino** — aluno, data, modalidade, blocos
+     estruturados (aquecimento/tiros/desaquecimento), editor de intervalos
+     por %FTP/zona, metas de TSS/IF, vídeo/preleção e envio direto por
+     WhatsApp.
+  3. **Acompanhamento do dia** — quem concluiu, quem está pendente e quem já
+     sincronizou o Strava.
+  4. **Analisar treino do aluno** — comparação Planejado vs. Concluído
+     (Duração, Distância, TSS, IF, FC e ritmo/velocidade), gráfico de blocos,
+     zonas de potência/FC e o composer de feedback com IA.
+
+  Roda com um único aluno de exemplo (Carlos Silva) para validar as 4 abas
+  sem o ruído de uma lista fictícia grande — novos alunos cadastrados na
+  primeira aba entram em memória (useState) até a persistência real via
+  Supabase.
 
 Construído para rodar 100% em planos gratuitos: **Vercel** (hospedagem),
 **Supabase** (banco de dados e autenticação), **Strava API** (atividades) e
@@ -35,10 +48,10 @@ npm run dev
 
 Abra `http://localhost:3000`.
 
-> As telas de Atleta (`/dashboard`), Cockpit do Treinador (`/cockpit`) e o
-> detalhe de treino (`/dashboard/treinos/[id]`, `/cockpit/treinos/[id]`) usam
-> dados de exemplo (`src/lib/mock-data.ts`) até a integração real com
-> Supabase ser conectada — veja os `TODO` nas páginas correspondentes.
+> As telas de Atleta (`/dashboard`, `/dashboard/treinos/[id]`) e o Cockpit do
+> Treinador (`/cockpit`) usam dados de exemplo (`src/lib/mock-data.ts`) até a
+> integração real com Supabase ser conectada — veja os `TODO` nas páginas
+> correspondentes.
 
 ## Variáveis de ambiente
 
@@ -125,22 +138,25 @@ específico para cada uma.
 
 `src/lib/whatsapp.ts` monta links `wa.me` com o texto já preenchido:
 
-- Cockpit do treinador → "Enviar via WhatsApp" no detalhe do treino, com o
-  texto da prescrição do dia formatado para o aluno.
+- Cockpit do treinador → aba "Criar/Prescrever treino", botão "Enviar via
+  WhatsApp" com o texto da prescrição do dia formatado para o aluno
+  selecionado.
 - Painel do atleta → botão rápido "Falar com o treinador", na Home e no
   detalhe do treino.
 
-Os números vêm de `profiles.phone` (mock por enquanto — veja `mockWorkoutDetails`).
+Os números vêm do cadastro do aluno (`MockStudent.phone`, editável na aba
+"Alunos cadastrados").
 
 ## Feedback híbrido (treinador + IA)
 
 `src/lib/ai/gemini.ts` chama a API do Gemini (`POST /api/ai/draft-feedback`,
 exige treinador autenticado) para gerar um **rascunho** de feedback
-comparando planejado vs. concluído. O `AiFeedbackComposer` (Cockpit) deixa o
-treinador gerar, editar e só então enviar — o rascunho de IA nunca chega ao
-atleta sem revisão humana. O atleta vê o resultado no `CoachFeedbackCard`:
-o comentário final do treinador, com um selo "✨ com apoio de IA" quando
-houve rascunho, mais o RPE/sensação que ele mesmo registrou.
+comparando planejado vs. concluído. O `AiFeedbackComposer` (aba "Analisar
+treino do aluno") deixa o treinador gerar, editar e só então enviar — o
+rascunho de IA nunca chega ao atleta sem revisão humana. O atleta vê o
+resultado no `CoachFeedbackCard`: o comentário final do treinador, com um
+selo "✨ com apoio de IA" quando houve rascunho, mais o RPE/sensação que ele
+mesmo registrou.
 
 ## Estrutura de pastas
 
@@ -149,20 +165,25 @@ src/
   app/
     (athlete)/dashboard/          Home do atleta (mobile first)
       treinos/[id]/               Detalhe do treino — AthleteWorkoutView
-    (coach)/cockpit/              Cockpit do treinador: lista os 15 alunos (desktop)
-      treinos/[id]/               Detalhe do treino do aluno — CoachWorkoutView
+    (coach)/cockpit/              Cockpit do treinador — shell de abas (CockpitTabs)
     api/strava/                   Rotas do fluxo OAuth e sincronização
     api/ai/draft-feedback/        Rascunho de feedback via Gemini
     layout.tsx, page.tsx          Layout raiz e landing
   components/
-    ui/                           Button, Card, Badge, StatusDot — base visual G4
+    ui/                           Button, Card, Badge, StatusDot, Avatar — base visual G4
     athlete/                      Componentes da Home do atleta
     coach/
-      StudentsTable                Lista dos alunos: treino de hoje, status do Strava, última atividade
+      CockpitTabs                  Shell: estado do roster/prescrições + navegação das 4 abas
+      RosterTab                    Aba "Alunos cadastrados": tabela geral + cadastro de aluno
+      PrescribeTab                 Aba "Criar/Prescrever treino": formulário completo + WhatsApp
+      TodayOverviewTab             Aba "Acompanhamento do dia": visão geral rápida
+      AnalyzeTab                   Aba "Analisar treino do aluno": painel analítico completo
+      CockpitStats                 Barra de estatísticas: concluídos, pendentes, sem Strava
+      IntervalTimeline             Gráfico de blocos do treino (duração x %FTP)
     workout/
       AthleteWorkoutView          Treino do Dia + Ações + Feedback do Professor
-      CoachWorkoutView            Edição da prescrição + Planejado vs. Concluído + zonas + composer de IA
       WorkoutPrescriptionEditor   Descrição, blocos estruturados, vídeo e métricas planejadas (editável)
+      IntervalEditor               Blocos por %FTP/zona (aquecimento, tiros, recuperação) — ciclismo
       ZonesChart                  Zonas de potência/FC (planejado vs. concluído)
       DownloadZwoButton           Exporta .ZWO no navegador
       DeviceTutorial              Seletor de GPS (Garmin/iGPSPORT/Wahoo) + mini tutorial
@@ -175,7 +196,7 @@ src/
     workout-export.ts             Gerador do arquivo .ZWO
     whatsapp.ts                   Links wa.me e texto formatado do treino
     workout-metrics.ts            Formatação de duração, pace/velocidade, RPE, sensação
-    mock-data.ts                  Dados de exemplo para as telas
+    mock-data.ts                  Aluno de exemplo, templates por modalidade e prescrições
 supabase/
   migrations/
     0001_init.sql                        Schema inicial + RLS
