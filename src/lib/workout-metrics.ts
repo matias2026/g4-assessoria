@@ -1,6 +1,6 @@
-// Formatação de métricas de treino no padrão TrainingPeaks (Duração, TSS,
-// IF, Ritmo/Velocidade, FC). Ritmo/velocidade é sempre derivado de
-// distância + duração — não é armazenado, para não haver dado duplicado.
+// Formatting of workout metrics in the TrainingPeaks style (Duration, TSS,
+// IF, Pace/Speed, HR). Pace/speed is always derived from distance +
+// duration — it isn't stored, to avoid duplicated data.
 
 export function formatDuration(seconds: number | null | undefined): string {
   if (seconds == null) return "—";
@@ -28,9 +28,9 @@ export function formatHeartRate(bpm: number | null | undefined): string {
 }
 
 /**
- * Valor bruto de ritmo (seg/km, corrida) ou velocidade média (km/h,
- * ciclismo) — separado de formatPaceOrSpeed para poder ser comparado
- * numericamente (ver compareToPlanned) além de exibido.
+ * Raw pace (sec/km, running) or average speed (km/h, cycling) value —
+ * split out from formatPaceOrSpeed so it can be compared numerically
+ * (see compareToPlanned) in addition to being displayed.
  */
 export function paceOrSpeedValue(
   discipline: string,
