@@ -18,7 +18,7 @@ export function StatusDot({ status, showLabel = true, className }: StatusDotProp
   const config = statusConfig[status];
 
   return (
-    <span className={cn("inline-flex items-center gap-1.5", className)}>
+    <span className={cn("inline-flex items-center gap-4", className)}>
       <span className={cn("h-2.5 w-2.5 rounded-full", config.dot)} aria-hidden />
       {showLabel && <span className={cn("text-xs font-medium", config.text)}>{config.label}</span>}
     </span>

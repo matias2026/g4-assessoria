@@ -73,7 +73,7 @@ export function WorkoutPrescriptionEditor({
         />
       </label>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+      <div className="mt-3 grid gap-4 sm:grid-cols-3">
         <label className="block">
           <span className={labelClass}>Aquecimento</span>
           <textarea
@@ -116,7 +116,7 @@ export function WorkoutPrescriptionEditor({
 
       <div className="mt-4 border-t border-g4-border pt-4">
         <p className={labelClass}>Métricas planejadas</p>
-        <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <label className="block">
             <span className={labelClass}>Duração (min)</span>
             <input

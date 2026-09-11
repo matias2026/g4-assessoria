@@ -34,7 +34,7 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-bold text-g4-ink">Alunos cadastrados ({students.length})</h2>
           <p className="text-sm text-g4-muted">Cadastro geral: FTP, peso, modalidade e status do dia.</p>
@@ -52,10 +52,10 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
 
       {/* Celular: cards empilhados — a tabela larga (6 colunas) esconderia FTP,
           peso e Strava sem indicação de rolagem. */}
-      <div className="flex flex-col gap-3 sm:hidden">
+      <div className="flex flex-col gap-4 sm:hidden">
         {students.map((student) => (
           <Card key={student.id} className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <Avatar name={student.name} className="h-10 w-10" />
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-g4-ink">{student.name}</p>
@@ -63,7 +63,7 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
               </div>
               <StatusDot status={student.todayStatus} showLabel={false} />
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+            <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
               <p className="text-g4-muted">
                 Modalidade <span className="text-g4-ink">{student.discipline}</span>
               </p>
@@ -74,7 +74,7 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
                 Peso <span className="text-g4-ink">{student.weightKg != null ? `${student.weightKg} kg` : "—"}</span>
               </p>
             </div>
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex items-center gap-4">
               <StatusDot status={student.todayStatus} />
               <Badge tone={student.stravaSynced ? "lime" : "neutral"}>
                 {student.stravaSynced ? "Strava sincronizado" : "Strava não conectado"}
@@ -101,7 +101,7 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
             {students.map((student) => (
               <tr key={student.id}>
                 <td className="px-5 py-3">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <Avatar name={student.name} className="h-9 w-9" />
                     <div>
                       <p className="font-medium text-g4-ink">{student.name}</p>

@@ -9,7 +9,7 @@ export function ToggleActiveButton({ profileId, active }: { profileId: string; a
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex flex-col items-end gap-4">
       <Button
         type="button"
         variant={active ? "ghost" : "secondary"}

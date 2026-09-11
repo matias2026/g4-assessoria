@@ -170,7 +170,7 @@ function PrescriptionForm({ student, existingWorkout, onSaveWorkout }: Prescript
   return (
     <>
       <Card>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           <label className="block">
             <span className={labelClass}>Título do treino</span>
             <select
@@ -255,7 +255,7 @@ function PrescriptionForm({ student, existingWorkout, onSaveWorkout }: Prescript
       )}
 
       <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <CardTitle>Enviar prescrição</CardTitle>
             <p className="mt-1 text-xs text-g4-muted">

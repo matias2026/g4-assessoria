@@ -17,9 +17,9 @@ export function WeeklyHistory({ days }: WeeklyHistoryProps) {
           {done} de {days.length} dias concluídos
         </span>
       </div>
-      <div className="mt-3 grid grid-cols-7 gap-2">
+      <div className="mt-3 grid grid-cols-7 gap-4">
         {days.map(({ day, status }) => (
-          <div key={day} className="flex flex-col items-center gap-1.5">
+          <div key={day} className="flex flex-col items-center gap-4">
             <span className="text-xs text-g4-muted">{day}</span>
             <StatusDot status={status} showLabel={false} />
           </div>

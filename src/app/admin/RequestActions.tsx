@@ -25,8 +25,8 @@ export function RequestActions({ requestId }: { requestId: string }) {
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex gap-2">
+    <div className="flex flex-col items-end gap-4">
+      <div className="flex gap-4">
         <Button
           type="button"
           variant="primary"

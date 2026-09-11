@@ -4,7 +4,7 @@ import { LinkButton } from "@/components/ui/LinkButton";
 
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen flex-col items-center gap-8 px-6 pb-10 pt-16 text-center sm:pt-20">
+    <main className="flex min-h-screen flex-col items-center gap-4 px-6 pb-10 pt-16 text-center sm:pt-20">
       <Image
         src="/logo-g4-full.png"
         alt="G4 Assessoria Esportiva — Treine com propósito. Supere seus limites."
@@ -18,7 +18,7 @@ export default function HomePage() {
         Ciclismo, corrida e academia: treinos prescritos e dados do Strava em um só lugar.
       </p>
 
-      <div className="flex gap-3">
+      <div className="flex gap-4">
         <LinkButton href="/login" variant="primary">
           Entrar
         </LinkButton>

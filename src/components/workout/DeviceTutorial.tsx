@@ -52,7 +52,7 @@ export function DeviceTutorial() {
       {/* Empilhado no celular — três botões numa linha só espremeriam o
           texto ("Wahoo / Outros" quebrando ao meio); em telas maiores cabem
           lado a lado sem problema. */}
-      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-2 flex flex-col gap-4 sm:flex-row">
         {DEVICES.map((device) => {
           const isActive = device.key === selected;
           return (

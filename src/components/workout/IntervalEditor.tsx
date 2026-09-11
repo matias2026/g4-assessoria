@@ -65,14 +65,14 @@ export function IntervalEditor({ intervals, onChange }: IntervalEditorProps) {
 
   return (
     <div className="mt-3">
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-4">
         {intervals.map((row, index) => {
           const zone = zoneForPct(row.targetHighPct);
 
           return (
             <div
               key={index}
-              className="grid grid-cols-2 gap-x-3 gap-y-3 rounded-2xl border border-g4-border bg-g4-surface-alt/60 p-4 shadow-sm lg:grid-cols-[1.1fr_0.85fr_1.15fr_0.85fr_0.85fr_auto] lg:items-end lg:gap-3"
+              className="grid grid-cols-2 gap-4 rounded-2xl border border-g4-border bg-g4-surface-alt/60 p-4 shadow-sm lg:grid-cols-[1.1fr_0.85fr_1.15fr_0.85fr_0.85fr_auto] lg:items-end"
             >
               <label className="block">
                 <span className={miniLabelClass}>Tipo</span>

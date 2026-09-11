@@ -12,8 +12,8 @@ export default function CoachCockpitPage() {
       {/* Header minimalista: só logo + título e o botão de sair isolado.
           O switcher de área (admin) fica numa faixa própria abaixo, sem
           disputar espaço aqui. */}
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <header className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
           <Logo className="h-9" />
           <h1 className="text-lg font-bold text-g4-ink sm:text-xl">Cockpit do treinador</h1>
         </div>

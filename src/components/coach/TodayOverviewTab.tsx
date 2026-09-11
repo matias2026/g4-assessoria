@@ -25,11 +25,11 @@ export function TodayOverviewTab({ students }: TodayOverviewTabProps) {
     <div className="flex flex-col gap-4">
       <CockpitStats students={students} />
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-4">
         {students.map((student) => (
           <div
             key={student.id}
-            className={`flex items-center gap-3 rounded-2xl border border-g4-border border-l-4 bg-g4-surface p-3.5 shadow-sm ${accentBorder[student.todayStatus]}`}
+            className={`flex items-center gap-4 rounded-2xl border border-g4-border border-l-4 bg-g4-surface p-3.5 shadow-sm ${accentBorder[student.todayStatus]}`}
           >
             <Avatar name={student.name} className="h-10 w-10" />
             <div className="min-w-0 flex-1">

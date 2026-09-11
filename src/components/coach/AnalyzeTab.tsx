@@ -71,15 +71,15 @@ export function AnalyzeTab({ students, workouts, selectedStudentId, onSelectStud
           </select>
         </label>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-g4-border pt-4">
-          <div className="flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-g4-border pt-4">
+          <div className="flex items-center gap-4">
             <Avatar name={workout.athleteName} className="h-11 w-11 text-base" />
             <div>
               <p className="font-bold text-g4-ink">{workout.athleteName}</p>
               <p className="text-xs text-g4-muted">{workout.athletePhone}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <Badge tone="lime">{workout.discipline}</Badge>
             <span className="text-sm text-g4-muted">{workout.scheduledDateLabel}</span>
             <StatusDot status={workout.status} />

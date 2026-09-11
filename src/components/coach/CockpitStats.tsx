@@ -21,7 +21,7 @@ export function CockpitStats({ students }: CockpitStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
       {stats.map((stat) => (
         <div key={stat.label} className="rounded-2xl border border-g4-border bg-g4-surface p-4 shadow-sm">
           <p className={`text-3xl font-bold ${stat.accent}`}>{stat.value}</p>

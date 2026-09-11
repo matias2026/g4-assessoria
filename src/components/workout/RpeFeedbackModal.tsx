@@ -67,7 +67,7 @@ export function RpeFeedbackModal({ open, onClose, onSubmit }: RpeFeedbackModalPr
 
         <div className="mt-4">
           <p className="text-sm font-medium text-g4-ink">Percepção de esforço (RPE)</p>
-          <div className="mt-2 grid grid-cols-5 gap-1.5">
+          <div className="mt-2 grid grid-cols-5 gap-4">
             {RPE_SCALE.map((value) => (
               <button
                 key={value}
@@ -89,7 +89,7 @@ export function RpeFeedbackModal({ open, onClose, onSubmit }: RpeFeedbackModalPr
 
         <div className="mt-4">
           <p className="text-sm font-medium text-g4-ink">Sensação geral</p>
-          <div className="mt-2 flex justify-between gap-1.5">
+          <div className="mt-2 flex justify-between gap-4">
             {FEELING_SCALE.map((value) => {
               const { emoji, label } = FEELING_EMOJIS[value];
               return (
@@ -99,7 +99,7 @@ export function RpeFeedbackModal({ open, onClose, onSubmit }: RpeFeedbackModalPr
                   onClick={() => setFeeling(value)}
                   aria-label={label}
                   className={cn(
-                    "flex flex-1 flex-col items-center gap-1 rounded-xl border py-2 transition-colors focus-ring",
+                    "flex flex-1 flex-col items-center gap-4 rounded-xl border py-2 transition-colors focus-ring",
                     feeling === value
                       ? "border-lime bg-lime/15"
                       : "border-g4-border bg-white hover:border-lime-deep/50 hover:bg-g4-surface-alt"

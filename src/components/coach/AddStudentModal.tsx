@@ -272,11 +272,11 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3 overflow-y-auto p-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-y-auto p-5">
           {/* Dados gerais */}
           <details open className={sectionClass}>
             <summary className={summaryClass}>Dados gerais</summary>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <label className="block">
                 <span className={labelClass}>Nome</span>
                 <input
@@ -349,7 +349,7 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
               <summary className="cursor-pointer text-xs font-semibold text-g4-muted">
                 Composição corporal (opcional)
               </summary>
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div className="mt-3 grid gap-4 sm:grid-cols-3">
                 <label className="block">
                   <span className={labelClass}>% de gordura</span>
                   <input
@@ -389,7 +389,7 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
               <summary className="cursor-pointer text-xs font-semibold text-g4-muted">
                 Histórico e restrições
               </summary>
-              <div className="mt-3 grid gap-3">
+              <div className="mt-3 grid gap-4">
                 <label className="block">
                   <span className={labelClass}>Histórico de variação de peso</span>
                   <textarea
@@ -417,7 +417,7 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
           {/* Modalidades */}
           <details open className={sectionClass}>
             <summary className={summaryClass}>Modalidades</summary>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <label className="block">
                 <span className={labelClass}>Modalidade principal</span>
                 <select
@@ -434,9 +434,9 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
               </label>
               <div className="block">
                 <span className={labelClass}>Modalidades adicionais</span>
-                <div className="mt-1 flex flex-wrap gap-3 rounded-xl border border-g4-border bg-white p-2.5">
+                <div className="mt-1 flex flex-wrap gap-4 rounded-xl border border-g4-border bg-white p-2.5">
                   {DISCIPLINES.filter((d) => d !== primaryDiscipline).map((d) => (
-                    <label key={d} className="flex items-center gap-1.5 text-sm text-g4-ink">
+                    <label key={d} className="flex items-center gap-4 text-sm text-g4-ink">
                       <input
                         type="checkbox"
                         checked={secondaryDisciplines.includes(d)}
@@ -454,7 +454,7 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
           {isCycling && (
             <details open className={sectionClass}>
               <summary className={summaryClass}>Ciclismo</summary>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className={labelClass}>
                     FTP (watts){wattsPerKg && <span className="text-lime-deep"> · {wattsPerKg} W/kg</span>}
@@ -504,7 +504,7 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
                 <summary className="cursor-pointer text-xs font-semibold text-g4-muted">
                   Métricas avançadas (opcional)
                 </summary>
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className="mt-3 grid gap-4 sm:grid-cols-3">
                   <label className="block">
                     <span className={labelClass}>Cadência preferida (rpm)</span>
                     <input
@@ -555,7 +555,7 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
           {isRunning && (
             <details open className={sectionClass}>
               <summary className={summaryClass}>Corrida</summary>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className={labelClass}>Pace limiar (min/km)</span>
                   <input
@@ -597,7 +597,7 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
                 </label>
               </div>
 
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div className="mt-3 grid gap-4 sm:grid-cols-3">
                 <label className="block">
                   <span className={labelClass}>Recorde 5km</span>
                   <input
@@ -631,7 +631,7 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
                 <summary className="cursor-pointer text-xs font-semibold text-g4-muted">
                   Biomecânica (opcional)
                 </summary>
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className="mt-3 grid gap-4 sm:grid-cols-3">
                   <label className="block">
                     <span className={labelClass}>Cadência (passos/min)</span>
                     <input
@@ -672,7 +672,7 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
           {isStrength && (
             <details open className={sectionClass}>
               <summary className={summaryClass}>Academia / Força</summary>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <label className="block sm:col-span-2">
                   <span className={labelClass}>Objetivo principal</span>
                   <select
@@ -730,7 +730,7 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
                 </label>
               </div>
 
-              <div className="mt-3 grid gap-3">
+              <div className="mt-3 grid gap-4">
                 <label className="block">
                   <span className={labelClass}>Foco dos treinos</span>
                   <textarea

@@ -38,7 +38,7 @@ export function RequestAccessForm() {
         Preencha seus dados — o treinador revisa e libera seu login.
       </p>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-g4-surface-alt p-1">
+      <div className="mt-4 grid grid-cols-2 gap-4 rounded-xl bg-g4-surface-alt p-1">
         <button
           type="button"
           onClick={() => setRole("athlete")}
@@ -64,7 +64,7 @@ export function RequestAccessForm() {
       <form action={formAction} className="mt-4 flex flex-col gap-4">
         <input type="hidden" name="role_requested" value={role} />
 
-        <label className="flex flex-col gap-1.5 text-sm">
+        <label className="flex flex-col gap-4 text-sm">
           <span className="font-medium text-g4-ink">Nome completo</span>
           <input
             name="full_name"
@@ -73,7 +73,7 @@ export function RequestAccessForm() {
           />
         </label>
 
-        <label className="flex flex-col gap-1.5 text-sm">
+        <label className="flex flex-col gap-4 text-sm">
           <span className="font-medium text-g4-ink">E-mail</span>
           <input
             type="email"
@@ -83,7 +83,7 @@ export function RequestAccessForm() {
           />
         </label>
 
-        <label className="flex flex-col gap-1.5 text-sm">
+        <label className="flex flex-col gap-4 text-sm">
           <span className="font-medium text-g4-ink">WhatsApp (opcional)</span>
           <input
             name="phone"
@@ -91,7 +91,7 @@ export function RequestAccessForm() {
           />
         </label>
 
-        <label className="flex flex-col gap-1.5 text-sm">
+        <label className="flex flex-col gap-4 text-sm">
           <span className="font-medium text-g4-ink">Mensagem (opcional)</span>
           <textarea
             name="message"

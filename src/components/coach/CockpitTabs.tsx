@@ -51,11 +51,11 @@ export function CockpitTabs({ initialStudents, initialWorkouts }: CockpitTabsPro
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       {/* Rolagem horizontal em vez de empilhar os botões — os rótulos são
           longos demais pra caber dois por linha no celular, o que fazia
           virar uma pilha vertical de 4 botões só de aparência. */}
-      <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-g4-border bg-g4-surface p-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <nav className="flex gap-4 overflow-x-auto rounded-2xl border border-g4-border bg-g4-surface p-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((tab) => (
           <button
             key={tab.key}

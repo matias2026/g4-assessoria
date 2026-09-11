@@ -77,9 +77,9 @@ export function AthleteWorkoutView({ workout }: AthleteWorkoutViewProps) {
           <span>📍 {formatDistance(workout.planned.distanceMeters)}</span>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-g4-border pt-3">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-4 border-t border-g4-border pt-3">
           <StatusDot status={status} />
-          <div className="flex items-center gap-1.5 text-xs">
+          <div className="flex items-center gap-4 text-xs">
             <Badge tone={stravaConnected ? "lime" : "neutral"}>
               {stravaConnected
                 ? status === "done"
@@ -99,13 +99,13 @@ export function AthleteWorkoutView({ workout }: AthleteWorkoutViewProps) {
       {/* Ações */}
       <Card>
         <CardTitle>Ações</CardTitle>
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="mt-3 flex flex-col gap-4">
           <Button variant="primary" onClick={() => setModalOpen(true)} disabled={status === "done"}>
             {status === "done" ? "Treino concluído ✓" : "Marcar como concluído"}
           </Button>
 
           {canExportStructuredWorkout(workout) && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <DownloadFitButton
                 title={workout.title}
                 discipline={workout.discipline}

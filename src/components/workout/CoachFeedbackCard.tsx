@@ -40,7 +40,7 @@ export function CoachFeedbackCard({ completed, coachName }: CoachFeedbackCardPro
         <p className="mt-2 text-sm text-g4-muted">{coachName} ainda não deixou um comentário.</p>
       )}
 
-      <div className="mt-4 flex flex-wrap items-center gap-6 border-t border-g4-border pt-3">
+      <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-g4-border pt-3">
         <div>
           <p className="text-xs text-g4-muted">Seu RPE</p>
           <p className="text-base font-semibold text-g4-ink">

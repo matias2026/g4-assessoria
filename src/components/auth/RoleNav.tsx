@@ -28,7 +28,7 @@ export async function RoleNav({ currentPath }: { currentPath: string }) {
   if (links.length === 0) return null;
 
   return (
-    <nav className="flex gap-1.5 overflow-x-auto rounded-xl bg-g4-surface-alt p-1 text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav className="flex gap-4 overflow-x-auto rounded-xl bg-g4-surface-alt p-1 text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {links.map((link) => (
         <Link
           key={link.href}

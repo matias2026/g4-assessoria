@@ -32,15 +32,15 @@ export function IntervalTimeline({ intervals }: IntervalTimelineProps) {
         ))}
       </div>
       <div className="mt-2 flex items-center gap-4 text-xs text-g4-muted">
-        <span className="inline-flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-4">
           <span className="h-2 w-2 rounded-full bg-lime-soft" aria-hidden />
           Leve
         </span>
-        <span className="inline-flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-4">
           <span className="h-2 w-2 rounded-full bg-lime-dim" aria-hidden />
           Moderado
         </span>
-        <span className="inline-flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-4">
           <span className="h-2 w-2 rounded-full bg-lime-deep" aria-hidden />
           Intenso
         </span>
