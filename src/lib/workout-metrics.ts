@@ -28,6 +28,26 @@ export function formatHeartRate(bpm: number | null | undefined): string {
 }
 
 /**
+ * Valor bruto de ritmo (seg/km, corrida) ou velocidade média (km/h,
+ * ciclismo) — separado de formatPaceOrSpeed para poder ser comparado
+ * numericamente (ver compareToPlanned) além de exibido.
+ */
+export function paceOrSpeedValue(
+  discipline: string,
+  distanceMeters: number | null | undefined,
+  durationSeconds: number | null | undefined
+): number | null {
+  if (!distanceMeters || !durationSeconds) return null;
+
+  const normalized = discipline.toLowerCase();
+
+  if (normalized.includes("corrida")) return durationSeconds / (distanceMeters / 1000);
+  if (normalized.includes("ciclismo")) return distanceMeters / 1000 / (durationSeconds / 3600);
+
+  return null;
+}
+
+/**
  * Ritmo (corrida, min/km) ou velocidade média (ciclismo, km/h), calculado a
  * partir de distância e duração. Retorna "—" quando a modalidade não usa
  * essa métrica (ex.: academia) ou faltam dados.
@@ -37,23 +57,42 @@ export function formatPaceOrSpeed(
   distanceMeters: number | null | undefined,
   durationSeconds: number | null | undefined
 ): string {
-  if (!distanceMeters || !durationSeconds) return "—";
+  const raw = paceOrSpeedValue(discipline, distanceMeters, durationSeconds);
+  if (raw == null) return "—";
 
   const normalized = discipline.toLowerCase();
 
   if (normalized.includes("corrida")) {
-    const secondsPerKm = durationSeconds / (distanceMeters / 1000);
-    const min = Math.floor(secondsPerKm / 60);
-    const sec = Math.round(secondsPerKm % 60);
+    const min = Math.floor(raw / 60);
+    const sec = Math.round(raw % 60);
     return `${min}:${String(sec).padStart(2, "0")} /km`;
   }
 
-  if (normalized.includes("ciclismo")) {
-    const kmh = distanceMeters / 1000 / (durationSeconds / 3600);
-    return `${kmh.toFixed(1)} km/h`;
-  }
+  if (normalized.includes("ciclismo")) return `${raw.toFixed(1)} km/h`;
 
   return "—";
+}
+
+export type PlanComparison = "match" | "off" | "none";
+
+const DEFAULT_TOLERANCE_PCT = 10;
+
+/**
+ * Compara um valor concluído contra o planejado dentro de uma tolerância —
+ * "match" (dentro do esperado, exibido em azul), "off" (fora do esperado,
+ * vermelho) ou "none" (falta dado suficiente, ex.: treino ainda não
+ * concluído — cor neutra).
+ */
+export function compareToPlanned(
+  planned: number | null | undefined,
+  completed: number | null | undefined,
+  tolerancePct = DEFAULT_TOLERANCE_PCT
+): PlanComparison {
+  if (planned == null || completed == null) return "none";
+  if (planned === 0) return completed === 0 ? "match" : "off";
+
+  const deviation = Math.abs(completed - planned) / Math.abs(planned);
+  return deviation <= tolerancePct / 100 ? "match" : "off";
 }
 
 export const RPE_LABELS: Record<number, string> = {

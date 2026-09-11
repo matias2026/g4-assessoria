@@ -6,14 +6,14 @@ interface IntervalTimelineProps {
 }
 
 function colorFor(pct: number): string {
-  if (pct >= 85) return "bg-lime-deep";
-  if (pct >= 60) return "bg-lime-dim";
-  return "bg-lime-soft";
+  if (pct >= 85) return "bg-red-600"; // Intenso
+  if (pct >= 60) return "bg-yellow-400"; // Moderado
+  return "bg-blue-500"; // Leve
 }
 
 // Gráfico de blocos do treino: cada segmento é proporcional à duração e
-// colorido pela intensidade (%FTP), mesmo matiz em 3 tons — igual ao padrão
-// já usado no ZonesChart.
+// colorido pela intensidade (%FTP) — Leve (azul), Moderado (amarelo
+// intenso) e Intenso (vermelho forte).
 export function IntervalTimeline({ intervals }: IntervalTimelineProps) {
   if (intervals.length === 0) return null;
 
@@ -33,15 +33,15 @@ export function IntervalTimeline({ intervals }: IntervalTimelineProps) {
       </div>
       <div className="mt-2 flex items-center gap-4 text-xs text-g4-muted">
         <span className="inline-flex items-center gap-4">
-          <span className="h-2 w-2 rounded-full bg-lime-soft" aria-hidden />
+          <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
           Leve
         </span>
         <span className="inline-flex items-center gap-4">
-          <span className="h-2 w-2 rounded-full bg-lime-dim" aria-hidden />
+          <span className="h-2 w-2 rounded-full bg-yellow-400" aria-hidden />
           Moderado
         </span>
         <span className="inline-flex items-center gap-4">
-          <span className="h-2 w-2 rounded-full bg-lime-deep" aria-hidden />
+          <span className="h-2 w-2 rounded-full bg-red-600" aria-hidden />
           Intenso
         </span>
       </div>
