@@ -17,6 +17,9 @@ type RequestRole = "athlete" | "coach";
 export function RequestAccessForm() {
   const [state, formAction, pending] = useActionState(submitAccessRequest, initialState);
   const [role, setRole] = useState<RequestRole>("athlete");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword;
 
   if (state.success) {
     return (
@@ -24,6 +27,7 @@ export function RequestAccessForm() {
         <h1 className="text-lg font-bold text-g4-ink">Pedido enviado!</h1>
         <p className="mt-2 text-sm text-g4-muted">
           O treinador vai revisar seu pedido e te avisar por fora (WhatsApp/e-mail) quando sua conta estiver pronta.
+          Guarde a senha que você definiu — vai usar ela pra entrar.
         </p>
       </Card>
     );
@@ -61,7 +65,13 @@ export function RequestAccessForm() {
         </button>
       </div>
 
-      <form action={formAction} className="mt-4 flex flex-col gap-4">
+      <form
+        action={formAction}
+        onSubmit={(e) => {
+          if (passwordMismatch) e.preventDefault();
+        }}
+        className="mt-4 flex flex-col gap-4"
+      >
         <input type="hidden" name="role_requested" value={role} />
 
         <label className="flex flex-col gap-4 text-sm">
@@ -81,6 +91,33 @@ export function RequestAccessForm() {
             required
             className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
+        </label>
+
+        <label className="flex flex-col gap-4 text-sm">
+          <span className="font-medium text-g4-ink">Senha</span>
+          <input
+            type="password"
+            name="password"
+            required
+            minLength={8}
+            placeholder="mín. 8 caracteres"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+          />
+        </label>
+
+        <label className="flex flex-col gap-4 text-sm">
+          <span className="font-medium text-g4-ink">Confirmar senha</span>
+          <input
+            type="password"
+            required
+            minLength={8}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+          />
+          {passwordMismatch && <span className="text-xs text-red-600">As senhas não coincidem.</span>}
         </label>
 
         <label className="flex flex-col gap-4 text-sm">
@@ -104,7 +141,7 @@ export function RequestAccessForm() {
 
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
-        <Button type="submit" variant="primary" className="mt-1 w-full" disabled={pending}>
+        <Button type="submit" variant="primary" className="mt-1 w-full" disabled={pending || passwordMismatch}>
           {pending ? "Enviando..." : "Enviar pedido"}
         </Button>
       </form>

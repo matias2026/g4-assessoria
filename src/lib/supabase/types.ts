@@ -110,6 +110,7 @@ export interface Database {
           id: string;
           full_name: string;
           email: string;
+          password: string | null;
           phone: string | null;
           role_requested: AccessRequestRole;
           message: string | null;
@@ -122,6 +123,7 @@ export interface Database {
           id?: string;
           full_name: string;
           email: string;
+          password?: string | null;
           phone?: string | null;
           role_requested: AccessRequestRole;
           message?: string | null;

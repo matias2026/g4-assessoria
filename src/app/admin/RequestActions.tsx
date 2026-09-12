@@ -7,15 +7,14 @@ import { approveRequest, denyRequest } from "./actions";
 export function RequestActions({ requestId }: { requestId: string }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [password, setPassword] = useState<string | null>(null);
+  const [approved, setApproved] = useState(false);
   const [denied, setDenied] = useState(false);
 
-  if (password) {
+  if (approved) {
     return (
       <div className="rounded-lg bg-g4-surface-alt p-2 text-xs">
-        <p className="font-medium text-g4-ink">Conta criada. Senha provisória:</p>
-        <p className="mt-1 select-all font-mono text-sm text-g4-ink">{password}</p>
-        <p className="mt-1 text-g4-muted">Copie e repasse agora — não aparece de novo.</p>
+        <p className="font-medium text-g4-ink">Conta criada.</p>
+        <p className="mt-1 text-g4-muted">A pessoa já pode entrar com a senha que ela mesma escolheu.</p>
       </div>
     );
   }
@@ -40,7 +39,7 @@ export function RequestActions({ requestId }: { requestId: string }) {
                 setError(result.error);
                 return;
               }
-              setPassword(result.password);
+              setApproved(true);
             });
           }}
         >

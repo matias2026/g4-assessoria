@@ -23,6 +23,7 @@ export async function submitAccessRequest(
 ): Promise<RequestAccessState> {
   const fullName = String(formData.get("full_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
   const phone = String(formData.get("phone") ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
   const roleRequested = String(formData.get("role_requested") ?? "") as AccessRequestRole;
@@ -30,6 +31,9 @@ export async function submitAccessRequest(
 
   if (!fullName || !email) {
     return { ...initialState, error: "Preencha nome e e-mail." };
+  }
+  if (password.length < 8) {
+    return { ...initialState, error: "A senha precisa ter pelo menos 8 caracteres." };
   }
   if (!["athlete", "coach"].includes(roleRequested)) {
     return { ...initialState, error: "Selecione se você é aluno ou treinador." };
@@ -51,6 +55,7 @@ export async function submitAccessRequest(
   const { error } = await admin.from("access_requests").insert({
     full_name: fullName,
     email,
+    password,
     phone: phone || null,
     role_requested: roleRequested,
     message: message || null,

@@ -1,6 +1,5 @@
 "use server";
 
-import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -137,45 +136,47 @@ export async function toggleActive(profileId: string, active: boolean): Promise<
 
 export interface ApproveRequestResult {
   error: string | null;
-  password: string | null;
 }
 
 // Aprova um pedido de /solicitar-acesso: cria a conta de verdade (mesma
-// lógica do "Criar conta") com uma senha provisória gerada aqui — não tem
-// envio de e-mail no app, então a senha volta uma única vez nesta resposta
-// pro admin repassar por fora (WhatsApp etc).
+// lógica do "Criar conta") com a senha que a própria pessoa escolheu ao
+// pedir acesso (ver password em access_requests). Some do banco logo em
+// seguida — não precisa mais ficar guardada depois de virar a senha real
+// no Supabase Auth.
 export async function approveRequest(requestId: string): Promise<ApproveRequestResult> {
   const adminId = await requireAdmin();
   const admin = createAdminClient();
 
   const { data: reqRow } = await admin
     .from("access_requests")
-    .select("id, full_name, email, role_requested, status")
+    .select("id, full_name, email, password, role_requested, status")
     .eq("id", requestId)
     .single();
 
   if (!reqRow || reqRow.status !== "pending") {
-    return { error: "Pedido não encontrado ou já processado.", password: null };
+    return { error: "Pedido não encontrado ou já processado." };
   }
 
-  const password = randomBytes(9).toString("base64url");
+  if (!reqRow.password) {
+    return { error: "Este pedido não tem senha definida (feito antes de uma atualização). Peça pra pessoa enviar o pedido de novo." };
+  }
 
   const error = await createAccountCore({
     email: reqRow.email,
-    password,
+    password: reqRow.password,
     fullName: reqRow.full_name,
     role: reqRow.role_requested,
   });
 
-  if (error) return { error, password: null };
+  if (error) return { error };
 
   await admin
     .from("access_requests")
-    .update({ status: "approved", reviewed_by: adminId, reviewed_at: new Date().toISOString() })
+    .update({ status: "approved", reviewed_by: adminId, reviewed_at: new Date().toISOString(), password: null })
     .eq("id", requestId);
 
   revalidatePath("/admin");
-  return { error: null, password };
+  return { error: null };
 }
 
 // Nega um pedido — só marca como negado, não cria nada. Ninguém é avisado
@@ -186,7 +187,7 @@ export async function denyRequest(requestId: string): Promise<{ error: string | 
 
   const { error } = await admin
     .from("access_requests")
-    .update({ status: "denied", reviewed_by: adminId, reviewed_at: new Date().toISOString() })
+    .update({ status: "denied", reviewed_by: adminId, reviewed_at: new Date().toISOString(), password: null })
     .eq("id", requestId)
     .eq("status", "pending");
 
