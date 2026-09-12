@@ -48,7 +48,7 @@ export function AiFeedbackComposer({ draftInput, initialValue }: AiFeedbackCompo
 
   return (
     <Card>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <CardTitle>Feedback para o atleta</CardTitle>
         <Button variant="ghost" onClick={handleGenerateDraft} disabled={loading} className="px-3 text-xs">
           {loading ? "Gerando…" : "✨ Gerar rascunho com IA"}
@@ -68,7 +68,7 @@ export function AiFeedbackComposer({ draftInput, initialValue }: AiFeedbackCompo
 
       {error && <p className="mt-2 text-xs text-status-missed">{error}</p>}
 
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-3 flex items-center justify-between gap-4">
         <p className="text-xs text-g4-muted">
           O rascunho de IA é só o ponto de partida — revise antes de enviar.
         </p>
