@@ -27,9 +27,9 @@ function formatElapsed(seconds: number): string {
     : `${m}:${String(s).padStart(2, "0")}`;
 }
 
-const AXIS_TICK = { fontSize: 11, fill: "#a1a1aa" };
-const GRID_STROKE = "#3f3f46";
-const CURSOR_STYLE = { stroke: "#71717a", strokeDasharray: "3 3" };
+const AXIS_TICK = { fontSize: 11, fill: "#68707b" }; // g4-muted
+const GRID_STROKE = "#e2e5ea"; // g4-border
+const CURSOR_STYLE = { stroke: "#68707b", strokeDasharray: "3 3" };
 
 interface TooltipSyncProps {
   active?: boolean;
@@ -67,12 +67,12 @@ export function ActivitySyncedCharts({ samples }: ActivitySyncedChartsProps) {
   return (
     <div>
       <div className="flex flex-wrap items-baseline gap-4 text-sm">
-        <span className="text-neutral-400">{formatElapsed(active.timestamp)}</span>
-        <span className="text-neutral-100">
-          Cadência <span className="font-semibold text-fuchsia-400">{active.cadence}</span>
+        <span className="text-g4-muted">{formatElapsed(active.timestamp)}</span>
+        <span className="text-g4-ink">
+          Cadência <span className="font-semibold text-fuchsia-600">{active.cadence}</span>
         </span>
-        <span className="text-neutral-100">
-          Altitude <span className="font-semibold text-neutral-200">{active.altitudeMeters}m</span>
+        <span className="text-g4-ink">
+          Altitude <span className="font-semibold text-slate-600">{active.altitudeMeters}m</span>
         </span>
       </div>
 
@@ -83,7 +83,7 @@ export function ActivitySyncedCharts({ samples }: ActivitySyncedChartsProps) {
             <XAxis dataKey="timestamp" tickFormatter={formatElapsed} tick={AXIS_TICK} stroke={GRID_STROKE} minTickGap={40} />
             <YAxis tick={AXIS_TICK} stroke={GRID_STROKE} width={32} domain={[0, "dataMax + 10"]} />
             <Tooltip content={<TooltipSync onChange={setActiveSample} />} cursor={CURSOR_STYLE} />
-            <Line type="monotone" dataKey="cadence" stroke="#e879f9" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="cadence" stroke="#c026d3" strokeWidth={1.5} dot={false} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -93,8 +93,8 @@ export function ActivitySyncedCharts({ samples }: ActivitySyncedChartsProps) {
           <AreaChart data={samples} syncId="activity-detail" margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="activityAltitudeFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#e4e4e7" stopOpacity={0.5} />
-                <stop offset="100%" stopColor="#e4e4e7" stopOpacity={0.03} />
+                <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.45} />
+                <stop offset="100%" stopColor="#94a3b8" stopOpacity={0.03} />
               </linearGradient>
             </defs>
             <CartesianGrid stroke={GRID_STROKE} vertical={false} />
@@ -104,7 +104,7 @@ export function ActivitySyncedCharts({ samples }: ActivitySyncedChartsProps) {
             <Area
               type="monotone"
               dataKey="altitudeMeters"
-              stroke="#d4d4d8"
+              stroke="#94a3b8"
               strokeWidth={1.5}
               fill="url(#activityAltitudeFill)"
               isAnimationActive={false}
