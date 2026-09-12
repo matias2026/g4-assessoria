@@ -134,6 +134,30 @@ export async function toggleActive(profileId: string, active: boolean): Promise<
   revalidatePath("/admin");
 }
 
+// Exclui a conta por completo (Auth + perfil, via ON DELETE CASCADE em
+// profiles.id → auth.users.id). Existe pra destravar contas criadas antes
+// da senha ser escolhida pela própria pessoa (ver 0009_password_on_
+// access_requests.sql) — sem excluir, o e-mail fica "já cadastrado" pra
+// sempre e a pessoa não tem como pedir acesso de novo pra definir uma
+// senha que funcione. Igual ao suspender: admin não pode excluir a
+// própria conta.
+export async function deleteAccount(profileId: string): Promise<void> {
+  const adminId = await requireAdmin();
+
+  if (profileId === adminId) {
+    throw new Error("Você não pode excluir a própria conta.");
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(profileId);
+  if (error) {
+    console.error("[admin] erro ao excluir conta:", error.code, error.message);
+    throw new Error("Não foi possível excluir a conta. Tente novamente.");
+  }
+
+  revalidatePath("/admin");
+}
+
 export interface ApproveRequestResult {
   error: string | null;
 }

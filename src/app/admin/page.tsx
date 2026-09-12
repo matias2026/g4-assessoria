@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { RoleNav } from "@/components/auth/RoleNav";
 import { CreateAccountForm } from "./CreateAccountForm";
+import { DeleteAccountButton } from "./DeleteAccountButton";
 import { ToggleActiveButton } from "./ToggleActiveButton";
 import { RequestActions } from "./RequestActions";
 
@@ -114,7 +115,10 @@ export default async function AdminPage() {
             </div>
             <div className="mt-3 flex items-center justify-between gap-4">
               <Badge tone="neutral">{roleLabel[p.role] ?? p.role}</Badge>
-              <ToggleActiveButton profileId={p.id} active={p.active} />
+              <div className="flex items-center gap-4">
+                <ToggleActiveButton profileId={p.id} active={p.active} />
+                <DeleteAccountButton profileId={p.id} />
+              </div>
             </div>
           </Card>
         ))}
@@ -145,7 +149,10 @@ export default async function AdminPage() {
                 </td>
                 <td className="px-5 py-3 text-g4-muted">{new Date(p.created_at).toLocaleDateString("pt-BR")}</td>
                 <td className="px-5 py-3 text-right">
-                  <ToggleActiveButton profileId={p.id} active={p.active} />
+                  <div className="flex items-center justify-end gap-4">
+                    <ToggleActiveButton profileId={p.id} active={p.active} />
+                    <DeleteAccountButton profileId={p.id} />
+                  </div>
                 </td>
               </tr>
             ))}
