@@ -30,6 +30,24 @@ async function requireAdmin(): Promise<string> {
 
 const roleLabel: Record<ProfileRole, string> = { coach: "treinador", athlete: "aluno", admin: "administrador" };
 
+// Mapa dos códigos de erro estáveis do Supabase Auth (não o texto da
+// mensagem, que vem em inglês e pode mudar) — ver
+// https://supabase.com/docs/guides/auth/debugging/error-codes
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  email_exists: "Já existe uma conta cadastrada com esse e-mail.",
+  weak_password: "Senha muito fraca — use pelo menos 8 caracteres.",
+  email_address_invalid: "E-mail inválido.",
+  validation_failed: "Dados inválidos — confira o e-mail e a senha.",
+};
+
+function translateAuthError(error: { code?: string; message: string }): string {
+  if (error.code && AUTH_ERROR_MESSAGES[error.code]) return AUTH_ERROR_MESSAGES[error.code];
+  // Código não mapeado: loga o original pra investigar, mas nunca mostra
+  // texto técnico/em inglês pro admin.
+  console.error("[admin] erro do Supabase Auth não mapeado:", error.code, error.message);
+  return "Não foi possível criar a conta. Tente novamente.";
+}
+
 interface CreateAccountInput {
   email: string;
   password: string;
@@ -60,7 +78,8 @@ async function createAccountCore({ email, password, fullName, role }: CreateAcco
     email_confirm: true,
   });
 
-  if (createError || !created.user) return createError?.message ?? "Falha ao criar usuário.";
+  if (createError) return translateAuthError(createError);
+  if (!created.user) return "Falha ao criar usuário.";
 
   const { error: profileError } = await admin
     .from("profiles")
@@ -69,9 +88,9 @@ async function createAccountCore({ email, password, fullName, role }: CreateAcco
   if (profileError) {
     // Reverte o usuário do Auth pra não deixar login órfão sem perfil.
     await admin.auth.admin.deleteUser(created.user.id);
-    return profileError.message.includes("Limite de 50 atletas")
-      ? "Limite de 50 atletas cadastrados atingido."
-      : profileError.message;
+    if (profileError.message.includes("Limite de 50 atletas")) return "Limite de 50 atletas cadastrados atingido.";
+    console.error("[admin] erro do Postgres ao criar perfil:", profileError.message);
+    return "Não foi possível criar a conta. Tente novamente.";
   }
 
   return null;
