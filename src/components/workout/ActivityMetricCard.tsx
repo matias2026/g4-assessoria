@@ -69,9 +69,9 @@ export function ActivityMetricCard({
 }: ActivityMetricCardProps) {
   const values = samples.map((s) => s[dataKey]).filter((v) => !excludeZero || v > 0);
   const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
-  const min = values.length ? Math.min(...values) : 0;
   const max = values.length ? Math.max(...values) : 0;
   const gradientId = `metric-fill-${dataKey}`;
+  const showAltitudeBackdrop = dataKey !== "altitudeMeters";
 
   return (
     <div className="rounded-2xl bg-neutral-900 p-4 text-neutral-100">
@@ -90,6 +90,24 @@ export function ActivityMetricCard({
             <XAxis dataKey="timestamp" tickFormatter={formatElapsed} tick={AXIS_TICK} stroke={GRID_STROKE} minTickGap={40} />
             <YAxis tick={AXIS_TICK} stroke={GRID_STROKE} width={36} domain={domain ?? [0, "dataMax + 10"]} />
             <Tooltip content={<TooltipSync onChange={onActiveChange} />} cursor={CURSOR_STYLE} />
+            {/* Silhueta de altitude atrás da métrica principal, pro treinador
+                relacionar o relevo do percurso com o gráfico — mesmo efeito
+                visual do app do Strava. Eixo Y próprio (oculto) porque a
+                escala de metros não tem nada a ver com rpm/W/bpm/km-h. */}
+            {showAltitudeBackdrop && (
+              <>
+                <YAxis yAxisId="altitude" hide domain={["dataMin - 20", "dataMax + 60"]} />
+                <Area
+                  yAxisId="altitude"
+                  type="monotone"
+                  dataKey="altitudeMeters"
+                  stroke="none"
+                  fill="#52525b"
+                  fillOpacity={0.4}
+                  isAnimationActive={false}
+                />
+              </>
+            )}
             <Area
               type="monotone"
               dataKey={dataKey}
@@ -102,18 +120,14 @@ export function ActivityMetricCard({
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-4 border-t border-neutral-800 pt-3 text-sm">
-        <div>
-          <p className="text-xs text-neutral-400">Média</p>
-          <p className="font-semibold">{formatValue(avg)}</p>
+      <div className="mt-3 flex flex-col divide-y divide-neutral-800 border-t border-neutral-800 text-sm">
+        <div className="flex items-center justify-between py-2">
+          <span className="text-neutral-400">{title} média</span>
+          <span className="font-semibold">{formatValue(avg)}</span>
         </div>
-        <div>
-          <p className="text-xs text-neutral-400">Mínima</p>
-          <p className="font-semibold">{formatValue(min)}</p>
-        </div>
-        <div>
-          <p className="text-xs text-neutral-400">Máxima</p>
-          <p className="font-semibold">{formatValue(max)}</p>
+        <div className="flex items-center justify-between py-2">
+          <span className="text-neutral-400">{title} máxima</span>
+          <span className="font-semibold">{formatValue(max)}</span>
         </div>
       </div>
     </div>
