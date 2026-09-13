@@ -24,6 +24,11 @@ const GARMIN_CONNECT_URL = "https://connect.garmin.com/modern/";
 
 interface AthleteWorkoutViewProps {
   workout: MockWorkoutDetail;
+  // true na prévia do admin (buildExampleWorkout, sem linha própria em
+  // `alunos`) — "Marcar como concluído"/upload de .FIT chamam
+  // requireOwnAlunoId, que não acha ficha nenhuma pro admin e falha, então
+  // essas ações ficam escondidas em vez de crashar ao clicar.
+  isPreview?: boolean;
 }
 
 /**
@@ -31,7 +36,7 @@ interface AthleteWorkoutViewProps {
  * dispositivo) + Feedback do Professor, tudo em um fluxo único — sem cards
  * soltos e desconectados.
  */
-export function AthleteWorkoutView({ workout }: AthleteWorkoutViewProps) {
+export function AthleteWorkoutView({ workout, isPreview = false }: AthleteWorkoutViewProps) {
   const [status, setStatus] = useState(workout.status);
   const [completed, setCompleted] = useState(workout.completed);
   const [modalOpen, setModalOpen] = useState(false);
@@ -125,14 +130,23 @@ export function AthleteWorkoutView({ workout }: AthleteWorkoutViewProps) {
       <Card>
         <CardTitle>Ações</CardTitle>
         <div className="mt-3 flex flex-col gap-4">
-          <Button variant="primary" onClick={() => setModalOpen(true)} disabled={status === "done"}>
-            {status === "done" ? "Treino concluído ✓" : "Marcar como concluído"}
-          </Button>
+          {isPreview ? (
+            <p className="rounded-xl border border-g4-border bg-g4-surface-alt p-3 text-sm text-g4-muted">
+              Prévia — marcar como concluído e enviar arquivo .FIT ficam disponíveis só na conta de um aluno de
+              verdade.
+            </p>
+          ) : (
+            <>
+              <Button variant="primary" onClick={() => setModalOpen(true)} disabled={status === "done"}>
+                {status === "done" ? "Treino concluído ✓" : "Marcar como concluído"}
+              </Button>
 
-          {/* Sobe o .FIT gravado no relógio/ciclocomputador — vira o
-              gráfico de potência/FC/cadência real na análise do
-              treinador, em vez do RPE manual sozinho. */}
-          <UploadFitButton onUploaded={() => setStatus("done")} />
+              {/* Sobe o .FIT gravado no relógio/ciclocomputador — vira o
+                  gráfico de potência/FC/cadência real na análise do
+                  treinador, em vez do RPE manual sozinho. */}
+              <UploadFitButton onUploaded={() => setStatus("done")} />
+            </>
+          )}
 
           {canExportStructuredWorkout(workout) && (
             <div className="grid grid-cols-2 gap-4">

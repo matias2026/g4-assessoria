@@ -189,7 +189,7 @@ export default async function AthleteDashboardPage({
       {isAdmin && <AdminPreviewSwitcher basePath="/dashboard" activeDiscipline={discipline} />}
 
       {workout ? (
-        <AthleteWorkoutView workout={workout} />
+        <AthleteWorkoutView workout={workout} isPreview={isAdmin} />
       ) : (
         <NoWorkoutCard talkToCoachLink={talkToCoachLink} coachName={coachName} />
       )}
