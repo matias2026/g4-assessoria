@@ -62,20 +62,21 @@ const METRICS: MetricConfig[] = [
 ];
 
 /**
- * Um card por métrica (Velocidade, Cadência, Potência, Frequência
- * cardíaca, Altitude), estilo Strava — gráfico de área preenchida + média/
- * mínima/máxima abaixo. Todos compartilham o mesmo eixo X e o mesmo
- * `syncId` do Recharts: passar o mouse em qualquer um move o cursor em
- * todos e atualiza o resumo no topo com os valores exatos daquele
- * instante ao mesmo tempo.
+ * Um único card escuro com todas as métricas (Velocidade, Cadência,
+ * Potência, Frequência cardíaca, Elevação) empilhadas e separadas por
+ * linha divisória — mesmo padrão de "um card só" já usado em Zonas de
+ * potência, em vez de uma caixa separada por métrica. Todos os gráficos
+ * compartilham o mesmo eixo X e o mesmo `syncId` do Recharts: passar o
+ * mouse em qualquer um move o cursor em todos e atualiza o resumo no
+ * topo com os valores exatos daquele instante ao mesmo tempo.
  */
 export function ActivitySyncedCharts({ samples, elevationGainMeters }: ActivitySyncedChartsProps) {
   const [activeSample, setActiveSample] = useState<ActivitySample | null>(null);
   const active = activeSample ?? samples[samples.length - 1];
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-baseline gap-4 rounded-xl bg-neutral-900 p-3 text-sm text-neutral-100">
+    <div className="flex flex-col gap-4 rounded-2xl bg-neutral-900 p-3 text-neutral-100 sm:p-4">
+      <div className="flex flex-wrap items-baseline gap-4 text-sm">
         <span className="text-neutral-400">{formatElapsed(active.timestamp)}</span>
         {METRICS.map((metric) => (
           <span key={metric.key}>
@@ -87,24 +88,25 @@ export function ActivitySyncedCharts({ samples, elevationGainMeters }: ActivityS
         ))}
       </div>
 
-      {METRICS.map((metric) => (
-        <ActivityMetricCard
-          key={metric.key}
-          title={metric.title}
-          color={metric.color}
-          dataKey={metric.key}
-          samples={samples}
-          syncId="activity-detail"
-          formatValue={metric.format}
-          domain={metric.domain}
-          excludeZero={metric.excludeZero}
-          primaryStat={
-            metric.key === "altitudeMeters"
-              ? { label: "Ganho de elevação", value: `${elevationGainMeters} m` }
-              : undefined
-          }
-          onActiveChange={setActiveSample}
-        />
+      {METRICS.map((metric, index) => (
+        <div key={metric.key} className={index > 0 ? "border-t border-neutral-800 pt-4" : ""}>
+          <ActivityMetricCard
+            title={metric.title}
+            color={metric.color}
+            dataKey={metric.key}
+            samples={samples}
+            syncId="activity-detail"
+            formatValue={metric.format}
+            domain={metric.domain}
+            excludeZero={metric.excludeZero}
+            primaryStat={
+              metric.key === "altitudeMeters"
+                ? { label: "Ganho de elevação", value: `${elevationGainMeters} m` }
+                : undefined
+            }
+            onActiveChange={setActiveSample}
+          />
+        </div>
       ))}
     </div>
   );
