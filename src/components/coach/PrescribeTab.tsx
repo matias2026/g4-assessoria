@@ -14,7 +14,8 @@ import {
   templateForDiscipline,
 } from "@/lib/mock-data";
 import type { MockStudent, MockWorkoutDetail } from "@/lib/mock-data";
-import type { SetPreset, TrainingSession, WorkoutInterval } from "@/lib/supabase/types";
+import type { ExerciseLibraryItem, SetPreset, TrainingSession, WorkoutInterval } from "@/lib/supabase/types";
+import { saveExerciseLibraryItem } from "@/app/(coach)/cockpit/actions";
 
 interface PrescribeTabProps {
   students: MockStudent[];
@@ -22,6 +23,7 @@ interface PrescribeTabProps {
   selectedStudentId: string;
   onSelectStudent: (id: string) => void;
   onSaveWorkout: (studentId: string, workout: MockWorkoutDetail) => void;
+  initialExerciseLibrary: ExerciseLibraryItem[];
 }
 
 const DISCIPLINES = ["Ciclismo", "Corrida", "Academia"];
@@ -80,6 +82,7 @@ export function PrescribeTab({
   selectedStudentId,
   onSelectStudent,
   onSaveWorkout,
+  initialExerciseLibrary,
 }: PrescribeTabProps) {
   const student = students.find((s) => s.id === selectedStudentId) ?? students[0];
 
@@ -87,6 +90,18 @@ export function PrescribeTab({
   // o formulário remonta a cada troca de aluno (via `key`), mas os presets
   // que o treinador salva devem continuar disponíveis para os outros alunos.
   const [presets, setPresets] = useState<SetPreset[]>([]);
+  // Biblioteca de exercícios: mesmo raciocínio dos presets (sobrevive à
+  // troca de aluno), mas com persistência real — salva na tabela
+  // exercise_library via Server Action, não só em memória.
+  const [library, setLibrary] = useState<ExerciseLibraryItem[]>(initialExerciseLibrary);
+
+  async function handleSaveToLibrary(input: { name: string; videoUrl: string | null }) {
+    const saved = await saveExerciseLibraryItem(input);
+    setLibrary((prev) => {
+      const exists = prev.some((item) => item.id === saved.id);
+      return exists ? prev.map((item) => (item.id === saved.id ? saved : item)) : [...prev, saved];
+    });
+  }
 
   if (!student) {
     return (
@@ -122,6 +137,8 @@ export function PrescribeTab({
         onSaveWorkout={onSaveWorkout}
         presets={presets}
         onPresetsChange={setPresets}
+        library={library}
+        onSaveToLibrary={handleSaveToLibrary}
       />
     </div>
   );
@@ -133,6 +150,8 @@ interface PrescriptionFormProps {
   onSaveWorkout: (studentId: string, workout: MockWorkoutDetail) => void;
   presets: SetPreset[];
   onPresetsChange: (presets: SetPreset[]) => void;
+  library: ExerciseLibraryItem[];
+  onSaveToLibrary: (input: { name: string; videoUrl: string | null }) => Promise<void>;
 }
 
 function PrescriptionForm({
@@ -141,6 +160,8 @@ function PrescriptionForm({
   onSaveWorkout,
   presets,
   onPresetsChange,
+  library,
+  onSaveToLibrary,
 }: PrescriptionFormProps) {
   const initial =
     existingWorkout ?? buildWorkoutDraft(student, student.discipline, formatDateLabel(todayIso()));
@@ -360,6 +381,8 @@ function PrescriptionForm({
             }}
             presets={presets}
             onPresetsChange={onPresetsChange}
+            library={library}
+            onSaveToLibrary={onSaveToLibrary}
           />
         </Card>
       )}

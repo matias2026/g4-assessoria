@@ -3,10 +3,15 @@ import { CockpitTabs } from "@/components/coach/CockpitTabs";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { RoleNav } from "@/components/auth/RoleNav";
 import { mockStudents, mockWorkoutDetails } from "@/lib/mock-data";
+import { listExerciseLibrary } from "./actions";
 
 // TODO: substituir os dados mock por consultas reais via src/lib/supabase/server
 // (profiles com role = 'coach', workouts da semana e strava_activities recentes).
-export default function CoachCockpitPage() {
+export default async function CoachCockpitPage() {
+  // A biblioteca de exercícios já é dado real (tabela exercise_library) —
+  // nunca deixa a página quebrar se a consulta falhar.
+  const exerciseLibrary = await listExerciseLibrary().catch(() => []);
+
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 sm:px-6">
       {/* Header minimalista: só logo + título e o botão de sair isolado.
@@ -22,7 +27,11 @@ export default function CoachCockpitPage() {
 
       <RoleNav currentPath="/cockpit" />
 
-      <CockpitTabs initialStudents={mockStudents} initialWorkouts={mockWorkoutDetails} />
+      <CockpitTabs
+        initialStudents={mockStudents}
+        initialWorkouts={mockWorkoutDetails}
+        initialExerciseLibrary={exerciseLibrary}
+      />
     </main>
   );
 }

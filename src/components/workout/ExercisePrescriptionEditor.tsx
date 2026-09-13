@@ -2,13 +2,23 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import type { ExerciseSet, PrescribedExercise, SetPreset, TrainingSession } from "@/lib/supabase/types";
+import type {
+  ExerciseLibraryItem,
+  ExerciseSet,
+  PrescribedExercise,
+  SetPreset,
+  TrainingSession,
+} from "@/lib/supabase/types";
+
+const LIBRARY_DATALIST_ID = "exercise-library-options";
 
 interface ExercisePrescriptionEditorProps {
   sessions: TrainingSession[];
   onChange: (sessions: TrainingSession[]) => void;
   presets: SetPreset[];
   onPresetsChange: (presets: SetPreset[]) => void;
+  library: ExerciseLibraryItem[];
+  onSaveToLibrary: (input: { name: string; videoUrl: string | null }) => Promise<void>;
 }
 
 const fieldClass =
@@ -38,6 +48,8 @@ export function ExercisePrescriptionEditor({
   onChange,
   presets,
   onPresetsChange,
+  library,
+  onSaveToLibrary,
 }: ExercisePrescriptionEditorProps) {
   function updateSession(index: number, patch: Partial<TrainingSession>) {
     onChange(sessions.map((s, i) => (i === index ? { ...s, ...patch } : s)));
@@ -80,6 +92,12 @@ export function ExercisePrescriptionEditor({
 
   return (
     <div className="mt-3 flex flex-col gap-4">
+      <datalist id={LIBRARY_DATALIST_ID}>
+        {library.map((item) => (
+          <option key={item.id} value={item.name} />
+        ))}
+      </datalist>
+
       {sessions.map((session, sessionIndex) => (
         <div
           key={sessionIndex}
@@ -127,10 +145,12 @@ export function ExercisePrescriptionEditor({
                 key={exerciseIndex}
                 exercise={exercise}
                 presets={presets}
+                library={library}
                 onChange={(patch) => updateExercise(sessionIndex, exerciseIndex, patch)}
                 onSetsChange={(sets) => updateExercise(sessionIndex, exerciseIndex, { sets })}
                 onRemove={() => removeExercise(sessionIndex, exerciseIndex)}
                 onSavePreset={(preset) => onPresetsChange([...presets, preset])}
+                onSaveToLibrary={onSaveToLibrary}
               />
             ))}
           </div>
@@ -157,16 +177,57 @@ export function ExercisePrescriptionEditor({
 interface ExerciseRowProps {
   exercise: PrescribedExercise;
   presets: SetPreset[];
+  library: ExerciseLibraryItem[];
   onChange: (patch: Partial<PrescribedExercise>) => void;
   onSetsChange: (sets: ExerciseSet[]) => void;
   onRemove: () => void;
   onSavePreset: (preset: SetPreset) => void;
+  onSaveToLibrary: (input: { name: string; videoUrl: string | null }) => Promise<void>;
 }
 
-function ExerciseRow({ exercise, presets, onChange, onSetsChange, onRemove, onSavePreset }: ExerciseRowProps) {
+function ExerciseRow({
+  exercise,
+  presets,
+  library,
+  onChange,
+  onSetsChange,
+  onRemove,
+  onSavePreset,
+  onSaveToLibrary,
+}: ExerciseRowProps) {
   const [presetToApply, setPresetToApply] = useState("");
   const [savingPresetForRow, setSavingPresetForRow] = useState<number | null>(null);
   const [presetName, setPresetName] = useState("");
+  const [savingToLibrary, setSavingToLibrary] = useState(false);
+  const [lastSavedToLibrary, setLastSavedToLibrary] = useState<{ name: string; videoUrl: string | null } | null>(
+    null
+  );
+
+  // Se o nome digitado já existe na biblioteca e o vídeo ainda está vazio,
+  // preenche o vídeo sozinho — economiza colar de novo o mesmo link.
+  function handleNameChange(value: string) {
+    const match = library.find((item) => item.name === value);
+    if (match && !exercise.videoUrl) {
+      onChange({ name: value, videoUrl: match.videoUrl });
+    } else {
+      onChange({ name: value });
+    }
+  }
+
+  const isSavedToLibrary =
+    lastSavedToLibrary?.name === exercise.name && lastSavedToLibrary?.videoUrl === exercise.videoUrl;
+
+  async function handleSaveToLibrary() {
+    const name = exercise.name.trim();
+    if (!name) return;
+    setSavingToLibrary(true);
+    try {
+      await onSaveToLibrary({ name, videoUrl: exercise.videoUrl });
+      setLastSavedToLibrary({ name: exercise.name, videoUrl: exercise.videoUrl });
+    } finally {
+      setSavingToLibrary(false);
+    }
+  }
 
   function updateSetRow(index: number, patch: Partial<ExerciseSet>) {
     onSetsChange(exercise.sets.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -213,9 +274,10 @@ function ExerciseRow({ exercise, presets, onChange, onSetsChange, onRemove, onSa
           <span className={miniLabelClass}>Exercício</span>
           <input
             value={exercise.name}
-            onChange={(e) => onChange({ name: e.target.value })}
+            onChange={(e) => handleNameChange(e.target.value)}
             className={fieldClass}
             placeholder="Ex.: Remo"
+            list={LIBRARY_DATALIST_ID}
           />
         </label>
         <label className="block">
@@ -230,6 +292,18 @@ function ExerciseRow({ exercise, presets, onChange, onSetsChange, onRemove, onSa
           <span className="mt-1 block text-[11px] text-g4-muted">
             Um clipe curto (10-30s) mostrando a execução — o aluno vê incorporado na tela.
           </span>
+          {isSavedToLibrary ? (
+            <span className="mt-1 block text-[11px] font-medium text-lime-deep">Salvo na biblioteca ✓</span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSaveToLibrary}
+              disabled={!exercise.name.trim() || savingToLibrary}
+              className="mt-1 text-[11px] font-medium text-lime-deep hover:underline disabled:opacity-40 disabled:hover:no-underline"
+            >
+              {savingToLibrary ? "Salvando..." : "Salvar exercício na biblioteca"}
+            </button>
+          )}
         </label>
         <button
           type="button"

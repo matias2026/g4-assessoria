@@ -7,10 +7,12 @@ import { PrescribeTab } from "@/components/coach/PrescribeTab";
 import { RosterTab } from "@/components/coach/RosterTab";
 import { TodayOverviewTab } from "@/components/coach/TodayOverviewTab";
 import type { MockStudent, MockWorkoutDetail } from "@/lib/mock-data";
+import type { ExerciseLibraryItem } from "@/lib/supabase/types";
 
 interface CockpitTabsProps {
   initialStudents: MockStudent[];
   initialWorkouts: Record<string, MockWorkoutDetail>;
+  initialExerciseLibrary: ExerciseLibraryItem[];
 }
 
 type TabKey = "roster" | "prescribe" | "today" | "analyze";
@@ -28,7 +30,11 @@ const TABS: { key: TabKey; label: string }[] = [
  * abas, em vez de uma tela única com tudo misturado. TODO: substituir o
  * estado local por consultas/mutations reais via Supabase.
  */
-export function CockpitTabs({ initialStudents, initialWorkouts }: CockpitTabsProps) {
+export function CockpitTabs({
+  initialStudents,
+  initialWorkouts,
+  initialExerciseLibrary,
+}: CockpitTabsProps) {
   const [students, setStudents] = useState<MockStudent[]>(initialStudents);
   const [workouts, setWorkouts] = useState<Record<string, MockWorkoutDetail>>(initialWorkouts);
   const [activeTab, setActiveTab] = useState<TabKey>("roster");
@@ -82,6 +88,7 @@ export function CockpitTabs({ initialStudents, initialWorkouts }: CockpitTabsPro
           selectedStudentId={selectedStudentId}
           onSelectStudent={setSelectedStudentId}
           onSaveWorkout={saveWorkout}
+          initialExerciseLibrary={initialExerciseLibrary}
         />
       )}
 

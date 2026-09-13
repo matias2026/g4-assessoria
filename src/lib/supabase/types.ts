@@ -51,6 +51,13 @@ export interface SetPreset {
   restSeconds: number;
 }
 
+/** Um exercício salvo pelo treinador na biblioteca — nome + vídeo, reutilizável entre prescrições. */
+export interface ExerciseLibraryItem {
+  id: string;
+  name: string;
+  videoUrl: string | null;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -132,6 +139,22 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["treinos"]["Insert"]>;
+        Relationships: [];
+      };
+      exercise_library: {
+        Row: {
+          id: string;
+          name: string;
+          video_url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          video_url?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["exercise_library"]["Insert"]>;
         Relationships: [];
       };
       access_requests: {
