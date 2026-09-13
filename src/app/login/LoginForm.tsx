@@ -6,6 +6,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { signIn, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null };
@@ -61,12 +62,11 @@ export function LoginForm({ next }: { next: string }) {
 
         <label className="flex flex-col gap-4 text-sm">
           <span className="font-medium text-g4-ink">Senha</span>
-          <input
-            type="password"
+          <PasswordInput
             name="password"
             required
             autoComplete="current-password"
-            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="w-full rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
         </label>
 

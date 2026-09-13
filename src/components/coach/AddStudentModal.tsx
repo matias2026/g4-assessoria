@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { StudentProfileFields } from "@/components/shared/StudentProfileFields";
 import type { MockStudent } from "@/lib/mock-data";
 import {
@@ -174,8 +175,7 @@ export function AddStudentModal({
                 </label>
                 <label className="block">
                   <span className={labelClass}>Senha (mínimo 8 caracteres)</span>
-                  <input
-                    type="password"
+                  <PasswordInput
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required

@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardTitle } from "@/components/ui/Card";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { fieldClass, labelClass } from "@/lib/student-profile-form";
 import { updateOwnPassword } from "@/app/(athlete)/dashboard/profile-actions";
 
@@ -50,8 +51,7 @@ export function ChangePasswordForm() {
       <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
         <label className="block">
           <span className={labelClass}>Senha atual</span>
-          <input
-            type="password"
+          <PasswordInput
             required
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
@@ -60,8 +60,7 @@ export function ChangePasswordForm() {
         </label>
         <label className="block">
           <span className={labelClass}>Nova senha (mínimo 8 caracteres)</span>
-          <input
-            type="password"
+          <PasswordInput
             required
             minLength={8}
             value={newPassword}
@@ -71,8 +70,7 @@ export function ChangePasswordForm() {
         </label>
         <label className="block">
           <span className={labelClass}>Confirmar nova senha</span>
-          <input
-            type="password"
+          <PasswordInput
             required
             minLength={8}
             value={confirmPassword}

@@ -6,6 +6,7 @@ import Script from "next/script";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { submitAccessRequest, type RequestAccessState } from "./actions";
 
 const initialState: RequestAccessState = { error: null, success: false };
@@ -95,27 +96,25 @@ export function RequestAccessForm() {
 
         <label className="flex flex-col gap-4 text-sm">
           <span className="font-medium text-g4-ink">Senha</span>
-          <input
-            type="password"
+          <PasswordInput
             name="password"
             required
             minLength={8}
             placeholder="mín. 8 caracteres"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="w-full rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
         </label>
 
         <label className="flex flex-col gap-4 text-sm">
           <span className="font-medium text-g4-ink">Confirmar senha</span>
-          <input
-            type="password"
+          <PasswordInput
             required
             minLength={8}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="w-full rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
           {passwordMismatch && <span className="text-xs text-red-600">As senhas não coincidem.</span>}
         </label>
