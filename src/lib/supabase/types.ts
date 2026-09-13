@@ -287,6 +287,20 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["exercise_library"]["Insert"]>;
         Relationships: [];
       };
+      aluno_notes: {
+        Row: {
+          aluno_id: string;
+          notes: string;
+          updated_at: string;
+        };
+        Insert: {
+          aluno_id: string;
+          notes?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["aluno_notes"]["Insert"]>;
+        Relationships: [];
+      };
       access_requests: {
         Row: {
           id: string;
