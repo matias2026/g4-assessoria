@@ -18,7 +18,7 @@ const securityHeaders = [
       "img-src 'self' data: https:",
       "font-src 'self' data:",
       "connect-src 'self' https://*.supabase.co https://www.strava.com https://generativelanguage.googleapis.com https://www.google.com/recaptcha/",
-      "frame-src https://www.google.com/recaptcha/",
+      "frame-src https://www.google.com/recaptcha/ https://www.youtube.com https://player.vimeo.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
