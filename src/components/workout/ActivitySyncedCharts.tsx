@@ -74,7 +74,7 @@ export function ActivitySyncedCharts({ samples, elevationGainMeters }: ActivityS
   const active = activeSample ?? samples[samples.length - 1];
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-baseline gap-4 rounded-xl bg-neutral-900 p-3 text-sm text-neutral-100">
         <span className="text-neutral-400">{formatElapsed(active.timestamp)}</span>
         {METRICS.map((metric) => (
