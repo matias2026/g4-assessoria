@@ -36,7 +36,19 @@ export function UploadFitButton({ onUploaded }: UploadFitButtonProps) {
 
   return (
     <div>
-      <input ref={inputRef} type="file" accept=".fit" className="hidden" onChange={handleChange} />
+      {/* accept só com a extensão ".fit" faz o Android abrir a Galeria de
+          fotos em vez do app de Arquivos (Downloads) — o sistema não
+          reconhece nenhum MIME pra essa extensão custom e cai num
+          fallback errado. Combinar com application/octet-stream resolve
+          nos dois SOs; a validação de verdade é sempre no servidor
+          (parseFitFile), então isso aqui é só uma dica pro picker. */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".fit,application/octet-stream"
+        className="hidden"
+        onChange={handleChange}
+      />
       <Button
         variant="secondary"
         className="w-full"
