@@ -2,15 +2,28 @@
 
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
-import type {
-  BodyComposition,
-  CyclingProfile,
-  RunningProfile,
-  StrengthGoal,
-  StrengthProfile,
-  StudentSex,
-} from "@/lib/supabase/types";
+import { StudentProfileFields } from "@/components/shared/StudentProfileFields";
 import type { MockStudent } from "@/lib/mock-data";
+import {
+  BLANK_CYCLING,
+  BLANK_GENERAL,
+  BLANK_RUNNING,
+  BLANK_STRENGTH,
+  DISCIPLINES,
+  buildProfileInput,
+  cyclingFieldsFromStudent,
+  fieldClass,
+  generalFieldsFromStudent,
+  labelClass,
+  runningFieldsFromStudent,
+  sectionClass,
+  strengthFieldsFromStudent,
+  summaryClass,
+  type CyclingFields,
+  type GeneralFields,
+  type RunningFields,
+  type StrengthFields,
+} from "@/lib/student-profile-form";
 import type { CreateStudentInput, StudentProfileInput } from "@/app/(coach)/cockpit/students-actions";
 
 interface AddStudentModalProps {
@@ -24,194 +37,14 @@ interface AddStudentModalProps {
   onSaveProfile?: (id: string, input: StudentProfileInput) => Promise<void>;
 }
 
-const DISCIPLINES = ["Ciclismo", "Corrida", "Academia"];
-const SEX_OPTIONS: StudentSex[] = ["Masculino", "Feminino", "Outro"];
-const STRENGTH_GOALS: StrengthGoal[] = ["Hipertrofia", "Emagrecimento", "Fortalecimento para endurance"];
-
-const fieldClass =
-  "mt-1 w-full rounded-xl border border-g4-border bg-white p-2.5 text-sm text-g4-ink focus-ring";
-const labelClass = "text-xs font-medium text-g4-muted";
-const sectionClass = "rounded-2xl border border-g4-border bg-g4-surface-alt/40 p-4";
-const summaryClass = "cursor-pointer text-sm font-semibold text-g4-ink marker:text-lime-deep";
-const subSectionClass = "mt-3 rounded-xl border border-g4-border bg-white/60 p-3";
-
-function numOrNull(value: string): number | null {
-  if (value.trim() === "") return null;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? null : parsed;
-}
-
-function numToStr(value: number | null | undefined): string {
-  return value == null ? "" : String(value);
-}
-
-interface GeneralFields {
-  name: string;
-  phone: string;
-  email: string;
-  password: string;
-  age: string;
-  sex: StudentSex | "";
-  heightCm: string;
-  weightKg: string;
-  bodyFatPct: string;
-  muscleMassKg: string;
-  waistCm: string;
-  weightHistoryNotes: string;
-  medicalNotes: string;
-}
-
-interface CyclingFields {
-  ftpWatts: string;
-  hrMax: string;
-  hrRest: string;
-  hrThreshold: string;
-  preferredCadence: string;
-  peakPowerShort: string;
-  peakPowerLong: string;
-  mtbNotes: string;
-}
-
-interface RunningFields {
-  thresholdPace: string;
-  vo2max: string;
-  hrMax: string;
-  hrThreshold: string;
-  pr5k: string;
-  pr10k: string;
-  prHalfMarathon: string;
-  cadence: string;
-  strideLengthCm: string;
-  verticalOscillationCm: string;
-}
-
-interface StrengthFields {
-  goal: StrengthGoal | "";
-  squat1RM: string;
-  deadlift1RM: string;
-  benchPress1RM: string;
-  legPress1RM: string;
-  focusNotes: string;
-  asymmetryNotes: string;
-}
-
-const BLANK_GENERAL: GeneralFields = {
-  name: "",
-  phone: "",
-  email: "",
-  password: "",
-  age: "",
-  sex: "",
-  heightCm: "",
-  weightKg: "",
-  bodyFatPct: "",
-  muscleMassKg: "",
-  waistCm: "",
-  weightHistoryNotes: "",
-  medicalNotes: "",
-};
-const BLANK_CYCLING: CyclingFields = {
-  ftpWatts: "",
-  hrMax: "",
-  hrRest: "",
-  hrThreshold: "",
-  preferredCadence: "",
-  peakPowerShort: "",
-  peakPowerLong: "",
-  mtbNotes: "",
-};
-const BLANK_RUNNING: RunningFields = {
-  thresholdPace: "",
-  vo2max: "",
-  hrMax: "",
-  hrThreshold: "",
-  pr5k: "",
-  pr10k: "",
-  prHalfMarathon: "",
-  cadence: "",
-  strideLengthCm: "",
-  verticalOscillationCm: "",
-};
-const BLANK_STRENGTH: StrengthFields = {
-  goal: "",
-  squat1RM: "",
-  deadlift1RM: "",
-  benchPress1RM: "",
-  legPress1RM: "",
-  focusNotes: "",
-  asymmetryNotes: "",
-};
-
-function generalFieldsFromStudent(student: MockStudent): GeneralFields {
-  return {
-    ...BLANK_GENERAL,
-    name: student.name,
-    phone: student.phone,
-    age: numToStr(student.age),
-    sex: student.sex ?? "",
-    heightCm: numToStr(student.heightCm),
-    weightKg: numToStr(student.weightKg),
-    bodyFatPct: numToStr(student.bodyComposition.bodyFatPct),
-    muscleMassKg: numToStr(student.bodyComposition.muscleMassKg),
-    waistCm: numToStr(student.bodyComposition.waistCm),
-    weightHistoryNotes: student.weightHistoryNotes,
-    medicalNotes: student.medicalNotes,
-  };
-}
-
-function cyclingFieldsFromStudent(student: MockStudent): CyclingFields {
-  const c = student.cycling;
-  if (!c) return BLANK_CYCLING;
-  return {
-    ftpWatts: numToStr(c.ftpWatts),
-    hrMax: numToStr(c.hrMax),
-    hrRest: numToStr(c.hrRest),
-    hrThreshold: numToStr(c.hrThreshold),
-    preferredCadence: numToStr(c.preferredCadence),
-    peakPowerShort: numToStr(c.peakPowerShort),
-    peakPowerLong: numToStr(c.peakPowerLong),
-    mtbNotes: c.mtbNotes,
-  };
-}
-
-function runningFieldsFromStudent(student: MockStudent): RunningFields {
-  const r = student.running;
-  if (!r) return BLANK_RUNNING;
-  return {
-    thresholdPace: r.thresholdPace,
-    vo2max: numToStr(r.vo2max),
-    hrMax: numToStr(r.hrMax),
-    hrThreshold: numToStr(r.hrThreshold),
-    pr5k: r.pr5k,
-    pr10k: r.pr10k,
-    prHalfMarathon: r.prHalfMarathon,
-    cadence: numToStr(r.cadence),
-    strideLengthCm: numToStr(r.strideLengthCm),
-    verticalOscillationCm: numToStr(r.verticalOscillationCm),
-  };
-}
-
-function strengthFieldsFromStudent(student: MockStudent): StrengthFields {
-  const s = student.strength;
-  if (!s) return BLANK_STRENGTH;
-  return {
-    goal: s.goal ?? "",
-    squat1RM: numToStr(s.squat1RM),
-    deadlift1RM: numToStr(s.deadlift1RM),
-    benchPress1RM: numToStr(s.benchPress1RM),
-    legPress1RM: numToStr(s.legPress1RM),
-    focusNotes: s.focusNotes,
-    asymmetryNotes: s.asymmetryNotes,
-  };
-}
-
 /**
- * Modal de cadastro de aluno: dados corporais gerais + seções específicas
- * por modalidade (Ciclismo/Corrida/Academia), mostradas só quando a
- * modalidade principal ou uma adicional está selecionada — em accordions
- * (<details>) para o treinador preencher só o que for relevante, sem
- * poluir a tela com ~35 campos de uma vez. TODO: persistir via Supabase
- * quando o projeto estiver conectado (hoje só entra em memória).
+ * Modal de cadastro/edição de aluno: dados corporais gerais + seções
+ * específicas por modalidade (campos compartilhados com o autoatendimento
+ * do aluno via StudentProfileFields), mais e-mail/senha (só ao criar
+ * conta nova) e o comentário geral do treinador (só ao editar). TODO:
+ * substituir onAddStudent por leitura real quando cockpit/page.tsx buscar
+ * a lista de alunos por Supabase (já feito) — este modal só falta migrar
+ * o resto do fluxo de prescrição.
  */
 export function AddStudentModal({
   open,
@@ -227,6 +60,9 @@ export function AddStudentModal({
   const [general, setGeneral] = useState<GeneralFields>(() =>
     editingStudent ? generalFieldsFromStudent(editingStudent) : BLANK_GENERAL
   );
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [coachNotes, setCoachNotes] = useState(() => editingStudent?.coachNotes ?? "");
   const [primaryDiscipline, setPrimaryDiscipline] = useState(() => editingStudent?.discipline ?? DISCIPLINES[0]);
   const [secondaryDisciplines, setSecondaryDisciplines] = useState<string[]>(
     () => editingStudent?.secondaryDisciplines ?? []
@@ -245,28 +81,6 @@ export function AddStudentModal({
 
   if (!open) return null;
 
-  const practiced = [primaryDiscipline, ...secondaryDisciplines];
-  const isCycling = practiced.includes("Ciclismo");
-  const isRunning = practiced.includes("Corrida");
-  const isStrength = practiced.includes("Academia");
-
-  const ftpNum = Number(cycling.ftpWatts);
-  const weightNum = Number(general.weightKg);
-  const wattsPerKg = ftpNum > 0 && weightNum > 0 ? (ftpNum / weightNum).toFixed(2) : null;
-
-  function patchGeneral(patch: Partial<GeneralFields>) {
-    setGeneral((prev) => ({ ...prev, ...patch }));
-  }
-  function patchCycling(patch: Partial<CyclingFields>) {
-    setCycling((prev) => ({ ...prev, ...patch }));
-  }
-  function patchRunning(patch: Partial<RunningFields>) {
-    setRunning((prev) => ({ ...prev, ...patch }));
-  }
-  function patchStrength(patch: Partial<StrengthFields>) {
-    setStrength((prev) => ({ ...prev, ...patch }));
-  }
-
   function handlePrimaryChange(next: string) {
     setPrimaryDiscipline(next);
     setSecondaryDisciplines((prev) => prev.filter((d) => d !== next));
@@ -280,71 +94,17 @@ export function AddStudentModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const missingAccountFields = !editingStudent && (!general.email.trim() || !general.password);
+    const missingAccountFields = !editingStudent && (!email.trim() || !password);
     if (!general.name.trim() || !general.phone.trim() || missingAccountFields) return;
 
-    const cyclingProfile: CyclingProfile | null = isCycling
-      ? {
-          ftpWatts: numOrNull(cycling.ftpWatts),
-          hrMax: numOrNull(cycling.hrMax),
-          hrRest: numOrNull(cycling.hrRest),
-          hrThreshold: numOrNull(cycling.hrThreshold),
-          preferredCadence: numOrNull(cycling.preferredCadence),
-          peakPowerShort: numOrNull(cycling.peakPowerShort),
-          peakPowerLong: numOrNull(cycling.peakPowerLong),
-          mtbNotes: cycling.mtbNotes.trim(),
-        }
-      : null;
-
-    const runningProfile: RunningProfile | null = isRunning
-      ? {
-          thresholdPace: running.thresholdPace.trim(),
-          vo2max: numOrNull(running.vo2max),
-          hrMax: numOrNull(running.hrMax),
-          hrThreshold: numOrNull(running.hrThreshold),
-          pr5k: running.pr5k.trim(),
-          pr10k: running.pr10k.trim(),
-          prHalfMarathon: running.prHalfMarathon.trim(),
-          cadence: numOrNull(running.cadence),
-          strideLengthCm: numOrNull(running.strideLengthCm),
-          verticalOscillationCm: numOrNull(running.verticalOscillationCm),
-        }
-      : null;
-
-    const strengthProfile: StrengthProfile | null = isStrength
-      ? {
-          goal: strength.goal || null,
-          squat1RM: numOrNull(strength.squat1RM),
-          deadlift1RM: numOrNull(strength.deadlift1RM),
-          benchPress1RM: numOrNull(strength.benchPress1RM),
-          legPress1RM: numOrNull(strength.legPress1RM),
-          focusNotes: strength.focusNotes.trim(),
-          asymmetryNotes: strength.asymmetryNotes.trim(),
-        }
-      : null;
-
-    const bodyComposition: BodyComposition = {
-      bodyFatPct: numOrNull(general.bodyFatPct),
-      muscleMassKg: numOrNull(general.muscleMassKg),
-      waistCm: numOrNull(general.waistCm),
-    };
-
-    const profileInput = {
-      name: general.name.trim(),
-      phone: general.phone.trim(),
-      discipline: primaryDiscipline,
-      secondaryDisciplines,
-      age: numOrNull(general.age),
-      sex: general.sex || null,
-      heightCm: numOrNull(general.heightCm),
-      weightKg: numOrNull(general.weightKg),
-      bodyComposition,
-      weightHistoryNotes: general.weightHistoryNotes.trim(),
-      medicalNotes: general.medicalNotes.trim(),
-      cycling: cyclingProfile,
-      running: runningProfile,
-      strength: strengthProfile,
-    };
+    const profileInput = buildProfileInput(
+      general,
+      { primaryDiscipline, secondaryDisciplines },
+      cycling,
+      running,
+      strength,
+      coachNotes.trim()
+    );
 
     setError(null);
     setSubmitting(true);
@@ -352,7 +112,7 @@ export function AddStudentModal({
       if (editingStudent) {
         await onSaveProfile?.(editingStudent.id, profileInput);
       } else {
-        await onAddStudent({ ...profileInput, email: general.email.trim(), password: general.password });
+        await onAddStudent({ ...profileInput, email: email.trim(), password });
       }
       onClose();
     } catch (e) {
@@ -394,515 +154,72 @@ export function AddStudentModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-y-auto p-5">
-          {/* Dados gerais */}
-          <details open className={sectionClass}>
-            <summary className={summaryClass}>Dados gerais</summary>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className={labelClass}>Nome</span>
-                <input
-                  value={general.name}
-                  onChange={(e) => patchGeneral({ name: e.target.value })}
-                  required
-                  className={fieldClass}
-                  placeholder="Nome completo"
-                />
-              </label>
-              <label className="block">
-                <span className={labelClass}>WhatsApp</span>
-                <input
-                  value={general.phone}
-                  onChange={(e) => patchGeneral({ phone: e.target.value })}
-                  required
-                  className={fieldClass}
-                  placeholder="+55 84 99999-0000"
-                />
-              </label>
-              {/* Login já existe na edição — o aluno aprovado por
-                  /solicitar-acesso escolheu a própria senha; e-mail/senha
-                  só fazem sentido ao criar a conta pela primeira vez. */}
-              {!editingStudent && (
-                <>
-                  <label className="block">
-                    <span className={labelClass}>E-mail (login do aluno)</span>
-                    <input
-                      type="email"
-                      value={general.email}
-                      onChange={(e) => patchGeneral({ email: e.target.value })}
-                      required
-                      className={fieldClass}
-                      placeholder="aluno@exemplo.com"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className={labelClass}>Senha (mínimo 8 caracteres)</span>
-                    <input
-                      type="password"
-                      value={general.password}
-                      onChange={(e) => patchGeneral({ password: e.target.value })}
-                      required
-                      minLength={8}
-                      className={fieldClass}
-                      placeholder="Senha provisória"
-                    />
-                  </label>
-                </>
-              )}
-              <label className="block">
-                <span className={labelClass}>Idade</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={general.age}
-                  onChange={(e) => patchGeneral({ age: e.target.value })}
-                  className={fieldClass}
-                />
-              </label>
-              <label className="block">
-                <span className={labelClass}>Sexo</span>
-                <select
-                  value={general.sex}
-                  onChange={(e) => patchGeneral({ sex: e.target.value as StudentSex })}
-                  className={fieldClass}
-                >
-                  <option value="">Não informado</option>
-                  {SEX_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className={labelClass}>Altura (cm)</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={general.heightCm}
-                  onChange={(e) => patchGeneral({ heightCm: e.target.value })}
-                  className={fieldClass}
-                />
-              </label>
-              <label className="block">
-                <span className={labelClass}>Peso (kg)</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={general.weightKg}
-                  onChange={(e) => patchGeneral({ weightKg: e.target.value })}
-                  className={fieldClass}
-                />
-              </label>
-            </div>
-
-            <details className={subSectionClass}>
-              <summary className="cursor-pointer text-xs font-semibold text-g4-muted">
-                Composição corporal (opcional)
-              </summary>
-              <div className="mt-3 grid gap-4 sm:grid-cols-3">
+          {/* Login já existe na edição — o aluno aprovado por
+              /solicitar-acesso escolheu a própria senha; e-mail/senha só
+              fazem sentido ao criar a conta pela primeira vez. */}
+          {!editingStudent && (
+            <div className={sectionClass}>
+              <p className={summaryClass}>Acesso</p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <label className="block">
-                  <span className={labelClass}>% de gordura</span>
+                  <span className={labelClass}>E-mail (login do aluno)</span>
                   <input
-                    type="number"
-                    min={0}
-                    step={0.1}
-                    value={general.bodyFatPct}
-                    onChange={(e) => patchGeneral({ bodyFatPct: e.target.value })}
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
                     className={fieldClass}
+                    placeholder="aluno@exemplo.com"
                   />
                 </label>
                 <label className="block">
-                  <span className={labelClass}>Massa muscular (kg)</span>
+                  <span className={labelClass}>Senha (mínimo 8 caracteres)</span>
                   <input
-                    type="number"
-                    min={0}
-                    step={0.1}
-                    value={general.muscleMassKg}
-                    onChange={(e) => patchGeneral({ muscleMassKg: e.target.value })}
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={8}
                     className={fieldClass}
+                    placeholder="Senha provisória"
                   />
                 </label>
-                <label className="block">
-                  <span className={labelClass}>Cintura (cm)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={general.waistCm}
-                    onChange={(e) => patchGeneral({ waistCm: e.target.value })}
-                    className={fieldClass}
-                  />
-                </label>
-              </div>
-            </details>
-
-            <details className={subSectionClass}>
-              <summary className="cursor-pointer text-xs font-semibold text-g4-muted">
-                Histórico e restrições
-              </summary>
-              <div className="mt-3 grid gap-4">
-                <label className="block">
-                  <span className={labelClass}>Histórico de variação de peso</span>
-                  <textarea
-                    value={general.weightHistoryNotes}
-                    onChange={(e) => patchGeneral({ weightHistoryNotes: e.target.value })}
-                    rows={2}
-                    className={fieldClass}
-                    placeholder="Ex.: perdeu 5kg nos últimos 3 meses..."
-                  />
-                </label>
-                <label className="block">
-                  <span className={labelClass}>Restrições médicas / lesões</span>
-                  <textarea
-                    value={general.medicalNotes}
-                    onChange={(e) => patchGeneral({ medicalNotes: e.target.value })}
-                    rows={2}
-                    className={fieldClass}
-                    placeholder="Ex.: tendinite no joelho direito..."
-                  />
-                </label>
-              </div>
-            </details>
-          </details>
-
-          {/* Modalidades */}
-          <details open className={sectionClass}>
-            <summary className={summaryClass}>Modalidades</summary>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className={labelClass}>Modalidade principal</span>
-                <select
-                  value={primaryDiscipline}
-                  onChange={(e) => handlePrimaryChange(e.target.value)}
-                  className={fieldClass}
-                >
-                  {DISCIPLINES.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="block">
-                <span className={labelClass}>Modalidades adicionais</span>
-                <div className="mt-1 flex flex-wrap gap-4 rounded-xl border border-g4-border bg-white p-2.5">
-                  {DISCIPLINES.filter((d) => d !== primaryDiscipline).map((d) => (
-                    <label key={d} className="flex items-center gap-4 text-sm text-g4-ink">
-                      <input
-                        type="checkbox"
-                        checked={secondaryDisciplines.includes(d)}
-                        onChange={() => toggleSecondary(d)}
-                      />
-                      {d}
-                    </label>
-                  ))}
-                </div>
               </div>
             </div>
-          </details>
-
-          {/* Ciclismo */}
-          {isCycling && (
-            <details open className={sectionClass}>
-              <summary className={summaryClass}>Ciclismo</summary>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className={labelClass}>
-                    FTP (watts){wattsPerKg && <span className="text-lime-deep"> · {wattsPerKg} W/kg</span>}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={cycling.ftpWatts}
-                    onChange={(e) => patchCycling({ ftpWatts: e.target.value })}
-                    className={fieldClass}
-                  />
-                </label>
-                <div />
-                <label className="block">
-                  <span className={labelClass}>FC máxima</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={cycling.hrMax}
-                    onChange={(e) => patchCycling({ hrMax: e.target.value })}
-                    className={fieldClass}
-                  />
-                </label>
-                <label className="block">
-                  <span className={labelClass}>FC de repouso</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={cycling.hrRest}
-                    onChange={(e) => patchCycling({ hrRest: e.target.value })}
-                    className={fieldClass}
-                  />
-                </label>
-                <label className="block">
-                  <span className={labelClass}>FC de limiar</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={cycling.hrThreshold}
-                    onChange={(e) => patchCycling({ hrThreshold: e.target.value })}
-                    className={fieldClass}
-                  />
-                </label>
-              </div>
-
-              <details className={subSectionClass}>
-                <summary className="cursor-pointer text-xs font-semibold text-g4-muted">
-                  Métricas avançadas (opcional)
-                </summary>
-                <div className="mt-3 grid gap-4 sm:grid-cols-3">
-                  <label className="block">
-                    <span className={labelClass}>Cadência preferida (rpm)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={cycling.preferredCadence}
-                      onChange={(e) => patchCycling({ preferredCadence: e.target.value })}
-                      className={fieldClass}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className={labelClass}>Pico curto (W)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={cycling.peakPowerShort}
-                      onChange={(e) => patchCycling({ peakPowerShort: e.target.value })}
-                      className={fieldClass}
-                      placeholder="ex.: sprint 5-15s"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className={labelClass}>Pico longo (W)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={cycling.peakPowerLong}
-                      onChange={(e) => patchCycling({ peakPowerLong: e.target.value })}
-                      className={fieldClass}
-                      placeholder="ex.: ~20min"
-                    />
-                  </label>
-                  <label className="block sm:col-span-3">
-                    <span className={labelClass}>Histórico de MTB (altimetria, TSS, IF...)</span>
-                    <textarea
-                      value={cycling.mtbNotes}
-                      onChange={(e) => patchCycling({ mtbNotes: e.target.value })}
-                      rows={2}
-                      className={fieldClass}
-                    />
-                  </label>
-                </div>
-              </details>
-            </details>
           )}
 
-          {/* Corrida */}
-          {isRunning && (
+          <StudentProfileFields
+            general={general}
+            onPatchGeneral={(patch) => setGeneral((prev) => ({ ...prev, ...patch }))}
+            primaryDiscipline={primaryDiscipline}
+            secondaryDisciplines={secondaryDisciplines}
+            onChangePrimaryDiscipline={handlePrimaryChange}
+            onToggleSecondaryDiscipline={toggleSecondary}
+            cycling={cycling}
+            onPatchCycling={(patch) => setCycling((prev) => ({ ...prev, ...patch }))}
+            running={running}
+            onPatchRunning={(patch) => setRunning((prev) => ({ ...prev, ...patch }))}
+            strength={strength}
+            onPatchStrength={(patch) => setStrength((prev) => ({ ...prev, ...patch }))}
+          />
+
+          {/* Só existe alguém pra comentar sobre quando o aluno já existe —
+              não faz sentido no formulário de conta nova. */}
+          {editingStudent && (
             <details open className={sectionClass}>
-              <summary className={summaryClass}>Corrida</summary>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className={labelClass}>Pace limiar (min/km)</span>
-                  <input
-                    value={running.thresholdPace}
-                    onChange={(e) => patchRunning({ thresholdPace: e.target.value })}
-                    className={fieldClass}
-                    placeholder="ex.: 4:15"
-                  />
-                </label>
-                <label className="block">
-                  <span className={labelClass}>VO2max</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={running.vo2max}
-                    onChange={(e) => patchRunning({ vo2max: e.target.value })}
-                    className={fieldClass}
-                  />
-                </label>
-                <label className="block">
-                  <span className={labelClass}>FC máxima</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={running.hrMax}
-                    onChange={(e) => patchRunning({ hrMax: e.target.value })}
-                    className={fieldClass}
-                  />
-                </label>
-                <label className="block">
-                  <span className={labelClass}>FC de limiar</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={running.hrThreshold}
-                    onChange={(e) => patchRunning({ hrThreshold: e.target.value })}
-                    className={fieldClass}
-                  />
-                </label>
-              </div>
-
-              <div className="mt-3 grid gap-4 sm:grid-cols-3">
-                <label className="block">
-                  <span className={labelClass}>Recorde 5km</span>
-                  <input
-                    value={running.pr5k}
-                    onChange={(e) => patchRunning({ pr5k: e.target.value })}
-                    className={fieldClass}
-                    placeholder="ex.: 21:30"
-                  />
-                </label>
-                <label className="block">
-                  <span className={labelClass}>Recorde 10km</span>
-                  <input
-                    value={running.pr10k}
-                    onChange={(e) => patchRunning({ pr10k: e.target.value })}
-                    className={fieldClass}
-                    placeholder="ex.: 45:00"
-                  />
-                </label>
-                <label className="block">
-                  <span className={labelClass}>Recorde meia maratona</span>
-                  <input
-                    value={running.prHalfMarathon}
-                    onChange={(e) => patchRunning({ prHalfMarathon: e.target.value })}
-                    className={fieldClass}
-                    placeholder="ex.: 1:42:00"
-                  />
-                </label>
-              </div>
-
-              <details className={subSectionClass}>
-                <summary className="cursor-pointer text-xs font-semibold text-g4-muted">
-                  Biomecânica (opcional)
-                </summary>
-                <div className="mt-3 grid gap-4 sm:grid-cols-3">
-                  <label className="block">
-                    <span className={labelClass}>Cadência (passos/min)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={running.cadence}
-                      onChange={(e) => patchRunning({ cadence: e.target.value })}
-                      className={fieldClass}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className={labelClass}>Passada (cm)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={running.strideLengthCm}
-                      onChange={(e) => patchRunning({ strideLengthCm: e.target.value })}
-                      className={fieldClass}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className={labelClass}>Oscilação vertical (cm)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.1}
-                      value={running.verticalOscillationCm}
-                      onChange={(e) => patchRunning({ verticalOscillationCm: e.target.value })}
-                      className={fieldClass}
-                    />
-                  </label>
-                </div>
-              </details>
-            </details>
-          )}
-
-          {/* Academia / Força */}
-          {isStrength && (
-            <details open className={sectionClass}>
-              <summary className={summaryClass}>Academia / Força</summary>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                <label className="block sm:col-span-2">
-                  <span className={labelClass}>Objetivo principal</span>
-                  <select
-                    value={strength.goal}
-                    onChange={(e) => patchStrength({ goal: e.target.value as StrengthGoal })}
-                    className={fieldClass}
-                  >
-                    <option value="">Selecione...</option>
-                    {STRENGTH_GOALS.map((g) => (
-                      <option key={g} value={g}>
-                        {g}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className={labelClass}>Agachamento — 1RM (kg)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={strength.squat1RM}
-                    onChange={(e) => patchStrength({ squat1RM: e.target.value })}
-                    className={fieldClass}
-                  />
-                </label>
-                <label className="block">
-                  <span className={labelClass}>Levantamento terra — 1RM (kg)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={strength.deadlift1RM}
-                    onChange={(e) => patchStrength({ deadlift1RM: e.target.value })}
-                    className={fieldClass}
-                  />
-                </label>
-                <label className="block">
-                  <span className={labelClass}>Supino — 1RM (kg)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={strength.benchPress1RM}
-                    onChange={(e) => patchStrength({ benchPress1RM: e.target.value })}
-                    className={fieldClass}
-                  />
-                </label>
-                <label className="block">
-                  <span className={labelClass}>Leg press — 1RM (kg)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={strength.legPress1RM}
-                    onChange={(e) => patchStrength({ legPress1RM: e.target.value })}
-                    className={fieldClass}
-                  />
-                </label>
-              </div>
-
-              <div className="mt-3 grid gap-4">
-                <label className="block">
-                  <span className={labelClass}>Foco dos treinos</span>
-                  <textarea
-                    value={strength.focusNotes}
-                    onChange={(e) => patchStrength({ focusNotes: e.target.value })}
-                    rows={2}
-                    className={fieldClass}
-                    placeholder="Ex.: fortalecimento de posterior de coxa..."
-                  />
-                </label>
-                <label className="block">
-                  <span className={labelClass}>Assimetrias musculares relatadas</span>
-                  <textarea
-                    value={strength.asymmetryNotes}
-                    onChange={(e) => patchStrength({ asymmetryNotes: e.target.value })}
-                    rows={2}
-                    className={fieldClass}
-                    placeholder="Ex.: perna direita mais forte que a esquerda..."
-                  />
-                </label>
-              </div>
+              <summary className={summaryClass}>Relatório do treinador</summary>
+              <label className="mt-3 block">
+                <span className={labelClass}>
+                  Comentário geral sobre o aluno (visível pra ele em &quot;Meu perfil&quot;)
+                </span>
+                <textarea
+                  value={coachNotes}
+                  onChange={(e) => setCoachNotes(e.target.value)}
+                  rows={4}
+                  className={fieldClass}
+                  placeholder="Ex.: vem evoluindo bem na parte aeróbica, atenção à recuperação entre os treinos de força..."
+                />
+              </label>
             </details>
           )}
 

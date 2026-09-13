@@ -1,8 +1,5 @@
 import Link from "next/link";
-import { LinkButton } from "@/components/ui/LinkButton";
-import { Logo } from "@/components/ui/Logo";
-import { LogoutButton } from "@/components/auth/LogoutButton";
-import { RoleNav } from "@/components/auth/RoleNav";
+import { AthleteHeader } from "@/components/athlete/AthleteHeader";
 import { WeeklyHistory } from "@/components/athlete/WeeklyHistory";
 import { AthleteWorkoutView } from "@/components/workout/AthleteWorkoutView";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
@@ -110,23 +107,7 @@ export default async function AthleteDashboardPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-4 py-6">
-      <header className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <Logo className="h-9 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm text-g4-muted">Olá,</p>
-            <h1 className="truncate text-2xl font-bold text-g4-ink">{workout.athleteName}</h1>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-4">
-          <LinkButton href={talkToCoachLink} target="_blank" rel="noreferrer" variant="ghost" className="px-3 text-xs">
-            💬 Treinador
-          </LinkButton>
-          <LogoutButton />
-        </div>
-      </header>
-
-      <RoleNav currentPath="/dashboard" />
+      <AthleteHeader athleteName={workout.athleteName} talkToCoachLink={talkToCoachLink} currentPath="/dashboard" />
 
       {isAdmin && (
         <div className="flex flex-col gap-4">

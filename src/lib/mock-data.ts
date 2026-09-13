@@ -23,6 +23,12 @@ import type {
 } from "./supabase/types";
 import type { ZoneDatum } from "@/components/workout/ZonesChart";
 
+// Contato único do treinador — o app hoje atende um treinador só, então
+// isso é constante em vez de vir de alguma tabela. Reaproveitado nos
+// templates de treino abaixo e nas telas de "Meu perfil" do aluno.
+export const DEFAULT_COACH_NAME = "Treinador G4";
+export const DEFAULT_COACH_PHONE = "+5584999990000";
+
 // Treino exibido na aba "Analisar treino do aluno" (Planejado vs. Concluído),
 // no padrão TrainingPeaks. Um registro por aluno em mockWorkoutDetails, com
 // o mesmo id do aluno em mockStudents, até o treino real ser resolvido via
@@ -339,6 +345,11 @@ export interface MockStudent {
   // false só pra conta aprovada por /solicitar-acesso, que nasce só com
   // nome (sem modalidade) — precisa que o treinador complete a ficha.
   profileComplete: boolean;
+  // "Relatório" do próprio aluno (livre, em "Meu perfil") e "Relatório do
+  // treinador" (comentário geral do treinador sobre esse aluno, visível
+  // pra ele) — texto livre, cada um editado só pelo seu autor.
+  athleteReport: string;
+  coachNotes: string;
 }
 
 // Único aluno de exemplo — Carlos Silva — usado para validar todas as
@@ -373,6 +384,8 @@ export const mockStudents: MockStudent[] = [
     stravaSynced: true,
     lastActivity: { name: "Pedal matinal", distanceKm: 33, date: "hoje" },
     profileComplete: true,
+    athleteReport: "",
+    coachNotes: "",
   },
   {
     id: "2",
@@ -405,6 +418,8 @@ export const mockStudents: MockStudent[] = [
     stravaSynced: true,
     lastActivity: { name: "Rodagem regenerativa", distanceKm: 8, date: "ontem" },
     profileComplete: true,
+    athleteReport: "",
+    coachNotes: "",
   },
   {
     id: "3",
@@ -434,6 +449,8 @@ export const mockStudents: MockStudent[] = [
     stravaSynced: false,
     lastActivity: null,
     profileComplete: true,
+    athleteReport: "",
+    coachNotes: "",
   },
 ];
 
@@ -442,8 +459,8 @@ export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = {
     id: "1",
     athleteName: "Carlos Silva",
     athletePhone: "+5584999990001",
-    coachName: "Treinador G4",
-    coachPhone: "+5584999990000",
+    coachName: DEFAULT_COACH_NAME,
+    coachPhone: DEFAULT_COACH_PHONE,
     title: TEMPLATE_CICLISMO.title,
     discipline: TEMPLATE_CICLISMO.discipline,
     scheduledDateLabel: "Hoje · 09/09",
@@ -460,8 +477,8 @@ export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = {
     id: "2",
     athleteName: "Marina Costa",
     athletePhone: "+5584999990002",
-    coachName: "Treinador G4",
-    coachPhone: "+5584999990000",
+    coachName: DEFAULT_COACH_NAME,
+    coachPhone: DEFAULT_COACH_PHONE,
     title: TEMPLATE_CORRIDA.title,
     discipline: TEMPLATE_CORRIDA.discipline,
     scheduledDateLabel: "Hoje · 09/09",
@@ -478,8 +495,8 @@ export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = {
     id: "3",
     athleteName: "Rafael Souza",
     athletePhone: "+5584999990003",
-    coachName: "Treinador G4",
-    coachPhone: "+5584999990000",
+    coachName: DEFAULT_COACH_NAME,
+    coachPhone: DEFAULT_COACH_PHONE,
     title: TEMPLATE_ACADEMIA.title,
     discipline: TEMPLATE_ACADEMIA.discipline,
     scheduledDateLabel: "Hoje · 09/09",
@@ -508,8 +525,8 @@ export function buildWorkoutDraft(
     id: student.id,
     athleteName: student.name,
     athletePhone: student.phone,
-    coachName: "Treinador G4",
-    coachPhone: "+5584999990000",
+    coachName: DEFAULT_COACH_NAME,
+    coachPhone: DEFAULT_COACH_PHONE,
     title: template.title,
     discipline: template.discipline,
     scheduledDateLabel,
@@ -540,8 +557,8 @@ export function buildExampleWorkout(
     id: student.id,
     athleteName: student.name,
     athletePhone: student.phone,
-    coachName: "Treinador G4",
-    coachPhone: "+5584999990000",
+    coachName: DEFAULT_COACH_NAME,
+    coachPhone: DEFAULT_COACH_PHONE,
     title: template.title,
     discipline: template.discipline,
     scheduledDateLabel,

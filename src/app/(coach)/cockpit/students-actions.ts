@@ -1,11 +1,9 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { mapAlunoRow } from "@/lib/map-aluno-row";
 import type { MockStudent } from "@/lib/mock-data";
-import type { Database } from "@/lib/supabase/types";
 import { requireCoachOrAdmin } from "./actions";
-
-type AlunoRow = Database["public"]["Tables"]["alunos"]["Row"];
 
 // Mesmo mapa de códigos estáveis do Supabase Auth usado em
 // src/app/admin/actions.ts — duplicado aqui (arquivo pequeno) em vez de
@@ -22,35 +20,6 @@ function translateAuthError(error: { code?: string; message: string }): string {
   if (error.code && AUTH_ERROR_MESSAGES[error.code]) return AUTH_ERROR_MESSAGES[error.code];
   console.error("[cockpit] erro do Supabase Auth não mapeado:", error.code, error.message);
   return "Não foi possível criar a conta. Tente novamente.";
-}
-
-function mapAlunoRow(row: AlunoRow): MockStudent {
-  return {
-    id: row.id,
-    name: row.nome,
-    phone: row.whatsapp ?? "",
-    discipline: row.modalidade ?? "Ciclismo",
-    secondaryDisciplines: row.secondary_disciplines,
-    age: row.age,
-    sex: row.sex,
-    heightCm: row.altura,
-    weightKg: row.peso,
-    bodyComposition: row.body_composition ?? { bodyFatPct: null, muscleMassKg: null, waistCm: null },
-    weightHistoryNotes: row.weight_history_notes,
-    medicalNotes: row.medical_notes,
-    cycling: row.cycling_profile,
-    running: row.running_profile,
-    strength: row.strength_profile,
-    // Estado de "hoje"/Strava não faz parte da ficha do aluno — sempre
-    // nasce assim, igual ao comportamento atual do AddStudentModal.
-    todayStatus: "pending",
-    stravaSynced: false,
-    lastActivity: null,
-    // Só fica sem modalidade quem foi aprovado por /solicitar-acesso
-    // (createAccountCore cria a ficha mínima) — quem passa pelo cadastro
-    // completo daqui sempre grava uma modalidade.
-    profileComplete: row.modalidade !== null,
-  };
 }
 
 /** Lista os alunos cadastrados, em ordem alfabética. */
@@ -81,6 +50,10 @@ export interface CreateStudentInput {
   cycling: MockStudent["cycling"];
   running: MockStudent["running"];
   strength: MockStudent["strength"];
+  // Comentário geral do treinador sobre o aluno, visível pra ele em "Meu
+  // perfil > Relatório do treinador" — sempre "" ao criar a conta (o
+  // formulário só mostra o campo ao editar um aluno já existente).
+  coachNotes: string;
 }
 
 /**
@@ -142,6 +115,7 @@ export async function createStudentAccount(input: CreateStudentInput): Promise<M
       cycling_profile: input.cycling,
       running_profile: input.running,
       strength_profile: input.strength,
+      coach_notes: input.coachNotes,
     })
     .select("*")
     .single();
@@ -187,6 +161,7 @@ export async function completeStudentProfile(id: string, input: StudentProfileIn
       cycling_profile: input.cycling,
       running_profile: input.running,
       strength_profile: input.strength,
+      coach_notes: input.coachNotes,
     })
     .eq("id", id)
     .select("*")

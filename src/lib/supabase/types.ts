@@ -157,6 +157,8 @@ export interface Database {
           cycling_profile: CyclingProfile | null;
           running_profile: RunningProfile | null;
           strength_profile: StrengthProfile | null;
+          athlete_report: string;
+          coach_notes: string;
           created_at: string;
         };
         Insert: {
@@ -177,6 +179,8 @@ export interface Database {
           cycling_profile?: CyclingProfile | null;
           running_profile?: RunningProfile | null;
           strength_profile?: StrengthProfile | null;
+          athlete_report?: string;
+          coach_notes?: string;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["alunos"]["Insert"]>;
