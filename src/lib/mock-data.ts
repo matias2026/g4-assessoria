@@ -8,7 +8,7 @@
 // cadastrados pela aba "Alunos cadastrados" entram em memória (useState),
 // até a persistência real via Supabase.
 
-import type { WorkoutCompletionSource, WorkoutInterval, WorkoutStatus } from "./supabase/types";
+import type { WorkoutCompletionSource, WorkoutInterval, WorkoutStatus, TrainingSession } from "./supabase/types";
 import type { ZoneDatum } from "@/components/workout/ZonesChart";
 
 // Treino exibido na aba "Analisar treino do aluno" (Planejado vs. Concluído),
@@ -33,6 +33,7 @@ export interface MockWorkoutDetail {
     videoUrl: string | null;
   };
   structuredIntervals: WorkoutInterval[];
+  trainingSessions: TrainingSession[];
   powerZones: ZoneDatum[];
   planned: {
     durationSeconds: number | null;
@@ -70,6 +71,7 @@ export interface WorkoutTemplate {
   description: string;
   prescription: MockWorkoutDetail["prescription"];
   structuredIntervals: WorkoutInterval[];
+  trainingSessions: TrainingSession[];
   powerZones: ZoneDatum[];
   planned: MockWorkoutDetail["planned"];
   completedTemplate: NonNullable<MockWorkoutDetail["completed"]>;
@@ -95,6 +97,7 @@ export const TEMPLATE_CICLISMO: WorkoutTemplate = {
     { type: "recovery", durationSeconds: 3 * 60, targetLowPct: 45, targetHighPct: 45 },
     { type: "cooldown", durationSeconds: 10 * 60, targetLowPct: 40, targetHighPct: 50 },
   ],
+  trainingSessions: [],
   powerZones: [
     { zone: "Z1", label: "Recuperação", plannedMinutes: 25, completedMinutes: 20 },
     { zone: "Z2", label: "Resistência", plannedMinutes: 10, completedMinutes: 10 },
@@ -141,6 +144,7 @@ export const TEMPLATE_CORRIDA: WorkoutTemplate = {
     videoUrl: null,
   },
   structuredIntervals: [],
+  trainingSessions: [],
   powerZones: [],
   planned: {
     durationSeconds: 65 * 60,
@@ -181,6 +185,50 @@ export const TEMPLATE_ACADEMIA: WorkoutTemplate = {
     videoUrl: null,
   },
   structuredIntervals: [],
+  // Exemplo no padrão MFIT: vários treinos nomeados por plano, cada um com
+  // exercícios (nome + vídeo demonstrativo + séries em texto livre de
+  // série/rep e carga, como um app de musculação).
+  trainingSessions: [
+    {
+      name: "Treino 1",
+      exercises: [
+        {
+          name: "Remo",
+          videoUrl: null,
+          sets: [
+            { reps: "4x8", load: "média", restSeconds: 90 },
+            { reps: "4x8", load: "média", restSeconds: 90 },
+          ],
+        },
+        {
+          name: "Crucifixo Máquina",
+          videoUrl: null,
+          sets: [
+            { reps: "3x12", load: "leve", restSeconds: 60 },
+            { reps: "3x12", load: "leve", restSeconds: 60 },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Treino 2",
+      exercises: [
+        {
+          name: "Agachamento",
+          videoUrl: null,
+          sets: [
+            { reps: "4x6", load: "pesada", restSeconds: 120 },
+            { reps: "4x6", load: "pesada", restSeconds: 120 },
+          ],
+        },
+        {
+          name: "Leg Press",
+          videoUrl: null,
+          sets: [{ reps: "3x10", load: "média", restSeconds: 90 }],
+        },
+      ],
+    },
+  ],
   powerZones: [],
   planned: {
     durationSeconds: 60 * 60,
@@ -228,6 +276,23 @@ const DEFAULT_INTERVAL: WorkoutInterval = {
 
 export function defaultIntervalsForDiscipline(discipline: string): WorkoutInterval[] {
   return discipline === "Ciclismo" ? [{ ...DEFAULT_INTERVAL }] : [];
+}
+
+// Ponto de partida de um treino novo de Academia: um treino nomeado com um
+// exercício em branco — o treinador adiciona o resto manualmente.
+const DEFAULT_TRAINING_SESSION: TrainingSession = {
+  name: "Treino 1",
+  exercises: [
+    {
+      name: "",
+      videoUrl: null,
+      sets: [{ reps: "", load: "", restSeconds: 60 }],
+    },
+  ],
+};
+
+export function defaultTrainingSessionsForDiscipline(discipline: string): TrainingSession[] {
+  return discipline === "Academia" ? [structuredClone(DEFAULT_TRAINING_SESSION)] : [];
 }
 
 // Sexo do aluno (dado corporal geral, usado só como referência do treinador).
@@ -357,6 +422,7 @@ export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = {
     description: TEMPLATE_CICLISMO.description,
     prescription: TEMPLATE_CICLISMO.prescription,
     structuredIntervals: TEMPLATE_CICLISMO.structuredIntervals,
+    trainingSessions: TEMPLATE_CICLISMO.trainingSessions,
     powerZones: TEMPLATE_CICLISMO.powerZones,
     planned: TEMPLATE_CICLISMO.planned,
     completed: { ...TEMPLATE_CICLISMO.completedTemplate },
@@ -386,6 +452,7 @@ export function buildWorkoutDraft(
     description: template.description,
     prescription: template.prescription,
     structuredIntervals: defaultIntervalsForDiscipline(template.discipline),
+    trainingSessions: defaultTrainingSessionsForDiscipline(template.discipline),
     powerZones: template.powerZones,
     planned: template.planned,
     completed: null,

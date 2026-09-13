@@ -22,6 +22,35 @@ export interface WorkoutInterval {
   targetHighPct: number;
 }
 
+/** Uma série de um exercício — texto livre em série/rep e carga, como no padrão de apps de musculação. */
+export interface ExerciseSet {
+  reps: string; // ex.: "4x8"
+  load: string; // ex.: "média", "20kg"
+  restSeconds: number;
+}
+
+/** Um exercício dentro de um treino de Academia — nome, vídeo demonstrativo e as séries. */
+export interface PrescribedExercise {
+  name: string;
+  videoUrl: string | null;
+  sets: ExerciseSet[];
+}
+
+/** Um treino nomeado (ex.: "Treino 1") dentro da prescrição de Academia — vários por plano, reordenáveis. */
+export interface TrainingSession {
+  name: string;
+  exercises: PrescribedExercise[];
+}
+
+/** Configuração de série salva pelo treinador pra reaproveitar em outros exercícios/alunos. */
+export interface SetPreset {
+  id: string;
+  name: string;
+  reps: string;
+  load: string;
+  restSeconds: number;
+}
+
 export interface Database {
   public: {
     Tables: {

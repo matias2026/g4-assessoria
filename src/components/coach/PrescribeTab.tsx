@@ -4,11 +4,17 @@ import { useState } from "react";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { IntervalEditor } from "@/components/workout/IntervalEditor";
+import { ExercisePrescriptionEditor } from "@/components/workout/ExercisePrescriptionEditor";
 import { WorkoutPrescriptionEditor, type PlannedMetrics } from "@/components/workout/WorkoutPrescriptionEditor";
 import { buildWhatsAppLink, buildWorkoutWhatsAppMessage } from "@/lib/whatsapp";
-import { buildWorkoutDraft, defaultIntervalsForDiscipline, templateForDiscipline } from "@/lib/mock-data";
+import {
+  buildWorkoutDraft,
+  defaultIntervalsForDiscipline,
+  defaultTrainingSessionsForDiscipline,
+  templateForDiscipline,
+} from "@/lib/mock-data";
 import type { MockStudent, MockWorkoutDetail } from "@/lib/mock-data";
-import type { WorkoutInterval } from "@/lib/supabase/types";
+import type { SetPreset, TrainingSession, WorkoutInterval } from "@/lib/supabase/types";
 
 interface PrescribeTabProps {
   students: MockStudent[];
@@ -77,6 +83,11 @@ export function PrescribeTab({
 }: PrescribeTabProps) {
   const student = students.find((s) => s.id === selectedStudentId) ?? students[0];
 
+  // Presets de série (Academia) ficam no nível da aba, não do formulário —
+  // o formulário remonta a cada troca de aluno (via `key`), mas os presets
+  // que o treinador salva devem continuar disponíveis para os outros alunos.
+  const [presets, setPresets] = useState<SetPreset[]>([]);
+
   if (!student) {
     return (
       <p className="text-sm text-g4-muted">
@@ -109,6 +120,8 @@ export function PrescribeTab({
         student={student}
         existingWorkout={workouts[student.id]}
         onSaveWorkout={onSaveWorkout}
+        presets={presets}
+        onPresetsChange={setPresets}
       />
     </div>
   );
@@ -118,9 +131,17 @@ interface PrescriptionFormProps {
   student: MockStudent;
   existingWorkout: MockWorkoutDetail | undefined;
   onSaveWorkout: (studentId: string, workout: MockWorkoutDetail) => void;
+  presets: SetPreset[];
+  onPresetsChange: (presets: SetPreset[]) => void;
 }
 
-function PrescriptionForm({ student, existingWorkout, onSaveWorkout }: PrescriptionFormProps) {
+function PrescriptionForm({
+  student,
+  existingWorkout,
+  onSaveWorkout,
+  presets,
+  onPresetsChange,
+}: PrescriptionFormProps) {
   const initial =
     existingWorkout ?? buildWorkoutDraft(student, student.discipline, formatDateLabel(todayIso()));
 
@@ -133,9 +154,11 @@ function PrescriptionForm({ student, existingWorkout, onSaveWorkout }: Prescript
   const [structuredIntervals, setStructuredIntervals] = useState<WorkoutInterval[]>(
     initial.structuredIntervals
   );
+  const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>(initial.trainingSessions);
   const [saved, setSaved] = useState(false);
 
   const isCycling = discipline === "Ciclismo";
+  const isAcademia = discipline === "Academia";
 
   function handleDisciplineChange(next: string) {
     const template = templateForDiscipline(next);
@@ -145,6 +168,7 @@ function PrescriptionForm({ student, existingWorkout, onSaveWorkout }: Prescript
     setPrescription(template.prescription);
     setPlanned(template.planned);
     setStructuredIntervals(defaultIntervalsForDiscipline(next));
+    setTrainingSessions(defaultTrainingSessionsForDiscipline(next));
     setSaved(false);
   }
 
@@ -157,6 +181,7 @@ function PrescriptionForm({ student, existingWorkout, onSaveWorkout }: Prescript
     prescription,
     planned,
     structuredIntervals,
+    trainingSessions,
     status: "pending",
   };
 
@@ -250,6 +275,25 @@ function PrescriptionForm({ student, existingWorkout, onSaveWorkout }: Prescript
               setStructuredIntervals(next);
               setSaved(false);
             }}
+          />
+        </Card>
+      )}
+
+      {isAcademia && (
+        <Card>
+          <CardTitle>Treinos e exercícios</CardTitle>
+          <p className="mt-1 text-xs text-g4-muted">
+            Monte um ou mais treinos nomeados (ex.: &quot;Treino 1&quot;, &quot;Treino 2&quot;), cada um
+            com seus exercícios, vídeo demonstrativo e séries.
+          </p>
+          <ExercisePrescriptionEditor
+            sessions={trainingSessions}
+            onChange={(next) => {
+              setTrainingSessions(next);
+              setSaved(false);
+            }}
+            presets={presets}
+            onPresetsChange={onPresetsChange}
           />
         </Card>
       )}
