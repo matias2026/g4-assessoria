@@ -54,11 +54,12 @@ function TooltipSync({ active, payload, onChange }: TooltipSyncProps) {
 }
 
 /**
- * Cadência (linha) e altimetria (área), empilhados e sincronizados pelo
- * mesmo eixo X via `syncId` do Recharts — passar o mouse sobre qualquer
- * um dos dois move o cursor nos dois e atualiza o resumo acima com os
- * valores exatos daquele instante (em vez de dois tooltips flutuantes
- * separados, como no layout de referência do Intervals.icu).
+ * Cadência, potência, frequência cardíaca (linhas) e altimetria (área),
+ * empilhados e sincronizados pelo mesmo eixo X via `syncId` do Recharts —
+ * passar o mouse sobre qualquer um dos quatro move o cursor em todos e
+ * atualiza o resumo acima com os valores exatos daquele instante (em vez
+ * de tooltips flutuantes separados, como no layout de referência do
+ * Intervals.icu).
  */
 export function ActivitySyncedCharts({ samples }: ActivitySyncedChartsProps) {
   const [activeSample, setActiveSample] = useState<ActivitySample | null>(null);
@@ -70,6 +71,12 @@ export function ActivitySyncedCharts({ samples }: ActivitySyncedChartsProps) {
         <span className="text-g4-muted">{formatElapsed(active.timestamp)}</span>
         <span className="text-g4-ink">
           Cadência <span className="font-semibold text-fuchsia-600">{active.cadence}</span>
+        </span>
+        <span className="text-g4-ink">
+          Potência <span className="font-semibold text-orange-600">{active.power}W</span>
+        </span>
+        <span className="text-g4-ink">
+          FC <span className="font-semibold text-rose-600">{active.heartRate}</span>
         </span>
         <span className="text-g4-ink">
           Altitude <span className="font-semibold text-slate-600">{active.altitudeMeters}m</span>
@@ -84,6 +91,30 @@ export function ActivitySyncedCharts({ samples }: ActivitySyncedChartsProps) {
             <YAxis tick={AXIS_TICK} stroke={GRID_STROKE} width={32} domain={[0, "dataMax + 10"]} />
             <Tooltip content={<TooltipSync onChange={setActiveSample} />} cursor={CURSOR_STYLE} />
             <Line type="monotone" dataKey="cadence" stroke="#c026d3" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="mt-2 h-36">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={samples} syncId="activity-detail" margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+            <XAxis dataKey="timestamp" tickFormatter={formatElapsed} tick={AXIS_TICK} stroke={GRID_STROKE} minTickGap={40} />
+            <YAxis tick={AXIS_TICK} stroke={GRID_STROKE} width={32} domain={[0, "dataMax + 20"]} />
+            <Tooltip content={<TooltipSync onChange={setActiveSample} />} cursor={CURSOR_STYLE} />
+            <Line type="monotone" dataKey="power" stroke="#f97316" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="mt-2 h-36">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={samples} syncId="activity-detail" margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+            <XAxis dataKey="timestamp" tickFormatter={formatElapsed} tick={AXIS_TICK} stroke={GRID_STROKE} minTickGap={40} />
+            <YAxis tick={AXIS_TICK} stroke={GRID_STROKE} width={32} domain={["dataMin - 10", "dataMax + 10"]} />
+            <Tooltip content={<TooltipSync onChange={setActiveSample} />} cursor={CURSOR_STYLE} />
+            <Line type="monotone" dataKey="heartRate" stroke="#f43f5e" strokeWidth={1.5} dot={false} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
