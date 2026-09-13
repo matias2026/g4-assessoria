@@ -1,4 +1,4 @@
-import type { StravaSummaryActivity, StravaTokenResponse } from "./types";
+import type { StravaSummaryActivity, StravaStreamSet, StravaTokenResponse } from "./types";
 
 const STRAVA_AUTHORIZE_URL = "https://www.strava.com/oauth/authorize";
 const STRAVA_TOKEN_URL = "https://www.strava.com/oauth/token";
@@ -78,4 +78,42 @@ export async function fetchAthleteActivities(
   }
 
   return response.json();
+}
+
+/**
+ * Streams (série temporal) de uma atividade — o que dá o mesmo nível de
+ * detalhe de um .FIT enviado manualmente (potência/FC/cadência/altimetria
+ * ponto a ponto) pros gráficos de "Analisar treino do aluno". Resolução
+ * "medium" (até ~1000 pontos) em vez de "high": mantém os gráficos com boa
+ * fidelidade sem repetir o problema de payload gigante já visto com
+ * .FIT de treinos longos (ver dashboard/page.tsx).
+ */
+export async function fetchActivityStreams(accessToken: string, activityId: number): Promise<StravaStreamSet> {
+  const url = new URL(`${STRAVA_API_BASE}/activities/${activityId}/streams`);
+  url.searchParams.set("keys", "time,distance,heartrate,watts,cadence,altitude,velocity_smooth");
+  url.searchParams.set("key_by_type", "true");
+  url.searchParams.set("resolution", "medium");
+
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    // Atividade sem streams (ex.: cadastrada manualmente, sem GPS/sensor) —
+    // a Strava devolve 404 nesse caso; não é uma falha real de rede.
+    if (response.status === 404) return {};
+    throw new Error(`Falha ao buscar streams do Strava: ${response.status}`);
+  }
+
+  const raw = (await response.json()) as Record<string, { data: number[] } | undefined>;
+  return {
+    time: raw.time?.data,
+    distance: raw.distance?.data,
+    heartrate: raw.heartrate?.data,
+    watts: raw.watts?.data,
+    cadence: raw.cadence?.data,
+    altitude: raw.altitude?.data,
+    velocity_smooth: raw.velocity_smooth?.data,
+  };
 }

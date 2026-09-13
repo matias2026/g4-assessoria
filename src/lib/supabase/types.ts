@@ -99,12 +99,17 @@ export interface PrescriptionDraft extends PrescriptionContent {
   description?: string;
 }
 
-// Resumo + amostras de série temporal decodificados de um arquivo .FIT
-// enviado pelo aluno (ver src/lib/fit-import.ts) — salvo pronto em
-// `treinos.atividade_fit` pra não reprocessar o binário (guardado à parte
-// no Storage, `treinos.arquivo_fit_path`) toda vez que a análise carrega.
+// Resumo + amostras de série temporal — de um arquivo .FIT enviado pelo
+// aluno (ver src/lib/fit-import.ts) ou dos streams de uma atividade
+// sincronizada via Strava (ver src/lib/strava/client.ts) — salvo pronto em
+// `treinos.atividade_fit` pra não reprocessar/rebuscar toda vez que a
+// análise carrega (o binário do .FIT fica à parte no Storage,
+// `treinos.arquivo_fit_path`, quando a fonte é essa).
 export interface UploadedActivity {
-  startedAt: string | null; // ISO, horário real do primeiro registro do .FIT
+  // undefined nos registros antigos (só existiam vindos de .FIT) — trate
+  // como "fit" nesse caso.
+  source?: "fit" | "strava";
+  startedAt: string | null; // ISO, horário real do primeiro registro
   durationSeconds: number | null;
   distanceMeters: number | null;
   avgSpeedKmh: number | null;

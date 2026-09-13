@@ -9,7 +9,9 @@ export interface ParsedFitActivity {
 
 const MPS_TO_KMH = 3.6;
 
-function formatDurationLabel(totalSeconds: number): string {
+// Exportado — src/lib/strava/activity-import.ts usa o mesmo formato pro
+// duracao_real de uma atividade sincronizada via Strava.
+export function formatDurationLabel(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = Math.floor(totalSeconds % 60);
@@ -66,6 +68,7 @@ export function parseFitFile(bytes: ArrayBuffer): ParsedFitActivity {
   const durationSeconds = session?.totalTimerTime ?? session?.totalElapsedTime ?? null;
 
   const activity: UploadedActivity = {
+    source: "fit",
     startedAt: startMs != null ? new Date(startMs).toISOString() : null,
     durationSeconds: durationSeconds != null ? Math.round(durationSeconds) : null,
     distanceMeters: session?.totalDistance ?? null,

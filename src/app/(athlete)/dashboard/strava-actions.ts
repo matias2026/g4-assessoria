@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fetchAthleteActivities, refreshStravaToken } from "@/lib/strava/client";
+import { fetchActivityStreams, fetchAthleteActivities, refreshStravaToken } from "@/lib/strava/client";
+import { buildUploadedActivityFromStrava } from "@/lib/strava/activity-import";
+import { formatDurationLabel } from "@/lib/fit-import";
 
 /**
  * "Sincronizar agora" — puxa as atividades recentes do Strava sob demanda
@@ -12,6 +14,13 @@ import { fetchAthleteActivities, refreshStravaToken } from "@/lib/strava/client"
  * automaticamente quando expirado, mesma lógica que estava parada e sem uso
  * em api/strava/sync/route.ts (removida — virou este Server Action, no
  * mesmo padrão do resto do app).
+ *
+ * Quando uma atividade cai num dia que já tinha um treino prescrito ainda
+ * não concluído, busca os streams (potência/FC/cadência/altimetria ponto a
+ * ponto) e completa esse treino igual a um upload de .FIT — sem isso, quem
+ * só conecta a Strava nunca teria os gráficos de "Analisar treino do aluno",
+ * só o resumo. Nunca sobrescreve um treino já concluído (RPE ou .FIT
+ * anterior tem prioridade sobre o que a Strava sincronizou depois).
  */
 export async function syncStravaNow(): Promise<{ synced: number }> {
   const supabase = await createClient();
@@ -67,6 +76,48 @@ export async function syncStravaNow(): Promise<{ synced: number }> {
     );
   }
 
+  const { data: aluno } = await admin.from("alunos").select("id").eq("user_id", user.id).maybeSingle();
+
+  if (aluno) {
+    for (const activity of activities) {
+      const dateIso = activity.start_date_local.slice(0, 10);
+
+      const { data: treino } = await admin
+        .from("treinos")
+        .select("concluido")
+        .eq("aluno_id", aluno.id)
+        .eq("data", dateIso)
+        .maybeSingle();
+
+      // Sem treino prescrito nesse dia, ou já concluído por outra fonte —
+      // nada pra anexar (a atividade continua registrada em
+      // strava_activities de qualquer forma).
+      if (!treino || treino.concluido) continue;
+
+      let streams;
+      try {
+        streams = await fetchActivityStreams(accessToken, activity.id);
+      } catch (e) {
+        console.error("[strava] erro ao buscar streams:", e instanceof Error ? e.message : e);
+        continue;
+      }
+
+      const uploadedActivity = buildUploadedActivityFromStrava(activity, streams);
+
+      await admin
+        .from("treinos")
+        .update({
+          concluido: true,
+          duracao_real: uploadedActivity.durationSeconds != null ? formatDurationLabel(uploadedActivity.durationSeconds) : null,
+          distancia_real: uploadedActivity.distanceMeters,
+          atividade_fit: uploadedActivity,
+        })
+        .eq("aluno_id", aluno.id)
+        .eq("data", dateIso);
+    }
+  }
+
   revalidatePath("/dashboard");
+  revalidatePath("/cockpit");
   return { synced: activities.length };
 }

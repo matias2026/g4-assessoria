@@ -648,7 +648,7 @@ export function buildPrescribedWorkout(
     },
     completed: treino.concluido
       ? {
-          source: "manual",
+          source: atividade?.source === "strava" ? "strava" : "manual",
           durationSeconds: atividade?.durationSeconds ?? null,
           distanceMeters: atividade?.distanceMeters ?? null,
           tss: null,

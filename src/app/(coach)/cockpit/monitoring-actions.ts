@@ -54,10 +54,11 @@ function isoWeekStart(dateIso: string): string {
 /**
  * Resumo de treinos concluídos pra aba "Monitoramento do Aluno" — combina as
  * duas fontes reais de dado que existem hoje: `treinos` (upload manual de
- * .FIT ou conclusão só com RPE, ver profile-actions.ts) e `strava_activities`
- * (sincronização real, ver api/strava/sync). Antes disso o card só olhava
- * pra Strava, então um aluno sem a integração conectada aparecia sem nenhum
- * dado mesmo tendo enviado treinos reais por .FIT.
+ * .FIT, atividade da Strava anexada ao dia, ou conclusão só com RPE — ver
+ * profile-actions.ts e dashboard/strava-actions.ts) e `strava_activities`
+ * (toda atividade sincronizada, mesmo sem treino prescrito naquele dia —
+ * ver syncStravaNow). Uma atividade que já virou treino do dia não conta
+ * duas vezes: fica de fora da segunda fonte pra não duplicar a sessão.
  */
 export async function getMonitoringSummary(studentId: string, userId: string | null): Promise<MonitoringSummary> {
   await requireCoachOrAdmin();
@@ -89,11 +90,13 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
   }
 
   const sessions: CompletedSession[] = [];
+  const treinoDates = new Set<string>();
 
   for (const row of treinoResult.data ?? []) {
+    treinoDates.add(row.data);
     sessions.push({
       dateIso: row.data,
-      source: row.atividade_fit ? "fit" : "rpe",
+      source: row.atividade_fit?.source === "strava" ? "strava" : row.atividade_fit ? "fit" : "rpe",
       distanceMeters: row.distancia_real ?? row.atividade_fit?.distanceMeters ?? null,
       durationSeconds: row.atividade_fit?.durationSeconds ?? null,
       tss: row.tss_real,
@@ -102,8 +105,13 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
   }
 
   for (const activity of stravaRows) {
+    const dateIso = activity.start_date.slice(0, 10);
+    // Uma atividade que já virou o treino do dia (ver strava-actions.ts,
+    // syncStravaNow) já está contada acima — contar de novo aqui duplicaria
+    // a mesma sessão de treino.
+    if (treinoDates.has(dateIso)) continue;
     sessions.push({
-      dateIso: activity.start_date.slice(0, 10),
+      dateIso,
       source: "strava",
       distanceMeters: activity.distance_meters,
       durationSeconds: activity.moving_time_seconds,
