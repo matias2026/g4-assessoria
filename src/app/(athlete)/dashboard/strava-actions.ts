@@ -7,10 +7,12 @@ import { fetchActivityStreams, fetchAthleteActivities, refreshStravaToken } from
 import { buildUploadedActivityFromStrava } from "@/lib/strava/activity-import";
 import { formatDurationLabel } from "@/lib/fit-import";
 
-// Janela de sincronização: só as atividades dos últimos 20 dias. Sem isso,
+// Janela de sincronização: só as atividades dos últimos 30 dias. Sem isso,
 // "sincronizar agora" traz até 30 atividades sempre, não importa a data —
 // pra quem treina bem pouco isso podia voltar meses no passado de uma vez.
-const SYNC_WINDOW_DAYS = 20;
+// 30 (em vez de 20) dá margem pra ter pelo menos 2 semanas fechadas de
+// carga e testar o Alerta de overtraining no Monitoramento.
+const SYNC_WINDOW_DAYS = 30;
 
 /**
  * "Sincronizar agora" — puxa as atividades dos últimos SYNC_WINDOW_DAYS
