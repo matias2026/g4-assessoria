@@ -518,6 +518,38 @@ export function buildWorkoutDraft(
   };
 }
 
+// Monta um treino de exemplo a partir do modelo da modalidade, mantendo o
+// conteúdo rico do template (exercícios, vídeo) — diferente de
+// buildWorkoutDraft, que começa em branco de propósito (é o ponto de
+// partida do formulário do treinador). Usado na tela do aluno quando
+// ainda não existe uma prescrição real pra mostrar.
+export function buildExampleWorkout(
+  student: { id: string; name: string; phone: string },
+  discipline: string,
+  scheduledDateLabel: string
+): MockWorkoutDetail {
+  const template = templateForDiscipline(discipline);
+
+  return {
+    id: student.id,
+    athleteName: student.name,
+    athletePhone: student.phone,
+    coachName: "Treinador G4",
+    coachPhone: "+5584999990000",
+    title: template.title,
+    discipline: template.discipline,
+    scheduledDateLabel,
+    status: "pending",
+    description: template.description,
+    prescription: template.prescription,
+    structuredIntervals: template.structuredIntervals,
+    trainingSessions: template.trainingSessions,
+    powerZones: template.powerZones,
+    planned: template.planned,
+    completed: null,
+  };
+}
+
 export const mockWeeklyHistory: { day: string; status: WorkoutStatus }[] = [
   { day: "Seg", status: "done" },
   { day: "Ter", status: "done" },
