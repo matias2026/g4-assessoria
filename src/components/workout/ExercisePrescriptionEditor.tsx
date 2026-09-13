@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { LinkButton } from "@/components/ui/LinkButton";
 import type {
   ExerciseLibraryItem,
   ExerciseSet,
@@ -97,6 +99,42 @@ export function ExercisePrescriptionEditor({
           <option key={item.id} value={item.name} />
         ))}
       </datalist>
+
+      {/* Lista somente-leitura da biblioteca — o autocomplete no campo
+          "Exercício" já aplica um item, isso aqui é só pra ver o que já
+          foi salvo sem precisar digitar. */}
+      <div className="rounded-2xl border border-g4-border bg-g4-surface-alt/60 p-4">
+        <h3 className="text-sm font-bold text-g4-ink">Biblioteca de exercícios</h3>
+        {library.length === 0 ? (
+          <p className="mt-2 text-xs text-g4-muted">
+            Nenhum exercício salvo ainda — use &quot;Salvar exercício na biblioteca&quot; abaixo.
+          </p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-4">
+            {library.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-center justify-between gap-4 rounded-xl border border-g4-border bg-white p-3"
+              >
+                <span className="text-sm font-medium text-g4-ink">{item.name}</span>
+                {item.videoUrl ? (
+                  <LinkButton
+                    href={item.videoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    variant="secondary"
+                    className="px-3 py-1 text-xs"
+                  >
+                    ▶ Vídeo
+                  </LinkButton>
+                ) : (
+                  <Badge tone="neutral">Sem vídeo</Badge>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {sessions.map((session, sessionIndex) => (
         <div

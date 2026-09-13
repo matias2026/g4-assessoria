@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { AnalyzeTab } from "@/components/coach/AnalyzeTab";
 import { PrescribeTab } from "@/components/coach/PrescribeTab";
+import { PrescribedWorkoutsTab } from "@/components/coach/PrescribedWorkoutsTab";
 import { RosterTab } from "@/components/coach/RosterTab";
 import { TodayOverviewTab } from "@/components/coach/TodayOverviewTab";
 import type { MockStudent, MockWorkoutDetail } from "@/lib/mock-data";
@@ -16,11 +17,12 @@ interface CockpitTabsProps {
   initialExerciseLibrary: ExerciseLibraryItem[];
 }
 
-type TabKey = "roster" | "prescribe" | "today" | "analyze";
+type TabKey = "roster" | "prescribe" | "workouts" | "today" | "analyze";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "roster", label: "Alunos cadastrados" },
   { key: "prescribe", label: "Criar / Prescrever treino" },
+  { key: "workouts", label: "Treinos cadastrados" },
   { key: "today", label: "Acompanhamento do dia" },
   { key: "analyze", label: "Analisar treino do aluno" },
 ];
@@ -91,6 +93,17 @@ export function CockpitTabs({
           onSelectStudent={setSelectedStudentId}
           onSaveWorkout={saveWorkout}
           initialExerciseLibrary={initialExerciseLibrary}
+        />
+      )}
+
+      {activeTab === "workouts" && (
+        <PrescribedWorkoutsTab
+          students={students}
+          workouts={workouts}
+          onViewWorkout={(studentId) => {
+            setSelectedStudentId(studentId);
+            setActiveTab("analyze");
+          }}
         />
       )}
 
