@@ -227,6 +227,9 @@ function ExerciseRow({ exercise, presets, onChange, onSetsChange, onRemove, onSa
             className={fieldClass}
             placeholder="https://..."
           />
+          <span className="mt-1 block text-[11px] text-g4-muted">
+            Um clipe curto (10-30s) mostrando a execução — o aluno vê incorporado na tela.
+          </span>
         </label>
         <button
           type="button"
