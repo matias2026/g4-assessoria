@@ -53,10 +53,10 @@ interface ActivityMetricCardProps {
   onActiveChange: (sample: ActivitySample | null) => void;
 }
 
-// Bloco de uma métrica (título, gráfico de área e média/máxima) — sem
-// fundo/borda próprios, porque agora várias métricas dividem um único
-// card escuro (ActivitySyncedCharts), separadas por linha divisória, em
-// vez de cada uma ter sua própria caixa.
+// Card estilo Strava: título grande, gráfico de área preenchida com a cor
+// da métrica, e um resumo (média/mínima/máxima) logo abaixo. Tema escuro
+// intencional aqui — decisão explícita do usuário pra estes cards,
+// diferente do resto do site (claro).
 export function ActivityMetricCard({
   title,
   color,
@@ -77,7 +77,7 @@ export function ActivityMetricCard({
   const showAltitudeBackdrop = dataKey !== "altitudeMeters";
 
   return (
-    <div>
+    <div className="rounded-2xl bg-neutral-900 p-3 text-neutral-100 sm:p-4">
       <h3 className="text-base font-bold">{title}</h3>
 
       <div className="mt-3 h-56">
