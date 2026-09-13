@@ -26,5 +26,21 @@ export function buildWorkoutWhatsAppMessage(workout: MockWorkoutDetail): string 
     lines.push("", `Vídeo/preleção: ${workout.prescription.videoUrl}`);
   }
 
+  if (workout.trainingSessions.length > 0) {
+    lines.push("");
+    for (const session of workout.trainingSessions) {
+      lines.push(`*${session.name}*`);
+      for (const exercise of session.exercises) {
+        const setsSummary = exercise.sets
+          .map((set) => `${set.reps} (${set.load}, ${set.restSeconds}s)`)
+          .join(", ");
+        lines.push(`- ${exercise.name}: ${setsSummary}`);
+        if (exercise.videoUrl) {
+          lines.push(`  Vídeo: ${exercise.videoUrl}`);
+        }
+      }
+    }
+  }
+
   return lines.join("\n");
 }

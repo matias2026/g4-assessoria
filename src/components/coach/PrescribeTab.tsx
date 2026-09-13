@@ -156,19 +156,63 @@ function PrescriptionForm({
   );
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>(initial.trainingSessions);
   const [saved, setSaved] = useState(false);
+  // Título livre em vez do dropdown de títulos prontos — reabrir um treino
+  // que já tinha título fora da lista mantém o modo manual.
+  const [manualTitle, setManualTitle] = useState(
+    () => !WORKOUT_TITLES[initial.discipline]?.includes(initial.title)
+  );
 
   const isCycling = discipline === "Ciclismo";
   const isAcademia = discipline === "Academia";
 
-  function handleDisciplineChange(next: string) {
-    const template = templateForDiscipline(next);
-    setDiscipline(next);
-    setTitle(WORKOUT_TITLES[next][0]);
+  // Recarrega descrição/prescrição/métricas planejadas/blocos/exercícios a
+  // partir do modelo pronto da modalidade — usado tanto ao trocar de
+  // modalidade quanto ao voltar do título manual para a lista.
+  function applyTemplate(nextDiscipline: string) {
+    const template = templateForDiscipline(nextDiscipline);
     setDescription(template.description);
     setPrescription(template.prescription);
     setPlanned(template.planned);
-    setStructuredIntervals(defaultIntervalsForDiscipline(next));
-    setTrainingSessions(defaultTrainingSessionsForDiscipline(next));
+    setStructuredIntervals(defaultIntervalsForDiscipline(nextDiscipline));
+    setTrainingSessions(defaultTrainingSessionsForDiscipline(nextDiscipline));
+  }
+
+  function handleDisciplineChange(next: string) {
+    setDiscipline(next);
+    setTitle(WORKOUT_TITLES[next][0]);
+    setManualTitle(false);
+    applyTemplate(next);
+    setSaved(false);
+  }
+
+  // "Criar treino manual": título vira texto livre e todos os campos da
+  // modalidade voltam a um ponto de partida em branco, pro treinador
+  // montar o treino do zero (em vez de partir do modelo pronto).
+  function startManualTitle() {
+    setManualTitle(true);
+    setTitle("");
+    setDescription("");
+    setPrescription({ warmup: "", mainSet: "", cooldown: "", videoUrl: null });
+    setPlanned({
+      durationSeconds: null,
+      distanceMeters: null,
+      tss: null,
+      ifScore: null,
+      hrMin: null,
+      hrAvg: null,
+      hrMax: null,
+    });
+    setStructuredIntervals(defaultIntervalsForDiscipline(discipline));
+    setTrainingSessions(defaultTrainingSessionsForDiscipline(discipline));
+    setSaved(false);
+  }
+
+  // Reversível: volta pra lista de títulos prontos e recarrega o modelo da
+  // modalidade atual (mesmo efeito de trocar a modalidade, sem trocá-la).
+  function usePresetTitle() {
+    setManualTitle(false);
+    setTitle(WORKOUT_TITLES[discipline][0]);
+    applyTemplate(discipline);
     setSaved(false);
   }
 
@@ -197,21 +241,43 @@ function PrescriptionForm({
       <Card>
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="block">
-            <span className={labelClass}>Título do treino</span>
-            <select
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                setSaved(false);
-              }}
-              className={fieldClass}
-            >
-              {WORKOUT_TITLES[discipline].map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between gap-4">
+              <span className={labelClass}>Título do treino</span>
+              <button
+                type="button"
+                onClick={manualTitle ? usePresetTitle : startManualTitle}
+                className="text-xs font-medium text-lime-deep hover:underline"
+              >
+                {manualTitle ? "Usar título da lista" : "Criar treino manual"}
+              </button>
+            </div>
+            {manualTitle ? (
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setSaved(false);
+                }}
+                placeholder="Digite o título do treino"
+                className={fieldClass}
+              />
+            ) : (
+              <select
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setSaved(false);
+                }}
+                className={fieldClass}
+              >
+                {WORKOUT_TITLES[discipline].map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            )}
           </label>
           <label className="block">
             <span className={labelClass}>Data do treino</span>

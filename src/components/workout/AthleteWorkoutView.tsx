@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { StatusDot } from "@/components/ui/StatusDot";
+import { AthleteTrainingSessions } from "@/components/workout/AthleteTrainingSessions";
 import { CoachFeedbackCard } from "@/components/workout/CoachFeedbackCard";
 import { DeviceTutorial } from "@/components/workout/DeviceTutorial";
 import { DownloadFitButton } from "@/components/workout/DownloadFitButton";
 import { DownloadZwoButton } from "@/components/workout/DownloadZwoButton";
 import { RpeFeedbackModal, type RpeFeedback } from "@/components/workout/RpeFeedbackModal";
+import { VideoEmbed } from "@/components/workout/VideoEmbed";
 import { canExportStructuredWorkout } from "@/lib/workout-export";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { formatDistance, formatDuration } from "@/lib/workout-metrics";
@@ -71,6 +73,7 @@ export function AthleteWorkoutView({ workout }: AthleteWorkoutViewProps) {
 
         <h1 className="mt-2 text-xl font-bold text-g4-ink">{workout.title}</h1>
         <p className="mt-1 text-sm text-g4-muted">{workout.prescription.mainSet}</p>
+        {workout.prescription.videoUrl && <VideoEmbed url={workout.prescription.videoUrl} />}
 
         <div className="mt-3 flex items-center gap-4 text-sm text-g4-ink">
           <span>⏱ {formatDuration(workout.planned.durationSeconds)}</span>
@@ -95,6 +98,8 @@ export function AthleteWorkoutView({ workout }: AthleteWorkoutViewProps) {
           </div>
         </div>
       </Card>
+
+      <AthleteTrainingSessions sessions={workout.trainingSessions} />
 
       {/* Ações */}
       <Card>
