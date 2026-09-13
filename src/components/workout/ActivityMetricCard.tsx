@@ -80,7 +80,7 @@ export function ActivityMetricCard({
     <div className="rounded-2xl bg-neutral-900 p-4 text-neutral-100">
       <h3 className="text-base font-bold">{title}</h3>
 
-      <div className="mt-3 h-48">
+      <div className="mt-3 h-56">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={samples} syncId={syncId} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <defs>
