@@ -18,6 +18,7 @@ import type {
   StrengthProfile,
   StudentSex,
   TrainingSession,
+  UploadedActivity,
   WorkoutCompletionSource,
   WorkoutInterval,
   WorkoutStatus,
@@ -78,6 +79,12 @@ export interface MockWorkoutDetail {
     aiFeedbackDraft: string | null;
     coachFeedback: string | null;
   } | null;
+  // Amostras reais de série temporal decodificadas de um .FIT enviado pelo
+  // aluno (ver src/lib/fit-import.ts) — null enquanto ele não sobe nenhum
+  // arquivo. A aba "Analisar treino do aluno" só mostra os gráficos de
+  // potência/FC/cadência/altimetria/velocidade quando isso existe, nunca
+  // com dado inventado.
+  uploadedActivity: UploadedActivity | null;
 }
 
 export const DEMO_WORKOUT_ID = "1";
@@ -478,6 +485,7 @@ export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = {
     powerZones: TEMPLATE_CICLISMO.powerZones,
     planned: TEMPLATE_CICLISMO.planned,
     completed: { ...TEMPLATE_CICLISMO.completedTemplate },
+    uploadedActivity: null,
   },
   "2": {
     id: "2",
@@ -496,6 +504,7 @@ export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = {
     powerZones: TEMPLATE_CORRIDA.powerZones,
     planned: TEMPLATE_CORRIDA.planned,
     completed: null,
+    uploadedActivity: null,
   },
   "3": {
     id: "3",
@@ -514,6 +523,7 @@ export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = {
     powerZones: TEMPLATE_ACADEMIA.powerZones,
     planned: TEMPLATE_ACADEMIA.planned,
     completed: null,
+    uploadedActivity: null,
   },
 };
 
@@ -544,6 +554,7 @@ export function buildWorkoutDraft(
     powerZones: template.powerZones,
     planned: template.planned,
     completed: null,
+    uploadedActivity: null,
   };
 }
 
@@ -576,6 +587,7 @@ export function buildExampleWorkout(
     powerZones: template.powerZones,
     planned: template.planned,
     completed: null,
+    uploadedActivity: null,
   };
 }
 
@@ -594,9 +606,14 @@ export function buildPrescribedWorkout(
     descricao: string | null;
     concluido: boolean | null;
     conteudo: PrescriptionContent | null;
+    rpe_esforco?: number | null;
+    sensacao?: number | null;
+    comentarios?: string | null;
+    atividade_fit?: UploadedActivity | null;
   }
 ): MockWorkoutDetail {
   const conteudo = treino.conteudo ?? {};
+  const atividade = treino.atividade_fit ?? null;
 
   return {
     id: student.id,
@@ -622,7 +639,24 @@ export function buildPrescribedWorkout(
       hrAvg: null,
       hrMax: null,
     },
-    completed: null,
+    completed: treino.concluido
+      ? {
+          source: "manual",
+          durationSeconds: atividade?.durationSeconds ?? null,
+          distanceMeters: atividade?.distanceMeters ?? null,
+          tss: null,
+          ifScore: null,
+          hrMin: null,
+          hrAvg: atividade?.avgHeartRate ?? null,
+          hrMax: atividade?.maxHeartRate ?? null,
+          rpe: treino.rpe_esforco ?? null,
+          feeling: treino.sensacao ?? null,
+          comments: treino.comentarios ?? null,
+          aiFeedbackDraft: null,
+          coachFeedback: null,
+        }
+      : null,
+    uploadedActivity: atividade,
   };
 }
 

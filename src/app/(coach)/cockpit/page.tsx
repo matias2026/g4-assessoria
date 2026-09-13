@@ -2,26 +2,23 @@ import { Logo } from "@/components/ui/Logo";
 import { CockpitTabs } from "@/components/coach/CockpitTabs";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { RoleNav } from "@/components/auth/RoleNav";
-import { mockWorkoutDetails } from "@/lib/mock-data";
 import { listExerciseLibrary } from "./actions";
-import { listStudents } from "./students-actions";
+import { listStudents, listTodayWorkouts } from "./students-actions";
 
-// TODO: substituir os treinos mock por consultas reais via src/lib/supabase/server
-// (workouts da semana e strava_activities recentes) — o cadastro de alunos
-// já é dado real (tabela alunos).
-//
-// Sempre busca a roster fresca — sem isso o Next poderia manter a lista de
-// alunos presa no que existia num render anterior (mesmo motivo documentado
-// em src/app/admin/page.tsx para a lista de contas).
+// Sempre busca a roster e os treinos de hoje frescos — sem isso o Next
+// poderia manter a página presa no que existia num render anterior (mesmo
+// motivo documentado em src/app/admin/page.tsx para a lista de contas).
 export const dynamic = "force-dynamic";
 
 export default async function CoachCockpitPage() {
-  // Biblioteca de exercícios e alunos já são dado real — nunca deixa a
-  // página quebrar se alguma consulta falhar.
+  // Alunos e biblioteca de exercícios primeiro (treinos de hoje dependem
+  // da lista de alunos) — nunca deixa a página quebrar se alguma consulta
+  // falhar.
   const [exerciseLibrary, students] = await Promise.all([
     listExerciseLibrary().catch(() => []),
     listStudents().catch(() => []),
   ]);
+  const workouts = await listTodayWorkouts(students).catch(() => ({}));
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 sm:px-6">
@@ -40,7 +37,7 @@ export default async function CoachCockpitPage() {
 
       <CockpitTabs
         initialStudents={students}
-        initialWorkouts={mockWorkoutDetails}
+        initialWorkouts={workouts}
         initialExerciseLibrary={exerciseLibrary}
       />
     </main>

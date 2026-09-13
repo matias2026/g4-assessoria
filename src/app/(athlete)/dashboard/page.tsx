@@ -102,7 +102,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
     // nunca aparece aqui, só depois de "Enviar treino").
     const { data: treinoData } = await supabase
       .from("treinos")
-      .select("titulo, modalidade, descricao, concluido, conteudo")
+      .select("titulo, modalidade, descricao, concluido, conteudo, rpe_esforco, sensacao, comentarios, atividade_fit")
       .eq("aluno_id", aluno.id)
       .eq("data", todayIso)
       .eq("enviado", true)

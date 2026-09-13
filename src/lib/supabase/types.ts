@@ -99,6 +99,33 @@ export interface PrescriptionDraft extends PrescriptionContent {
   description?: string;
 }
 
+// Resumo + amostras de série temporal decodificados de um arquivo .FIT
+// enviado pelo aluno (ver src/lib/fit-import.ts) — salvo pronto em
+// `treinos.atividade_fit` pra não reprocessar o binário (guardado à parte
+// no Storage, `treinos.arquivo_fit_path`) toda vez que a análise carrega.
+export interface UploadedActivity {
+  startedAt: string | null; // ISO, horário real do primeiro registro do .FIT
+  durationSeconds: number | null;
+  distanceMeters: number | null;
+  avgSpeedKmh: number | null;
+  elevationGainMeters: number | null;
+  avgCadence: number | null;
+  avgHeartRate: number | null;
+  maxHeartRate: number | null;
+  avgPower: number | null;
+  maxPower: number | null;
+  calories: number | null;
+  samples: {
+    timestamp: number;
+    distanceMeters: number;
+    cadence: number;
+    power: number;
+    altitudeMeters: number;
+    heartRate: number;
+    speedKmh: number;
+  }[];
+}
+
 // Sexo do aluno (dado corporal geral, usado só como referência do treinador).
 export type StudentSex = "Masculino" | "Feminino" | "Outro";
 
@@ -243,6 +270,10 @@ export interface Database {
           distancia_real: number | null;
           tss_real: number | null;
           rpe_esforco: number | null;
+          sensacao: number | null;
+          comentarios: string | null;
+          arquivo_fit_path: string | null;
+          atividade_fit: UploadedActivity | null;
           conteudo: PrescriptionContent;
           rascunho: PrescriptionDraft;
           enviado: boolean;
@@ -263,6 +294,10 @@ export interface Database {
           distancia_real?: number | null;
           tss_real?: number | null;
           rpe_esforco?: number | null;
+          sensacao?: number | null;
+          comentarios?: string | null;
+          arquivo_fit_path?: string | null;
+          atividade_fit?: UploadedActivity | null;
           conteudo?: PrescriptionContent;
           rascunho?: PrescriptionDraft;
           enviado?: boolean;

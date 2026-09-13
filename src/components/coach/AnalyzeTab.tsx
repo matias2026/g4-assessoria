@@ -7,7 +7,7 @@ import { AiFeedbackComposer } from "@/components/workout/AiFeedbackComposer";
 import { IntervalTimeline } from "@/components/coach/IntervalTimeline";
 import { PlannedVsCompleted } from "@/components/workout/PlannedVsCompleted";
 import { ZonesChart } from "@/components/workout/ZonesChart";
-import { buildMockActivityDetail } from "@/lib/activity-detail";
+import { buildActivityDetailFromUpload } from "@/lib/activity-detail";
 import type { MockStudent, MockWorkoutDetail } from "@/lib/mock-data";
 import type { FeedbackDraftInput } from "@/lib/ai/gemini";
 
@@ -101,10 +101,17 @@ export function AnalyzeTab({ students, workouts, selectedStudentId, onSelectStud
         <h2 className="mt-3 text-xl font-bold text-g4-ink">{workout.title}</h2>
       </Card>
 
-      {/* TODO: substituir por amostras reais (FIT/Strava) quando a
-          importação por segundo estiver disponível — hoje é sempre a
-          mesma atividade de exemplo, independente do treino selecionado. */}
-      {workout.completed && <ActivityDetailView activity={buildMockActivityDetail()} />}
+      {/* Só aparece quando o aluno de fato sobe um .FIT — nunca um exemplo
+          genérico no lugar (ver UploadFitButton/fit-import.ts). */}
+      {workout.uploadedActivity && (
+        <ActivityDetailView
+          activity={buildActivityDetailFromUpload(workout.uploadedActivity, {
+            athleteName: workout.athleteName,
+            discipline: workout.discipline,
+            weightKg: student.weightKg,
+          })}
+        />
+      )}
 
       {workout.structuredIntervals.length > 0 && (
         <Card>

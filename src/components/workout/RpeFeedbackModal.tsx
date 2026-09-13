@@ -15,6 +15,8 @@ interface RpeFeedbackModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (feedback: RpeFeedback) => void;
+  submitting?: boolean;
+  error?: string | null;
 }
 
 const RPE_SCALE = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -22,11 +24,10 @@ const FEELING_SCALE = [1, 2, 3, 4, 5];
 
 /**
  * Modal de feedback pós-treino: aberto ao clicar em "Marcar como concluído".
- * Registra RPE (1-10), sensação (emoji, 1-5) e observações — tudo em estado
- * local, repassado ao chamador via onSubmit. TODO: persistir em
- * workout_completions via Supabase quando o projeto estiver conectado.
+ * Registra RPE (1-10), sensação (emoji, 1-5) e observações, repassados ao
+ * chamador via onSubmit (que persiste de verdade — ver completeOwnWorkout).
  */
-export function RpeFeedbackModal({ open, onClose, onSubmit }: RpeFeedbackModalProps) {
+export function RpeFeedbackModal({ open, onClose, onSubmit, submitting = false, error = null }: RpeFeedbackModalProps) {
   const [rpe, setRpe] = useState<number | null>(null);
   const [feeling, setFeeling] = useState<number | null>(null);
   const [comments, setComments] = useState("");
@@ -132,10 +133,11 @@ export function RpeFeedbackModal({ open, onClose, onSubmit }: RpeFeedbackModalPr
           variant="primary"
           className="mt-5 w-full"
           onClick={handleSubmit}
-          disabled={rpe == null || feeling == null}
+          disabled={rpe == null || feeling == null || submitting}
         >
-          Enviar feedback
+          {submitting ? "Enviando..." : "Enviar feedback"}
         </Button>
+        {error && <p className="mt-2 text-sm text-status-missed">{error}</p>}
       </div>
     </div>
   );

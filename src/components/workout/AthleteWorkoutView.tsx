@@ -12,11 +12,13 @@ import { DeviceTutorial } from "@/components/workout/DeviceTutorial";
 import { DownloadFitButton } from "@/components/workout/DownloadFitButton";
 import { DownloadZwoButton } from "@/components/workout/DownloadZwoButton";
 import { RpeFeedbackModal, type RpeFeedback } from "@/components/workout/RpeFeedbackModal";
+import { UploadFitButton } from "@/components/workout/UploadFitButton";
 import { VideoEmbed } from "@/components/workout/VideoEmbed";
 import { canExportStructuredWorkout } from "@/lib/workout-export";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { formatDistance, formatDuration } from "@/lib/workout-metrics";
 import type { MockWorkoutDetail } from "@/lib/mock-data";
+import { completeOwnWorkout } from "@/app/(athlete)/dashboard/profile-actions";
 
 const GARMIN_CONNECT_URL = "https://connect.garmin.com/modern/";
 
@@ -27,13 +29,14 @@ interface AthleteWorkoutViewProps {
 /**
  * Visão do atleta: Treino do Dia + Ações (exportar, concluir, tutorial de
  * dispositivo) + Feedback do Professor, tudo em um fluxo único — sem cards
- * soltos e desconectados. TODO: persistir a conclusão em workout_completions
- * via Supabase quando o projeto estiver conectado (hoje só atualiza a tela).
+ * soltos e desconectados.
  */
 export function AthleteWorkoutView({ workout }: AthleteWorkoutViewProps) {
   const [status, setStatus] = useState(workout.status);
   const [completed, setCompleted] = useState(workout.completed);
   const [modalOpen, setModalOpen] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
 
   const stravaConnected = false; // TODO: ler de strava_tokens quando o Supabase estiver conectado
 
@@ -42,24 +45,36 @@ export function AthleteWorkoutView({ workout }: AthleteWorkoutViewProps) {
     `Oi ${workout.coachName}! Sobre o treino "${workout.title}" de hoje...`
   );
 
-  function handleCompleteSubmit(feedback: RpeFeedback) {
-    setStatus("done");
-    setCompleted((prev) => ({
-      source: "manual",
-      durationSeconds: prev?.durationSeconds ?? null,
-      distanceMeters: prev?.distanceMeters ?? null,
-      tss: prev?.tss ?? null,
-      ifScore: prev?.ifScore ?? null,
-      hrMin: prev?.hrMin ?? null,
-      hrAvg: prev?.hrAvg ?? null,
-      hrMax: prev?.hrMax ?? null,
-      rpe: feedback.rpe,
-      feeling: feedback.feeling,
-      comments: feedback.comments || null,
-      aiFeedbackDraft: prev?.aiFeedbackDraft ?? null,
-      coachFeedback: prev?.coachFeedback ?? null,
-    }));
-    setModalOpen(false);
+  // Grava no treino de hoje (concluido/rpe_esforco/sensacao/comentarios) —
+  // sem isso, a conclusão só existia na tela do aluno, sumia ao recarregar
+  // e o treinador nunca via nada na aba "Analisar treino do aluno".
+  async function handleCompleteSubmit(feedback: RpeFeedback) {
+    setCompleteError(null);
+    setCompleting(true);
+    try {
+      await completeOwnWorkout(feedback);
+      setStatus("done");
+      setCompleted((prev) => ({
+        source: "manual",
+        durationSeconds: prev?.durationSeconds ?? null,
+        distanceMeters: prev?.distanceMeters ?? null,
+        tss: prev?.tss ?? null,
+        ifScore: prev?.ifScore ?? null,
+        hrMin: prev?.hrMin ?? null,
+        hrAvg: prev?.hrAvg ?? null,
+        hrMax: prev?.hrMax ?? null,
+        rpe: feedback.rpe,
+        feeling: feedback.feeling,
+        comments: feedback.comments || null,
+        aiFeedbackDraft: prev?.aiFeedbackDraft ?? null,
+        coachFeedback: prev?.coachFeedback ?? null,
+      }));
+      setModalOpen(false);
+    } catch (e) {
+      setCompleteError(e instanceof Error ? e.message : "Não foi possível registrar a conclusão do treino.");
+    } finally {
+      setCompleting(false);
+    }
   }
 
   return (
@@ -114,6 +129,11 @@ export function AthleteWorkoutView({ workout }: AthleteWorkoutViewProps) {
             {status === "done" ? "Treino concluído ✓" : "Marcar como concluído"}
           </Button>
 
+          {/* Sobe o .FIT gravado no relógio/ciclocomputador — vira o
+              gráfico de potência/FC/cadência real na análise do
+              treinador, em vez do RPE manual sozinho. */}
+          <UploadFitButton onUploaded={() => setStatus("done")} />
+
           {canExportStructuredWorkout(workout) && (
             <div className="grid grid-cols-2 gap-4">
               <DownloadFitButton
@@ -148,6 +168,8 @@ export function AthleteWorkoutView({ workout }: AthleteWorkoutViewProps) {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleCompleteSubmit}
+        submitting={completing}
+        error={completeError}
       />
     </div>
   );

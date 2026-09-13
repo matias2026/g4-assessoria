@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { mapAlunoRow } from "@/lib/map-aluno-row";
 import type { StudentProfileInput } from "@/app/(coach)/cockpit/students-actions";
 import { mockStudents, PREVIEW_DISCIPLINES, type MockStudent } from "@/lib/mock-data";
+import { parseFitFile } from "@/lib/fit-import";
 import type { ProfileRole } from "@/lib/supabase/types";
 
 // Autoatendimento do aluno em "Meu perfil": ele só pode ler/editar a
@@ -115,6 +116,93 @@ export async function updateAthleteReport(text: string): Promise<void> {
   }
 
   revalidatePath("/dashboard/relatorio");
+}
+
+/**
+ * "Marcar como concluído" + feedback de RPE (AthleteWorkoutView): grava de
+ * verdade no treino de hoje — antes disso, ficava só no estado local da
+ * tela (RpeFeedbackModal), sumia ao recarregar ou ver de outro aparelho, e
+ * o treinador nunca via nada na aba "Analisar treino do aluno".
+ */
+export async function completeOwnWorkout(feedback: { rpe: number; feeling: number; comments: string }): Promise<void> {
+  const alunoId = await requireOwnAlunoId();
+  const admin = createAdminClient();
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  const { error } = await admin.from("treinos").upsert(
+    {
+      aluno_id: alunoId,
+      data: todayIso,
+      concluido: true,
+      rpe_esforco: feedback.rpe,
+      sensacao: feedback.feeling,
+      comentarios: feedback.comments || null,
+    },
+    { onConflict: "aluno_id,data" }
+  );
+
+  if (error) {
+    console.error("[dashboard] erro do Postgres ao concluir o treino:", error.message);
+    throw new Error("Não foi possível registrar a conclusão do treino. Tente novamente.");
+  }
+
+  revalidatePath("/dashboard");
+}
+
+/**
+ * "Enviar arquivo .FIT" (upload manual): decodifica o arquivo, guarda o
+ * binário original no Storage (pra reprocessar/baixar depois) e o
+ * resumo + amostras já prontos em `treinos.atividade_fit` — é isso que a
+ * aba "Analisar treino do aluno" usa pra mostrar os gráficos de potência/
+ * FC/cadência/altimetria/velocidade com dado real, em vez do exemplo
+ * genérico. Marca o treino como concluído junto (subir o .FIT já é a
+ * prova de que o treino aconteceu).
+ */
+export async function completeOwnWorkoutWithFit(file: File): Promise<void> {
+  const alunoId = await requireOwnAlunoId();
+
+  let parsed;
+  try {
+    parsed = parseFitFile(await file.arrayBuffer());
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : "Não foi possível ler esse arquivo .FIT.");
+  }
+
+  const admin = createAdminClient();
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const path = `${alunoId}/${todayIso}-${Date.now()}.fit`;
+
+  const { error: uploadError } = await admin.storage
+    .from("fit-uploads")
+    .upload(path, Buffer.from(await file.arrayBuffer()), {
+      contentType: "application/octet-stream",
+      upsert: true,
+    });
+  if (uploadError) {
+    console.error("[dashboard] erro ao subir o arquivo .FIT no Storage:", uploadError.message);
+    throw new Error("Não foi possível salvar o arquivo. Tente novamente.");
+  }
+
+  const { error } = await admin.from("treinos").upsert(
+    {
+      aluno_id: alunoId,
+      data: todayIso,
+      concluido: true,
+      duracao_real: parsed.durationLabel,
+      distancia_real: parsed.activity.distanceMeters,
+      tss_real: parsed.trainingStressScore,
+      arquivo_fit_path: path,
+      atividade_fit: parsed.activity,
+    },
+    { onConflict: "aluno_id,data" }
+  );
+
+  if (error) {
+    console.error("[dashboard] erro do Postgres ao salvar a atividade do .FIT:", error.message);
+    throw new Error("Não foi possível registrar o treino. Tente novamente.");
+  }
+
+  revalidatePath("/dashboard");
 }
 
 /**

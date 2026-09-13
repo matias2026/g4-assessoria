@@ -1,8 +1,10 @@
 // Dados de uma atividade registrada (GPS/ciclocomputador), no padrão
 // Intervals.icu: resumo consolidado + amostras de série temporal para os
-// gráficos sincronizados. Mock por enquanto — a importação real por
-// amostra (FIT/Strava) ainda não existe, só o resumo agregado usado em
-// `mockWorkoutDetails` (ver mock-data.ts).
+// gráficos sincronizados. buildActivityDetailFromUpload converte o que
+// foi decodificado de um .FIT enviado pelo aluno (fit-import.ts) pro
+// formato que ActivityDetailView/ActivitySyncedCharts esperam.
+
+import type { UploadedActivity } from "./supabase/types";
 
 export interface ActivitySample {
   timestamp: number; // segundos desde o início da atividade
@@ -32,61 +34,42 @@ export interface ActivityDetail {
   samples: ActivitySample[];
 }
 
-// PRNG determinístico (sem dependência externa) — mesma atividade de
-// exemplo toda vez, para as amostras não mudarem a cada reload.
-function seededRandom(seed: number): () => number {
-  let s = seed;
-  return () => {
-    s = (s * 9301 + 49297) % 233280;
-    return s / 233280;
-  };
+function activityTypeForDiscipline(discipline: string): ActivityType {
+  if (discipline === "Corrida") return "Corrida ao Ar Livre";
+  if (discipline === "Academia") return "Academia";
+  return "Ciclismo ao Ar Livre";
 }
 
 /**
- * Gera uma atividade de exemplo (perfil de cadência com pausas de
- * pedalada e altimetria ondulada) com uma amostra a cada 5s, para
- * demonstrar os gráficos sincronizados sem depender de importação real.
+ * Converte o resumo+amostras decodificados de um .FIT enviado pelo aluno
+ * (ver fit-import.ts, salvo em treinos.atividade_fit) pro mesmo formato
+ * que ActivityDetailView já sabe renderizar.
  */
-export function buildMockActivityDetail(): ActivityDetail {
-  const durationSeconds = 56 * 60 + 55;
-  const sampleIntervalSeconds = 5;
-  const random = seededRandom(42);
-
-  const samples: ActivitySample[] = [];
-  let distanceMeters = 0;
-
-  for (let t = 0; t <= durationSeconds; t += sampleIntervalSeconds) {
-    const pedaling = random() > 0.12;
-    const cadence = pedaling ? Math.round(75 + Math.sin(t / 40) * 12 + (random() - 0.5) * 10) : 0;
-    const power = pedaling ? Math.round(180 + Math.sin(t / 70) * 60 + (random() - 0.5) * 40) : 0;
-    const altitudeMeters = Math.round(55 + Math.sin(t / 260) * 22 + Math.sin(t / 55) * 8 + (random() - 0.5) * 2);
-    const speedKmh = pedaling ? 20 + Math.sin(t / 90) * 6 + (random() - 0.5) * 3 : 2;
-    distanceMeters += (speedKmh / 3600) * sampleIntervalSeconds * 1000;
-
-    samples.push({
-      timestamp: t,
-      distanceMeters: Math.round(distanceMeters),
-      cadence: Math.max(0, cadence),
-      power: Math.max(0, power),
-      altitudeMeters,
-      heartRate: Math.round(128 + Math.sin(t / 180) * 14 + (random() - 0.5) * 6),
-      speedKmh: Math.round(speedKmh * 10) / 10,
-    });
-  }
+export function buildActivityDetailFromUpload(
+  uploaded: UploadedActivity,
+  context: { athleteName: string; discipline: string; weightKg: number | null }
+): ActivityDetail {
+  const startedAt = uploaded.startedAt ? new Date(uploaded.startedAt) : null;
+  const cadenceSamples = uploaded.samples.map((s) => s.cadence).filter((c) => c > 0);
+  const avgCadenceFromSamples = cadenceSamples.length
+    ? Math.round(cadenceSamples.reduce((a, b) => a + b, 0) / cadenceSamples.length)
+    : 0;
 
   return {
-    id: "activity-1",
-    athleteName: "Carlos Silva",
-    date: "sáb. 22 ago. 2026",
-    startTime: "06:16 PM",
-    type: "Ciclismo ao Ar Livre",
-    distanceKm: 23.49,
-    durationSeconds,
-    avgSpeedKmh: 24.5,
-    elevationGainMeters: 241,
-    avgCadence: 70,
-    calories: 742,
-    weightKg: 69,
-    samples,
+    id: `upload-${uploaded.startedAt ?? "sem-data"}`,
+    athleteName: context.athleteName,
+    date: startedAt
+      ? startedAt.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })
+      : "",
+    startTime: startedAt ? startedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "",
+    type: activityTypeForDiscipline(context.discipline),
+    distanceKm: uploaded.distanceMeters != null ? uploaded.distanceMeters / 1000 : 0,
+    durationSeconds: uploaded.durationSeconds ?? 0,
+    avgSpeedKmh: uploaded.avgSpeedKmh ?? 0,
+    elevationGainMeters: uploaded.elevationGainMeters != null ? Math.round(uploaded.elevationGainMeters) : 0,
+    avgCadence: uploaded.avgCadence ?? avgCadenceFromSamples,
+    calories: uploaded.calories ?? 0,
+    weightKg: context.weightKg ?? 0,
+    samples: uploaded.samples,
   };
 }

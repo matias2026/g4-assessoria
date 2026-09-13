@@ -16,12 +16,11 @@ function hasVideo(workout: MockWorkoutDetail): boolean {
 }
 
 /**
- * Aba "Treinos cadastrados": visão geral de todos os treinos já
- * prescritos nesta sessão, por aluno — sem precisar entrar aluno por
- * aluno na aba "Analisar". Clicar numa linha leva direto pra análise
- * daquele aluno. Só mostra quem já tem treino salvo em `workouts`
- * (ainda em memória — reseta ao recarregar a página, como o resto da
- * prescrição hoje).
+ * Aba "Treinos cadastrados": visão geral dos treinos já enviados pra
+ * hoje, por aluno — sem precisar entrar aluno por aluno na aba
+ * "Analisar". Clicar numa linha leva direto pra análise daquele aluno.
+ * `workouts` chega do banco (listTodayWorkouts) e é atualizado na hora
+ * quando o treinador prescreve/envia dentro da mesma sessão.
  */
 export function PrescribedWorkoutsTab({ students, workouts, onViewWorkout }: PrescribedWorkoutsTabProps) {
   const rows = students
@@ -32,7 +31,7 @@ export function PrescribedWorkoutsTab({ students, workouts, onViewWorkout }: Pre
     <div className="flex flex-col gap-4">
       <div>
         <h2 className="text-lg font-bold text-g4-ink">Treinos cadastrados ({rows.length})</h2>
-        <p className="text-sm text-g4-muted">Todos os treinos já prescritos nesta sessão, por aluno.</p>
+        <p className="text-sm text-g4-muted">Todos os treinos enviados hoje, por aluno.</p>
       </div>
 
       {rows.length === 0 && (

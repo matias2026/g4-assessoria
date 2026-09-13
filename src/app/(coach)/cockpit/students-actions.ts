@@ -2,7 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mapAlunoRow } from "@/lib/map-aluno-row";
-import type { MockStudent } from "@/lib/mock-data";
+import { buildPrescribedWorkout, type MockStudent, type MockWorkoutDetail } from "@/lib/mock-data";
 import { requireCoachOrAdmin } from "./actions";
 
 // Mesmo mapa de códigos estáveis do Supabase Auth usado em
@@ -31,6 +31,53 @@ export async function listStudents(): Promise<MockStudent[]> {
   if (error) throw new Error("Falha ao carregar os alunos cadastrados.");
 
   return (data ?? []).map(mapAlunoRow);
+}
+
+/**
+ * Treinos de hoje já enviados (`enviado = true`), por aluno — o que
+ * alimenta "Analisar treino do aluno" e "Treinos cadastrados" ao carregar
+ * o Cockpit. Rascunho nunca aparece aqui (mesma trava do painel do
+ * aluno). Aluno sem treino enviado hoje simplesmente não entra no mapa —
+ * as abas já sabem mostrar "sem treino" nesse caso, em vez de inventar
+ * um exemplo genérico.
+ */
+export async function listTodayWorkouts(students: MockStudent[]): Promise<Record<string, MockWorkoutDetail>> {
+  await requireCoachOrAdmin();
+  if (students.length === 0) return {};
+
+  const admin = createAdminClient();
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const { data, error } = await admin
+    .from("treinos")
+    .select("aluno_id, titulo, modalidade, descricao, concluido, conteudo, rpe_esforco, sensacao, comentarios, atividade_fit")
+    .in(
+      "aluno_id",
+      students.map((s) => s.id)
+    )
+    .eq("data", todayIso)
+    .eq("enviado", true);
+
+  if (error) {
+    console.error("[cockpit] erro do Postgres ao buscar treinos de hoje:", error.message);
+    return {};
+  }
+
+  const studentsById = new Map(students.map((s) => [s.id, s]));
+  const workouts: Record<string, MockWorkoutDetail> = {};
+
+  for (const row of data ?? []) {
+    if (!row.aluno_id) continue;
+    const student = studentsById.get(row.aluno_id);
+    if (!student) continue;
+
+    workouts[row.aluno_id] = buildPrescribedWorkout(
+      { id: student.id, name: student.name, phone: student.phone },
+      "Hoje",
+      row
+    );
+  }
+
+  return workouts;
 }
 
 export interface CreateStudentInput {
