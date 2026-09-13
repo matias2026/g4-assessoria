@@ -30,7 +30,21 @@ export async function listStudents(): Promise<MockStudent[]> {
 
   if (error) throw new Error("Falha ao carregar os alunos cadastrados.");
 
-  return (data ?? []).map(mapAlunoRow);
+  const students = (data ?? []).map(mapAlunoRow);
+
+  // mapAlunoRow nasce sempre com stravaSynced: false (não é campo da ficha)
+  // — aqui cruza com strava_tokens pra refletir a conexão de verdade, senão
+  // o badge "Desconectado" no Monitoramento fica errado pra quem já conectou.
+  const userIds = students.map((s) => s.userId).filter((id): id is string => id != null);
+  if (userIds.length > 0) {
+    const { data: tokens } = await admin.from("strava_tokens").select("profile_id").in("profile_id", userIds);
+    const connected = new Set((tokens ?? []).map((t) => t.profile_id));
+    for (const student of students) {
+      if (student.userId && connected.has(student.userId)) student.stravaSynced = true;
+    }
+  }
+
+  return students;
 }
 
 /**

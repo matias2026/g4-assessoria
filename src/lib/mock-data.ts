@@ -338,6 +338,10 @@ export function defaultTrainingSessionsForDiscipline(discipline: string): Traini
 // correspondente está entre a principal + as adicionais.
 export interface MockStudent {
   id: string;
+  // auth.users.id (via alunos.user_id) — só null pra dado 100% de exemplo
+  // (mockStudents abaixo). Precisa disso pra cruzar com tabelas que
+  // referenciam o usuário em vez do aluno (strava_tokens, strava_activities).
+  userId: string | null;
   name: string;
   phone: string;
   discipline: string;
@@ -370,6 +374,7 @@ export interface MockStudent {
 export const mockStudents: MockStudent[] = [
   {
     id: "1",
+    userId: null,
     name: "Carlos Silva",
     phone: "+5584999990001",
     discipline: "Ciclismo",
@@ -402,6 +407,7 @@ export const mockStudents: MockStudent[] = [
   },
   {
     id: "2",
+    userId: null,
     name: "Marina Costa",
     phone: "+5584999990002",
     discipline: "Corrida",
@@ -436,6 +442,7 @@ export const mockStudents: MockStudent[] = [
   },
   {
     id: "3",
+    userId: null,
     name: "Rafael Souza",
     phone: "+5584999990003",
     discipline: "Academia",

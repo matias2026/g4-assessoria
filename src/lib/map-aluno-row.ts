@@ -10,6 +10,7 @@ type AlunoRow = Database["public"]["Tables"]["alunos"]["Row"];
 export function mapAlunoRow(row: AlunoRow): MockStudent {
   return {
     id: row.id,
+    userId: row.user_id,
     name: row.nome,
     phone: row.whatsapp ?? "",
     discipline: row.modalidade ?? "Ciclismo",
