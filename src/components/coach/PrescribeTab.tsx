@@ -22,7 +22,7 @@ interface PrescribeTabProps {
   workouts: Record<string, MockWorkoutDetail>;
   selectedStudentId: string;
   onSelectStudent: (id: string) => void;
-  onSaveWorkout: (studentId: string, workout: MockWorkoutDetail) => void;
+  onSaveWorkout: (studentId: string, dateIso: string, workout: MockWorkoutDetail) => Promise<void>;
   initialExerciseLibrary: ExerciseLibraryItem[];
 }
 
@@ -147,7 +147,7 @@ export function PrescribeTab({
 interface PrescriptionFormProps {
   student: MockStudent;
   existingWorkout: MockWorkoutDetail | undefined;
-  onSaveWorkout: (studentId: string, workout: MockWorkoutDetail) => void;
+  onSaveWorkout: (studentId: string, dateIso: string, workout: MockWorkoutDetail) => Promise<void>;
   presets: SetPreset[];
   onPresetsChange: (presets: SetPreset[]) => void;
   library: ExerciseLibraryItem[];
@@ -177,6 +177,8 @@ function PrescriptionForm({
   );
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>(initial.trainingSessions);
   const [saved, setSaved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   // Título livre em vez do dropdown de títulos prontos — reabrir um treino
   // que já tinha título fora da lista mantém o modo manual.
   const [manualTitle, setManualTitle] = useState(
@@ -252,9 +254,17 @@ function PrescriptionForm({
 
   const whatsappLink = buildWhatsAppLink(student.phone, buildWorkoutWhatsAppMessage(draftWorkout));
 
-  function handleSave() {
-    onSaveWorkout(student.id, draftWorkout);
-    setSaved(true);
+  async function handleSave() {
+    setSaveError(null);
+    setSubmitting(true);
+    try {
+      await onSaveWorkout(student.id, scheduledDate, draftWorkout);
+      setSaved(true);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Não foi possível salvar a prescrição.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -347,6 +357,8 @@ function PrescriptionForm({
         }}
         onSave={handleSave}
         saved={saved}
+        submitting={submitting}
+        error={saveError}
       />
 
       {isCycling && (

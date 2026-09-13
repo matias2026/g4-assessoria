@@ -21,6 +21,8 @@ interface WorkoutPrescriptionEditorProps {
   onPlannedChange: (patch: Partial<PlannedMetrics>) => void;
   onSave: () => void;
   saved: boolean;
+  submitting: boolean;
+  error: string | null;
 }
 
 const fieldClass =
@@ -39,9 +41,8 @@ function parseNumberInput(value: string): number | null {
  * Painel de prescrição e análise do treinador: descrição, blocos
  * estruturados (aquecimento/parte principal/desaquecimento), vídeo/preleção
  * e as métricas planejadas (Duração, Distância, TSS, IF, FC) que alimentam
- * a comparação com o Concluído logo abaixo. TODO: persistir em
- * workouts via Supabase quando o projeto estiver conectado (hoje só
- * atualiza o estado da tela).
+ * a comparação com o Concluído logo abaixo. "Salvar prescrição" grava de
+ * verdade em `treinos` (savePrescription) — chega no painel do aluno.
  */
 export function WorkoutPrescriptionEditor({
   description,
@@ -52,15 +53,18 @@ export function WorkoutPrescriptionEditor({
   onPlannedChange,
   onSave,
   saved,
+  submitting,
+  error,
 }: WorkoutPrescriptionEditorProps) {
   return (
     <Card>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <CardTitle>Prescrição do treino</CardTitle>
-        <Button variant="primary" className="px-4" onClick={onSave}>
-          {saved ? "Salvo ✓" : "Salvar prescrição"}
+        <Button variant="primary" className="px-4" onClick={onSave} disabled={submitting}>
+          {submitting ? "Salvando..." : saved ? "Salvo ✓" : "Salvar prescrição"}
         </Button>
       </div>
+      {error && <p className="mt-2 text-sm text-status-missed">{error}</p>}
 
       <label className="mt-4 block">
         <span className={labelClass}>Descrição</span>

@@ -12,6 +12,7 @@ import type {
   BodyComposition,
   CyclingProfile,
   LastActivity,
+  PrescriptionContent,
   RunningProfile,
   StrengthGoal,
   StrengthProfile,
@@ -574,6 +575,53 @@ export function buildExampleWorkout(
     trainingSessions: template.trainingSessions,
     powerZones: template.powerZones,
     planned: template.planned,
+    completed: null,
+  };
+}
+
+/**
+ * Monta o treino real que o treinador prescreveu (linha de `treinos`,
+ * `conteudo` jsonb) — diferente de buildExampleWorkout, que sempre mostra
+ * o modelo genérico da modalidade. Usado quando existe uma prescrição de
+ * verdade pro dia; sem uma, a página do aluno cai de volta pro exemplo.
+ */
+export function buildPrescribedWorkout(
+  student: { id: string; name: string; phone: string },
+  scheduledDateLabel: string,
+  treino: {
+    titulo: string | null;
+    modalidade: string | null;
+    descricao: string | null;
+    concluido: boolean | null;
+    conteudo: PrescriptionContent | null;
+  }
+): MockWorkoutDetail {
+  const conteudo = treino.conteudo ?? {};
+
+  return {
+    id: student.id,
+    athleteName: student.name,
+    athletePhone: student.phone,
+    coachName: DEFAULT_COACH_NAME,
+    coachPhone: DEFAULT_COACH_PHONE,
+    title: treino.titulo ?? "Treino do dia",
+    discipline: treino.modalidade ?? "Ciclismo",
+    scheduledDateLabel,
+    status: treino.concluido ? "done" : "pending",
+    description: treino.descricao ?? "",
+    prescription: conteudo.prescription ?? { warmup: "", mainSet: "", cooldown: "", videoUrl: null },
+    structuredIntervals: conteudo.structuredIntervals ?? [],
+    trainingSessions: conteudo.trainingSessions ?? [],
+    powerZones: conteudo.powerZones ?? [],
+    planned: conteudo.planned ?? {
+      durationSeconds: null,
+      distanceMeters: null,
+      tss: null,
+      ifScore: null,
+      hrMin: null,
+      hrAvg: null,
+      hrMax: null,
+    },
     completed: null,
   };
 }

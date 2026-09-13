@@ -15,6 +15,7 @@ import {
   type CreateStudentInput,
   type StudentProfileInput,
 } from "@/app/(coach)/cockpit/students-actions";
+import { savePrescription } from "@/app/(coach)/cockpit/prescription-actions";
 
 interface CockpitTabsProps {
   initialStudents: MockStudent[];
@@ -59,7 +60,8 @@ export function CockpitTabs({
     setStudents((prev) => prev.map((student) => (student.id === id ? updated : student)));
   }
 
-  function saveWorkout(studentId: string, workout: MockWorkoutDetail) {
+  async function saveWorkout(studentId: string, dateIso: string, workout: MockWorkoutDetail) {
+    await savePrescription(studentId, dateIso, workout);
     setWorkouts((prev) => ({ ...prev, [studentId]: workout }));
     setStudents((prev) =>
       prev.map((student) =>

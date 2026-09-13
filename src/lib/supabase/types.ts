@@ -58,6 +58,34 @@ export interface ExerciseLibraryItem {
   videoUrl: string | null;
 }
 
+/**
+ * Conteúdo de `treinos.conteudo` (jsonb) — a parte da prescrição rica
+ * demais pra virar colunas tipadas (blocos, sessões de exercício, zonas,
+ * métricas planejadas). Tudo opcional porque a coluna nasce `{}` e é
+ * lida de volta como `MockWorkoutDetail` com fallback pra cada campo —
+ * ver buildPrescribedWorkout em mock-data.ts.
+ */
+export interface PrescriptionContent {
+  prescription?: {
+    warmup: string;
+    mainSet: string;
+    cooldown: string;
+    videoUrl: string | null;
+  };
+  structuredIntervals?: WorkoutInterval[];
+  trainingSessions?: TrainingSession[];
+  powerZones?: { zone: string; label: string; plannedMinutes: number; completedMinutes: number }[];
+  planned?: {
+    durationSeconds: number | null;
+    distanceMeters: number | null;
+    tss: number | null;
+    ifScore: number | null;
+    hrMin: number | null;
+    hrAvg: number | null;
+    hrMax: number | null;
+  };
+}
+
 // Sexo do aluno (dado corporal geral, usado só como referência do treinador).
 export type StudentSex = "Masculino" | "Feminino" | "Outro";
 
@@ -192,6 +220,7 @@ export interface Database {
           aluno_id: string | null;
           data: string;
           modalidade: string | null;
+          titulo: string | null;
           descricao: string | null;
           duracao_planejada: string | null;
           distancia_planejada: number | null;
@@ -201,6 +230,7 @@ export interface Database {
           distancia_real: number | null;
           tss_real: number | null;
           rpe_esforco: number | null;
+          conteudo: PrescriptionContent;
           created_at: string;
         };
         Insert: {
@@ -208,6 +238,7 @@ export interface Database {
           aluno_id?: string | null;
           data: string;
           modalidade?: string | null;
+          titulo?: string | null;
           descricao?: string | null;
           duracao_planejada?: string | null;
           distancia_planejada?: number | null;
@@ -217,6 +248,7 @@ export interface Database {
           distancia_real?: number | null;
           tss_real?: number | null;
           rpe_esforco?: number | null;
+          conteudo?: PrescriptionContent;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["treinos"]["Insert"]>;

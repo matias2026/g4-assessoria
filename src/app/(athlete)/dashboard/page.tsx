@@ -5,6 +5,7 @@ import { AthleteWorkoutView } from "@/components/workout/AthleteWorkoutView";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import {
   buildExampleWorkout,
+  buildPrescribedWorkout,
   DEMO_WORKOUT_ID,
   mockWeeklyHistory,
   mockWorkoutDetails,
@@ -65,11 +66,26 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
   const aluno = data as { id: string; nome: string; whatsapp: string | null; modalidade: string | null } | null;
 
   if (aluno) {
-    const workout = buildExampleWorkout(
-      { id: aluno.id, name: aluno.nome, phone: aluno.whatsapp ?? "" },
-      aluno.modalidade ?? "Ciclismo",
-      formatTodayLabel()
-    );
+    const athlete = { id: aluno.id, name: aluno.nome, phone: aluno.whatsapp ?? "" };
+    const todayIso = new Date().toISOString().slice(0, 10);
+
+    // Treino de verdade prescrito pelo treinador pra hoje (savePrescription,
+    // em cockpit/prescription-actions.ts) tem prioridade sobre o exemplo
+    // genérico da modalidade — sem isso, o painel do aluno nunca refletia
+    // o que o treinador acabou de salvar/enviar.
+    const { data: treinoData } = await supabase
+      .from("treinos")
+      .select("titulo, modalidade, descricao, concluido, conteudo")
+      .eq("aluno_id", aluno.id)
+      .eq("data", todayIso)
+      .single();
+
+    if (treinoData) {
+      const workout = buildPrescribedWorkout(athlete, formatTodayLabel(), treinoData);
+      return { workout, isAdmin };
+    }
+
+    const workout = buildExampleWorkout(athlete, aluno.modalidade ?? "Ciclismo", formatTodayLabel());
     return { workout, isAdmin };
   }
 
