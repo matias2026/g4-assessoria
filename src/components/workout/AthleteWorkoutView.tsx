@@ -73,7 +73,12 @@ export function AthleteWorkoutView({ workout }: AthleteWorkoutViewProps) {
 
         <h1 className="mt-2 text-xl font-bold text-g4-ink">{workout.title}</h1>
         <p className="mt-1 text-sm text-g4-muted">{workout.prescription.mainSet}</p>
-        {workout.prescription.videoUrl && <VideoEmbed url={workout.prescription.videoUrl} />}
+        {/* Vídeo incorporado é uma experiência de Academia (exercícios com
+            demonstração) — pra Ciclismo/Corrida o link de vídeo/preleção
+            segue só na mensagem de WhatsApp, como já era antes. */}
+        {workout.discipline === "Academia" && workout.prescription.videoUrl && (
+          <VideoEmbed url={workout.prescription.videoUrl} />
+        )}
 
         <div className="mt-3 flex items-center gap-4 text-sm text-g4-ink">
           <span>⏱ {formatDuration(workout.planned.durationSeconds)}</span>
