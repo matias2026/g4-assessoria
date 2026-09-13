@@ -93,6 +93,12 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
 // TODO: substituir o restante dos dados mock (histórico semanal) por
 // consultas reais via src/lib/supabase/server quando treinos/strava_tokens
 // estiverem conectados — o treino do dia já resolve pelo aluno real.
+//
+// Sempre busca o aluno/treino fresco — sem isso o Next poderia manter a
+// página presa no que existia num render anterior (mesmo motivo
+// documentado em src/app/admin/page.tsx para a lista de contas).
+export const dynamic = "force-dynamic";
+
 export default async function AthleteDashboardPage({
   searchParams,
 }: {

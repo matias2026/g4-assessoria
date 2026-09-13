@@ -9,6 +9,12 @@ import { listStudents } from "./students-actions";
 // TODO: substituir os treinos mock por consultas reais via src/lib/supabase/server
 // (workouts da semana e strava_activities recentes) — o cadastro de alunos
 // já é dado real (tabela alunos).
+//
+// Sempre busca a roster fresca — sem isso o Next poderia manter a lista de
+// alunos presa no que existia num render anterior (mesmo motivo documentado
+// em src/app/admin/page.tsx para a lista de contas).
+export const dynamic = "force-dynamic";
+
 export default async function CoachCockpitPage() {
   // Biblioteca de exercícios e alunos já são dado real — nunca deixa a
   // página quebrar se alguma consulta falhar.
