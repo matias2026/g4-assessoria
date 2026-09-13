@@ -6,6 +6,7 @@ import type { ActivitySample } from "@/lib/activity-detail";
 
 interface ActivitySyncedChartsProps {
   samples: ActivitySample[];
+  elevationGainMeters: number;
 }
 
 interface MetricConfig {
@@ -52,7 +53,7 @@ const METRICS: MetricConfig[] = [
   },
   {
     key: "altitudeMeters",
-    title: "Altitude",
+    title: "Elevação",
     color: "#94a3b8",
     excludeZero: false,
     domain: ["dataMin - 5", "dataMax + 5"],
@@ -68,7 +69,7 @@ const METRICS: MetricConfig[] = [
  * todos e atualiza o resumo no topo com os valores exatos daquele
  * instante ao mesmo tempo.
  */
-export function ActivitySyncedCharts({ samples }: ActivitySyncedChartsProps) {
+export function ActivitySyncedCharts({ samples, elevationGainMeters }: ActivitySyncedChartsProps) {
   const [activeSample, setActiveSample] = useState<ActivitySample | null>(null);
   const active = activeSample ?? samples[samples.length - 1];
 
@@ -97,6 +98,11 @@ export function ActivitySyncedCharts({ samples }: ActivitySyncedChartsProps) {
           formatValue={metric.format}
           domain={metric.domain}
           excludeZero={metric.excludeZero}
+          primaryStat={
+            metric.key === "altitudeMeters"
+              ? { label: "Ganho de elevação", value: `${elevationGainMeters} m` }
+              : undefined
+          }
           onActiveChange={setActiveSample}
         />
       ))}

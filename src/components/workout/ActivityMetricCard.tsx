@@ -49,6 +49,7 @@ interface ActivityMetricCardProps {
   formatValue: (value: number) => string;
   domain?: [number | string, number | string];
   excludeZero?: boolean; // ignora amostras zeradas (pausas de pedalada) na média/mín/máx
+  primaryStat?: { label: string; value: string }; // substitui a linha de "média" (ex.: Elevação usa "Ganho de elevação")
   onActiveChange: (sample: ActivitySample | null) => void;
 }
 
@@ -65,11 +66,13 @@ export function ActivityMetricCard({
   formatValue,
   domain,
   excludeZero,
+  primaryStat,
   onActiveChange,
 }: ActivityMetricCardProps) {
   const values = samples.map((s) => s[dataKey]).filter((v) => !excludeZero || v > 0);
   const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
   const max = values.length ? Math.max(...values) : 0;
+  const primary = primaryStat ?? { label: `${title} média`, value: formatValue(avg) };
   const gradientId = `metric-fill-${dataKey}`;
   const showAltitudeBackdrop = dataKey !== "altitudeMeters";
 
@@ -122,8 +125,8 @@ export function ActivityMetricCard({
 
       <div className="mt-3 flex flex-col divide-y divide-neutral-800 border-t border-neutral-800 text-sm">
         <div className="flex items-center justify-between py-2">
-          <span className="text-neutral-400">{title} média</span>
-          <span className="font-semibold">{formatValue(avg)}</span>
+          <span className="text-neutral-400">{primary.label}</span>
+          <span className="font-semibold">{primary.value}</span>
         </div>
         <div className="flex items-center justify-between py-2">
           <span className="text-neutral-400">{title} máxima</span>

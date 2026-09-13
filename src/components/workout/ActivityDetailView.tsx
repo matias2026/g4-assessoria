@@ -14,7 +14,7 @@ export function ActivityDetailView({ activity }: ActivityDetailViewProps) {
       <div className="mt-3 flex flex-col gap-4">
         <ActivityStatsGrid activity={activity} />
         <div className="border-t border-g4-border" />
-        <ActivitySyncedCharts samples={activity.samples} />
+        <ActivitySyncedCharts samples={activity.samples} elevationGainMeters={activity.elevationGainMeters} />
       </div>
     </Card>
   );
