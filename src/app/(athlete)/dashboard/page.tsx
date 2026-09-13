@@ -1,11 +1,14 @@
 import { AdminPreviewSwitcher } from "@/components/athlete/AdminPreviewSwitcher";
 import { AthleteHeader } from "@/components/athlete/AthleteHeader";
+import { NoWorkoutCard } from "@/components/athlete/NoWorkoutCard";
 import { WeeklyHistory } from "@/components/athlete/WeeklyHistory";
 import { AthleteWorkoutView } from "@/components/workout/AthleteWorkoutView";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import {
   buildExampleWorkout,
   buildPrescribedWorkout,
+  DEFAULT_COACH_NAME,
+  DEFAULT_COACH_PHONE,
   DEMO_WORKOUT_ID,
   mockWeeklyHistory,
   mockWorkoutDetails,
@@ -23,16 +26,24 @@ function formatTodayLabel(): string {
 }
 
 interface ResolvedWorkout {
-  workout: MockWorkoutDetail;
+  // null = aluno real, mas o treinador ainda não enviou treino pra hoje —
+  // nunca preenchido com o exemplo genérico, senão o aluno acha que aquilo
+  // é a prescrição de verdade (era o bug: exemplo idêntico ao real).
+  workout: MockWorkoutDetail | null;
   isAdmin: boolean;
+  athleteName: string;
+  coachName: string;
+  coachPhone: string;
+  discipline: string;
 }
 
 // Resolve o treino de hoje pelo usuário logado de verdade — se ele tiver
-// uma linha em `alunos` (cadastrado pelo Cockpit já conectado), monta um
-// treino de exemplo da modalidade real dele. Admin (sem linha em `alunos`)
-// ganha um seletor pra pré-visualizar as 3 modalidades sob demanda, sem
-// precisar de uma conta real por modalidade. Contas antigas sem linha
-// vinculada e sem ser admin caem no demo fixo de sempre, sem regressão.
+// uma linha em `alunos` (cadastrado pelo Cockpit já conectado), busca o
+// treino que o treinador de fato enviou pra hoje. Admin (sem linha em
+// `alunos`) ganha um seletor pra pré-visualizar as 3 modalidades sob
+// demanda, com um exemplo — só pra ele, nunca pro aluno real. Contas
+// antigas sem linha vinculada e sem ser admin caem no demo fixo de sempre,
+// sem regressão.
 async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorkout> {
   const supabase = await createClient();
   const {
@@ -40,7 +51,15 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { workout: mockWorkoutDetails[DEMO_WORKOUT_ID], isAdmin: false };
+    const workout = mockWorkoutDetails[DEMO_WORKOUT_ID];
+    return {
+      workout,
+      isAdmin: false,
+      athleteName: workout.athleteName,
+      coachName: workout.coachName,
+      coachPhone: workout.coachPhone,
+      discipline: workout.discipline,
+    };
   }
 
   const { data: profileData } = await supabase.from("profiles").select("role").eq("id", user.id).single();
@@ -55,7 +74,14 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       previewDiscipline,
       formatTodayLabel()
     );
-    return { workout, isAdmin };
+    return {
+      workout,
+      isAdmin,
+      athleteName: workout.athleteName,
+      coachName: workout.coachName,
+      coachPhone: workout.coachPhone,
+      discipline: workout.discipline,
+    };
   }
 
   const { data } = await supabase
@@ -68,13 +94,12 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
   if (aluno) {
     const athlete = { id: aluno.id, name: aluno.nome, phone: aluno.whatsapp ?? "" };
     const todayIso = new Date().toISOString().slice(0, 10);
+    const discipline = aluno.modalidade ?? "Ciclismo";
 
     // Treino de verdade prescrito pelo treinador pra hoje (sendPrescription,
-    // em cockpit/prescription-actions.ts) tem prioridade sobre o exemplo
-    // genérico da modalidade — sem isso, o painel do aluno nunca refletia
-    // o que o treinador acabou de enviar. `enviado = true` é o que separa
-    // isso de um rascunho que o treinador ainda está montando (esse nunca
-    // aparece aqui, só depois de "Enviar treino").
+    // em cockpit/prescription-actions.ts) — `enviado = true` é o que
+    // separa isso de um rascunho que o treinador ainda está montando (esse
+    // nunca aparece aqui, só depois de "Enviar treino").
     const { data: treinoData } = await supabase
       .from("treinos")
       .select("titulo, modalidade, descricao, concluido, conteudo")
@@ -85,11 +110,26 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
 
     if (treinoData) {
       const workout = buildPrescribedWorkout(athlete, formatTodayLabel(), treinoData);
-      return { workout, isAdmin };
+      return {
+        workout,
+        isAdmin,
+        athleteName: workout.athleteName,
+        coachName: workout.coachName,
+        coachPhone: workout.coachPhone,
+        discipline: workout.discipline,
+      };
     }
 
-    const workout = buildExampleWorkout(athlete, aluno.modalidade ?? "Ciclismo", formatTodayLabel());
-    return { workout, isAdmin };
+    // Nada enviado ainda pra hoje — aluno real nunca vê um treino de
+    // exemplo aqui (só a mensagem de "nenhum treino").
+    return {
+      workout: null,
+      isAdmin,
+      athleteName: aluno.nome,
+      coachName: DEFAULT_COACH_NAME,
+      coachPhone: DEFAULT_COACH_PHONE,
+      discipline,
+    };
   }
 
   if (isAdmin) {
@@ -98,10 +138,25 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       "Ciclismo",
       formatTodayLabel()
     );
-    return { workout, isAdmin };
+    return {
+      workout,
+      isAdmin,
+      athleteName: workout.athleteName,
+      coachName: workout.coachName,
+      coachPhone: workout.coachPhone,
+      discipline: workout.discipline,
+    };
   }
 
-  return { workout: mockWorkoutDetails[DEMO_WORKOUT_ID], isAdmin: false };
+  const workout = mockWorkoutDetails[DEMO_WORKOUT_ID];
+  return {
+    workout,
+    isAdmin: false,
+    athleteName: workout.athleteName,
+    coachName: workout.coachName,
+    coachPhone: workout.coachPhone,
+    discipline: workout.discipline,
+  };
 }
 
 // TODO: substituir o restante dos dados mock (histórico semanal) por
@@ -119,21 +174,25 @@ export default async function AthleteDashboardPage({
   searchParams: Promise<{ preview?: string }>;
 }) {
   const { preview } = await searchParams;
-  const { workout, isAdmin } = await resolveWorkout(preview);
-  const talkToCoachLink = buildWhatsAppLink(workout.coachPhone, `Oi ${workout.coachName}!`);
+  const { workout, isAdmin, athleteName, coachName, coachPhone, discipline } = await resolveWorkout(preview);
+  const talkToCoachLink = buildWhatsAppLink(coachPhone, `Oi ${coachName}!`);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-4 py-6">
       <AthleteHeader
-        athleteName={workout.athleteName}
+        athleteName={athleteName}
         talkToCoachLink={talkToCoachLink}
         currentPath="/dashboard"
-        previewDiscipline={isAdmin ? workout.discipline : undefined}
+        previewDiscipline={isAdmin ? discipline : undefined}
       />
 
-      {isAdmin && <AdminPreviewSwitcher basePath="/dashboard" activeDiscipline={workout.discipline} />}
+      {isAdmin && <AdminPreviewSwitcher basePath="/dashboard" activeDiscipline={discipline} />}
 
-      <AthleteWorkoutView workout={workout} />
+      {workout ? (
+        <AthleteWorkoutView workout={workout} />
+      ) : (
+        <NoWorkoutCard talkToCoachLink={talkToCoachLink} coachName={coachName} />
+      )}
       <WeeklyHistory days={mockWeeklyHistory} />
     </main>
   );
