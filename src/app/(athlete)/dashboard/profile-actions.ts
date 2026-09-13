@@ -122,7 +122,12 @@ export async function updateAthleteReport(text: string): Promise<void> {
  * que uma sessão esquecida aberta num aparelho compartilhado baste pra
  * trocar a senha sem confirmar quem está mesmo pedindo a troca.
  */
-export async function updateOwnPassword(currentPassword: string, newPassword: string): Promise<void> {
+export async function updateOwnPassword(currentPasswordRaw: string, newPasswordRaw: string): Promise<void> {
+  // Trim pra não deixar espaço invisível (comum em senha compartilhada por
+  // WhatsApp) virar "senha atual incorreta" sem nenhuma pista visível.
+  const currentPassword = currentPasswordRaw.trim();
+  const newPassword = newPasswordRaw.trim();
+
   if (newPassword.length < 8) {
     throw new Error("A nova senha precisa ter pelo menos 8 caracteres.");
   }

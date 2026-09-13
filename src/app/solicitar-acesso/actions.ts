@@ -23,7 +23,10 @@ export async function submitAccessRequest(
 ): Promise<RequestAccessState> {
   const fullName = String(formData.get("full_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
+  // Trim pra não deixar espaço invisível virar a diferença entre a senha
+  // que a pessoa acha que definiu e a que fica salva — mesmo cuidado do
+  // login (src/app/login/actions.ts).
+  const password = String(formData.get("password") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
   const roleRequested = String(formData.get("role_requested") ?? "") as AccessRequestRole;

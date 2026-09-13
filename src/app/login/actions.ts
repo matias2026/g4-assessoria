@@ -17,7 +17,10 @@ export interface LoginState {
 // malicioso pode ignorar.
 export async function signIn(_prevState: LoginState, formData: FormData): Promise<LoginState> {
   const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
+  // Senha quase sempre chega por WhatsApp (aluno recebe de outra pessoa) —
+  // um espaço/quebra de linha grudado na cópia não pode ser a diferença
+  // entre "senha certa" e "dados inválidos" sem nenhuma pista visível.
+  const password = String(formData.get("password") ?? "").trim();
   const next = String(formData.get("next") ?? "");
   const expectedRole = String(formData.get("expected_role") ?? "");
 

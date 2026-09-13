@@ -60,7 +60,12 @@ interface CreateAccountInput {
 // (pré-checagem, pra não criar um usuário órfão no Auth à toa) e no banco
 // (trigger enforce_athlete_cap, que vale de verdade mesmo se alguém pular
 // esta função e inserir direto via SQL/service role).
-async function createAccountCore({ email, password, fullName, role, phone }: CreateAccountInput): Promise<string | null> {
+async function createAccountCore({ email, password: rawPassword, fullName, role, phone }: CreateAccountInput): Promise<string | null> {
+  // Trim aqui também (não só em quem chama) — cobre "Criar conta",
+  // "Aprovar pedido" e o cadastro de aluno pelo Cockpit de uma vez só,
+  // pra um espaço colado do WhatsApp nunca virar "dados inválidos" sem
+  // nenhuma pista visível pra quem está digitando.
+  const password = rawPassword.trim();
   if (!email || !password || !fullName) return "Preencha nome, e-mail e senha.";
   if (password.length < 8) return "A senha precisa ter pelo menos 8 caracteres.";
   if (!["coach", "athlete", "admin"].includes(role)) return "Papel inválido.";
