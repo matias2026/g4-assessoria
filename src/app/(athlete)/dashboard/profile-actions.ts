@@ -5,7 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { mapAlunoRow } from "@/lib/map-aluno-row";
 import type { StudentProfileInput } from "@/app/(coach)/cockpit/students-actions";
-import type { MockStudent } from "@/lib/mock-data";
+import { mockStudents, PREVIEW_DISCIPLINES, type MockStudent } from "@/lib/mock-data";
+import type { ProfileRole } from "@/lib/supabase/types";
 
 // Autoatendimento do aluno em "Meu perfil": ele só pode ler/editar a
 // própria linha em `alunos` (achada pelo user_id da sessão), nunca a de
@@ -26,19 +27,43 @@ async function requireOwnAlunoId(): Promise<string> {
   return data.id;
 }
 
-/** Busca a ficha do aluno logado. Retorna null se não houver sessão ou ficha vinculada. */
-export async function getOwnProfile(): Promise<MockStudent | null> {
+export interface OwnProfileResult {
+  student: MockStudent | null;
+  isAdmin: boolean;
+  // true quando `student` é um exemplo (mockStudents) mostrado pro admin,
+  // que não tem ficha própria em `alunos` — mesma ideia já usada pro
+  // treino do dia em dashboard/page.tsx (resolveWorkout).
+  isPreview: boolean;
+}
+
+/**
+ * Busca a ficha do aluno logado. Se for admin sem ficha própria, devolve
+ * um exemplo (mockStudents) da modalidade pedida — só pra ele conseguir
+ * ver as telas de "Meu perfil" sem precisar de uma conta real de aluno
+ * (mesma prévia que já existe pro treino do dia).
+ */
+export async function getOwnProfile(previewDiscipline?: string): Promise<OwnProfileResult> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) return { student: null, isAdmin: false, isPreview: false };
+
+  const { data: profileData } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  const isAdmin = (profileData as { role: ProfileRole } | null)?.role === "admin";
 
   const admin = createAdminClient();
   const { data } = await admin.from("alunos").select("*").eq("user_id", user.id).single();
-  if (!data) return null;
+  if (data) return { student: mapAlunoRow(data), isAdmin, isPreview: false };
 
-  return mapAlunoRow(data);
+  if (isAdmin) {
+    const discipline =
+      previewDiscipline && PREVIEW_DISCIPLINES.includes(previewDiscipline) ? previewDiscipline : PREVIEW_DISCIPLINES[0];
+    const preview = mockStudents.find((s) => s.discipline === discipline) ?? mockStudents[0];
+    return { student: preview, isAdmin, isPreview: true };
+  }
+
+  return { student: null, isAdmin, isPreview: false };
 }
 
 /** "Minha ficha": o próprio aluno completa/edita os dados corporais e por modalidade. */

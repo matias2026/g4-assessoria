@@ -81,6 +81,11 @@ export interface MockWorkoutDetail {
 
 export const DEMO_WORKOUT_ID = "1";
 
+// Modalidades que o admin pode pré-visualizar na área do atleta (sem ter
+// uma linha própria em `alunos`) — usado tanto no treino do dia quanto
+// nas telas de "Meu perfil" (ficha/senha/relatório).
+export const PREVIEW_DISCIPLINES = ["Ciclismo", "Corrida", "Academia"];
+
 // Um modelo de treino por modalidade — usado como ponto de partida na aba
 // "Criar/Prescrever treino" quando o treinador escolhe a modalidade.
 export interface WorkoutTemplate {

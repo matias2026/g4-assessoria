@@ -6,6 +6,10 @@ interface AthleteHeaderProps {
   athleteName: string;
   talkToCoachLink: string;
   currentPath: string;
+  // Só definido quando quem está vendo é o admin numa prévia (sem ficha
+  // própria em `alunos`) — repassado pro menu pra manter a modalidade
+  // escolhida ao navegar entre as telas de "Meu perfil".
+  previewDiscipline?: string;
 }
 
 /**
@@ -14,7 +18,7 @@ interface AthleteHeaderProps {
  * senha/Relatórios/Falar com treinador/Sair, tudo num só lugar). Extraído
  * pra não repetir esse bloco em cada página nova de "Meu perfil".
  */
-export function AthleteHeader({ athleteName, talkToCoachLink, currentPath }: AthleteHeaderProps) {
+export function AthleteHeader({ athleteName, talkToCoachLink, currentPath, previewDiscipline }: AthleteHeaderProps) {
   return (
     <div className="flex flex-col gap-4">
       <header className="flex items-center justify-between gap-4">
@@ -25,7 +29,7 @@ export function AthleteHeader({ athleteName, talkToCoachLink, currentPath }: Ath
             <h1 className="truncate text-2xl font-bold text-g4-ink">{athleteName}</h1>
           </div>
         </div>
-        <AthleteMenu talkToCoachLink={talkToCoachLink} />
+        <AthleteMenu talkToCoachLink={talkToCoachLink} previewDiscipline={previewDiscipline} />
       </header>
 
       <RoleNav currentPath={currentPath} />

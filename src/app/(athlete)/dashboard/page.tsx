@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminPreviewSwitcher } from "@/components/athlete/AdminPreviewSwitcher";
 import { AthleteHeader } from "@/components/athlete/AthleteHeader";
 import { WeeklyHistory } from "@/components/athlete/WeeklyHistory";
 import { AthleteWorkoutView } from "@/components/workout/AthleteWorkoutView";
@@ -8,13 +8,11 @@ import {
   DEMO_WORKOUT_ID,
   mockWeeklyHistory,
   mockWorkoutDetails,
+  PREVIEW_DISCIPLINES,
   type MockWorkoutDetail,
 } from "@/lib/mock-data";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
 import type { ProfileRole } from "@/lib/supabase/types";
-
-const PREVIEW_DISCIPLINES = ["Ciclismo", "Corrida", "Academia"];
 
 function formatTodayLabel(): string {
   const today = new Date();
@@ -107,29 +105,14 @@ export default async function AthleteDashboardPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-4 py-6">
-      <AthleteHeader athleteName={workout.athleteName} talkToCoachLink={talkToCoachLink} currentPath="/dashboard" />
+      <AthleteHeader
+        athleteName={workout.athleteName}
+        talkToCoachLink={talkToCoachLink}
+        currentPath="/dashboard"
+        previewDiscipline={isAdmin ? workout.discipline : undefined}
+      />
 
-      {isAdmin && (
-        <div className="flex flex-col gap-4">
-          <p className="text-xs font-medium text-g4-muted">Prévia da área do atleta (admin)</p>
-          <nav className="flex gap-4 rounded-2xl border border-g4-border bg-g4-surface p-1.5">
-            {PREVIEW_DISCIPLINES.map((discipline) => (
-              <Link
-                key={discipline}
-                href={`/dashboard?preview=${discipline}`}
-                className={cn(
-                  "flex-1 rounded-xl px-4 py-2 text-center text-sm font-semibold transition-colors focus-ring",
-                  workout.discipline === discipline
-                    ? "bg-lime text-g4-ink"
-                    : "text-g4-muted hover:bg-g4-surface-alt hover:text-g4-ink"
-                )}
-              >
-                {discipline}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      )}
+      {isAdmin && <AdminPreviewSwitcher basePath="/dashboard" activeDiscipline={workout.discipline} />}
 
       <AthleteWorkoutView workout={workout} />
       <WeeklyHistory days={mockWeeklyHistory} />

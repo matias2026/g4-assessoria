@@ -6,22 +6,30 @@ import { signOutAction } from "@/lib/supabase/auth-actions";
 
 interface AthleteMenuProps {
   talkToCoachLink: string;
+  // Ver AthleteHeaderProps — só definido na prévia do admin, mantém a
+  // modalidade escolhida ao trocar de tela pelo menu.
+  previewDiscipline?: string;
 }
 
-const MENU_LINKS = [
-  { href: "/dashboard", label: "Treinos" },
-  { href: "/dashboard/ficha", label: "Minha ficha" },
-  { href: "/dashboard/senha", label: "Alterar senha" },
-  { href: "/dashboard/relatorio#meu-relatorio", label: "Relatório" },
-  { href: "/dashboard/relatorio#relatorio-treinador", label: "Relatório do treinador" },
+const MENU_ROUTES = [
+  { path: "/dashboard", hash: "", label: "Treinos" },
+  { path: "/dashboard/ficha", hash: "", label: "Minha ficha" },
+  { path: "/dashboard/senha", hash: "", label: "Alterar senha" },
+  { path: "/dashboard/relatorio", hash: "#meu-relatorio", label: "Relatório" },
+  { path: "/dashboard/relatorio", hash: "#relatorio-treinador", label: "Relatório do treinador" },
 ];
+
+function buildMenuHref(path: string, hash: string, previewDiscipline?: string): string {
+  const query = previewDiscipline ? `?preview=${previewDiscipline}` : "";
+  return `${path}${query}${hash}`;
+}
 
 /**
  * Menu hambúrguer do aluno: reúne toda a navegação de "Meu perfil" (treinos,
  * ficha, senha, relatórios) mais falar com o treinador e sair, num só lugar
  * — cabe em qualquer largura de tela sem disputar espaço com o cabeçalho.
  */
-export function AthleteMenu({ talkToCoachLink }: AthleteMenuProps) {
+export function AthleteMenu({ talkToCoachLink, previewDiscipline }: AthleteMenuProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -50,14 +58,14 @@ export function AthleteMenu({ talkToCoachLink }: AthleteMenuProps) {
           />
           <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-g4-border bg-white shadow-lg">
             <nav className="flex flex-col py-1.5">
-              {MENU_LINKS.map((link) => (
+              {MENU_ROUTES.map((route) => (
                 <Link
-                  key={link.href}
-                  href={link.href}
+                  key={route.path + route.hash}
+                  href={buildMenuHref(route.path, route.hash, previewDiscipline)}
                   onClick={() => setOpen(false)}
                   className="px-4 py-2.5 text-sm font-medium text-g4-ink hover:bg-g4-surface-alt"
                 >
-                  {link.label}
+                  {route.label}
                 </Link>
               ))}
               <a
