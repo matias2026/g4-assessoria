@@ -7,10 +7,16 @@ import { fetchActivityStreams, fetchAthleteActivities, refreshStravaToken } from
 import { buildUploadedActivityFromStrava } from "@/lib/strava/activity-import";
 import { formatDurationLabel } from "@/lib/fit-import";
 
+// Janela de sincronização: só as atividades dos últimos 20 dias. Sem isso,
+// "sincronizar agora" traz até 30 atividades sempre, não importa a data —
+// pra quem treina bem pouco isso podia voltar meses no passado de uma vez.
+const SYNC_WINDOW_DAYS = 20;
+
 /**
- * "Sincronizar agora" — puxa as atividades recentes do Strava sob demanda
- * (não existia nenhum gatilho pra isso antes; a conexão OAuth em si já
- * funcionava, só nunca buscava atividade nenhuma). Renova o token
+ * "Sincronizar agora" — puxa as atividades dos últimos SYNC_WINDOW_DAYS
+ * dias do Strava sob demanda (não existia nenhum gatilho pra isso antes; a
+ * conexão OAuth em si já funcionava, só nunca buscava atividade nenhuma).
+ * Renova o token
  * automaticamente quando expirado, mesma lógica que estava parada e sem uso
  * em api/strava/sync/route.ts (removida — virou este Server Action, no
  * mesmo padrão do resto do app).
@@ -51,9 +57,14 @@ export async function syncStravaNow(): Promise<{ synced: number }> {
       .eq("profile_id", user.id);
   }
 
+  const after = Math.floor((Date.now() - SYNC_WINDOW_DAYS * 24 * 60 * 60 * 1000) / 1000);
+
   let activities;
   try {
-    activities = await fetchAthleteActivities(accessToken, { perPage: 30 });
+    // per_page alto o bastante pra cobrir a janela mesmo pra quem treina
+    // 2x/dia (Strava limita a 200 por página) — quem filtra de verdade é o
+    // "after".
+    activities = await fetchAthleteActivities(accessToken, { after, perPage: 100 });
   } catch (e) {
     console.error("[strava] erro ao buscar atividades:", e instanceof Error ? e.message : e);
     throw new Error("Não foi possível buscar as atividades do Strava agora. Tente de novo em instantes.");
