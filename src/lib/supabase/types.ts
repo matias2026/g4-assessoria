@@ -86,6 +86,19 @@ export interface PrescriptionContent {
   };
 }
 
+/**
+ * Conteúdo de `treinos.rascunho` (jsonb) — o que o treinador está
+ * montando/editando, nunca visível pro aluno até "Enviar treino" copiar
+ * isso pra titulo/modalidade/descricao/conteudo e marcar `enviado`.
+ * Mesmos campos de PrescriptionContent + os 3 que ali viram colunas
+ * flat só depois de enviado.
+ */
+export interface PrescriptionDraft extends PrescriptionContent {
+  title?: string;
+  discipline?: string;
+  description?: string;
+}
+
 // Sexo do aluno (dado corporal geral, usado só como referência do treinador).
 export type StudentSex = "Masculino" | "Feminino" | "Outro";
 
@@ -231,6 +244,8 @@ export interface Database {
           tss_real: number | null;
           rpe_esforco: number | null;
           conteudo: PrescriptionContent;
+          rascunho: PrescriptionDraft;
+          enviado: boolean;
           created_at: string;
         };
         Insert: {
@@ -249,6 +264,8 @@ export interface Database {
           tss_real?: number | null;
           rpe_esforco?: number | null;
           conteudo?: PrescriptionContent;
+          rascunho?: PrescriptionDraft;
+          enviado?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["treinos"]["Insert"]>;

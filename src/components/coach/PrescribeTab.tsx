@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { IntervalEditor } from "@/components/workout/IntervalEditor";
@@ -23,6 +24,7 @@ interface PrescribeTabProps {
   selectedStudentId: string;
   onSelectStudent: (id: string) => void;
   onSaveWorkout: (studentId: string, dateIso: string, workout: MockWorkoutDetail) => Promise<void>;
+  onSendWorkout: (studentId: string, dateIso: string, workout: MockWorkoutDetail) => Promise<void>;
   initialExerciseLibrary: ExerciseLibraryItem[];
 }
 
@@ -82,6 +84,7 @@ export function PrescribeTab({
   selectedStudentId,
   onSelectStudent,
   onSaveWorkout,
+  onSendWorkout,
   initialExerciseLibrary,
 }: PrescribeTabProps) {
   const student = students.find((s) => s.id === selectedStudentId) ?? students[0];
@@ -135,6 +138,7 @@ export function PrescribeTab({
         student={student}
         existingWorkout={workouts[student.id]}
         onSaveWorkout={onSaveWorkout}
+        onSendWorkout={onSendWorkout}
         presets={presets}
         onPresetsChange={setPresets}
         library={library}
@@ -148,6 +152,7 @@ interface PrescriptionFormProps {
   student: MockStudent;
   existingWorkout: MockWorkoutDetail | undefined;
   onSaveWorkout: (studentId: string, dateIso: string, workout: MockWorkoutDetail) => Promise<void>;
+  onSendWorkout: (studentId: string, dateIso: string, workout: MockWorkoutDetail) => Promise<void>;
   presets: SetPreset[];
   onPresetsChange: (presets: SetPreset[]) => void;
   library: ExerciseLibraryItem[];
@@ -158,6 +163,7 @@ function PrescriptionForm({
   student,
   existingWorkout,
   onSaveWorkout,
+  onSendWorkout,
   presets,
   onPresetsChange,
   library,
@@ -179,6 +185,16 @@ function PrescriptionForm({
   const [saved, setSaved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+
+  // Qualquer edição depois de salvar/enviar invalida os dois selos — o
+  // treinador precisa salvar/enviar de novo pra refletir a mudança.
+  function markDirty() {
+    setSaved(false);
+    setSent(false);
+  }
   // Título livre em vez do dropdown de títulos prontos — reabrir um treino
   // que já tinha título fora da lista mantém o modo manual.
   const [manualTitle, setManualTitle] = useState(
@@ -205,7 +221,7 @@ function PrescriptionForm({
     setTitle(WORKOUT_TITLES[next][0]);
     setManualTitle(false);
     applyTemplate(next);
-    setSaved(false);
+    markDirty();
   }
 
   // "Criar treino manual": título vira texto livre e todos os campos da
@@ -227,7 +243,7 @@ function PrescriptionForm({
     });
     setStructuredIntervals(defaultIntervalsForDiscipline(discipline));
     setTrainingSessions(defaultTrainingSessionsForDiscipline(discipline));
-    setSaved(false);
+    markDirty();
   }
 
   // Reversível: volta pra lista de títulos prontos e recarrega o modelo da
@@ -236,7 +252,7 @@ function PrescriptionForm({
     setManualTitle(false);
     setTitle(WORKOUT_TITLES[discipline][0]);
     applyTemplate(discipline);
-    setSaved(false);
+    markDirty();
   }
 
   const draftWorkout: MockWorkoutDetail = {
@@ -267,6 +283,19 @@ function PrescriptionForm({
     }
   }
 
+  async function handleSend() {
+    setSendError(null);
+    setSending(true);
+    try {
+      await onSendWorkout(student.id, scheduledDate, draftWorkout);
+      setSent(true);
+    } catch (e) {
+      setSendError(e instanceof Error ? e.message : "Não foi possível enviar o treino.");
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <>
       <Card>
@@ -288,7 +317,7 @@ function PrescriptionForm({
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
-                  setSaved(false);
+                  markDirty();
                 }}
                 placeholder="Digite o título do treino"
                 className={fieldClass}
@@ -298,7 +327,7 @@ function PrescriptionForm({
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
-                  setSaved(false);
+                  markDirty();
                 }}
                 className={fieldClass}
               >
@@ -317,7 +346,7 @@ function PrescriptionForm({
               value={scheduledDate}
               onChange={(e) => {
                 setScheduledDate(e.target.value);
-                setSaved(false);
+                markDirty();
               }}
               className={fieldClass}
             />
@@ -345,15 +374,15 @@ function PrescriptionForm({
         planned={planned}
         onDescriptionChange={(value) => {
           setDescription(value);
-          setSaved(false);
+          markDirty();
         }}
         onPrescriptionChange={(patch) => {
           setPrescription((prev) => ({ ...prev, ...patch }));
-          setSaved(false);
+          markDirty();
         }}
         onPlannedChange={(patch) => {
           setPlanned((prev) => ({ ...prev, ...patch }));
-          setSaved(false);
+          markDirty();
         }}
         onSave={handleSave}
         saved={saved}
@@ -372,7 +401,7 @@ function PrescriptionForm({
             intervals={structuredIntervals}
             onChange={(next) => {
               setStructuredIntervals(next);
-              setSaved(false);
+              markDirty();
             }}
           />
         </Card>
@@ -389,7 +418,7 @@ function PrescriptionForm({
             sessions={trainingSessions}
             onChange={(next) => {
               setTrainingSessions(next);
-              setSaved(false);
+              markDirty();
             }}
             presets={presets}
             onPresetsChange={onPresetsChange}
@@ -400,23 +429,20 @@ function PrescriptionForm({
       )}
 
       <Card>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <CardTitle>Enviar prescrição</CardTitle>
-            <p className="mt-1 text-xs text-g4-muted">
-              Gera a mensagem formatada do treino de hoje para {student.name} ({student.phone}).
-            </p>
-          </div>
-          <LinkButton
-            href={whatsappLink}
-            target="_blank"
-            rel="noreferrer"
-            variant="primary"
-            className="px-5"
-          >
+        <CardTitle>Enviar prescrição</CardTitle>
+        <p className="mt-1 text-xs text-g4-muted">
+          &quot;Enviar treino&quot; publica pro painel de {student.name} — antes disso, o que está sendo
+          montado aqui é só um rascunho que ninguém além de você vê.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <Button variant="primary" className="px-5" onClick={handleSend} disabled={sending}>
+            {sending ? "Enviando..." : sent ? "Enviado ✓" : "Enviar treino"}
+          </Button>
+          <LinkButton href={whatsappLink} target="_blank" rel="noreferrer" variant="secondary" className="px-5">
             Enviar via WhatsApp
           </LinkButton>
         </div>
+        {sendError && <p className="mt-2 text-sm text-status-missed">{sendError}</p>}
       </Card>
     </>
   );

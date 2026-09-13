@@ -4,14 +4,47 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { MockWorkoutDetail } from "@/lib/mock-data";
 import { requireCoachOrAdmin } from "./actions";
 
+function draftSnapshot(workout: MockWorkoutDetail) {
+  return {
+    title: workout.title,
+    discipline: workout.discipline,
+    description: workout.description,
+    prescription: workout.prescription,
+    structuredIntervals: workout.structuredIntervals,
+    trainingSessions: workout.trainingSessions,
+    powerZones: workout.powerZones,
+    planned: workout.planned,
+  };
+}
+
 /**
- * Salva a prescrição do dia em `treinos` (upsert por aluno_id + data) —
- * sem isso, "Salvar prescrição" só atualizava o estado em memória do
- * Cockpit (CockpitTabs), então o aluno nunca via o treino de verdade,
- * só o exemplo genérico da modalidade (buildExampleWorkout). Um treino
- * por aluno por dia: salvar de novo na mesma data substitui o anterior.
+ * "Salvar prescrição": guarda o rascunho em `treinos.rascunho` — nunca
+ * toca titulo/modalidade/descricao/conteudo/enviado, então o aluno
+ * continua vendo (ou não vendo nada) exatamente como estava até o
+ * treinador clicar em "Enviar treino". Upsert por aluno_id + data: um
+ * rascunho por aluno por dia.
  */
-export async function savePrescription(alunoId: string, dateIso: string, workout: MockWorkoutDetail): Promise<void> {
+export async function saveDraft(alunoId: string, dateIso: string, workout: MockWorkoutDetail): Promise<void> {
+  await requireCoachOrAdmin();
+  const admin = createAdminClient();
+
+  const { error } = await admin
+    .from("treinos")
+    .upsert({ aluno_id: alunoId, data: dateIso, rascunho: draftSnapshot(workout) }, { onConflict: "aluno_id,data" });
+
+  if (error) {
+    console.error("[cockpit] erro do Postgres ao salvar o rascunho da prescrição:", error.message);
+    throw new Error("Não foi possível salvar a prescrição. Tente novamente.");
+  }
+}
+
+/**
+ * "Enviar treino": publica de vez — copia o estado atual do formulário
+ * pra titulo/modalidade/descricao/conteudo (o que a página do aluno lê)
+ * e marca `enviado = true`. Também atualiza o rascunho junto, pra reabrir
+ * a prescrição depois continuar a partir do que foi enviado por último.
+ */
+export async function sendPrescription(alunoId: string, dateIso: string, workout: MockWorkoutDetail): Promise<void> {
   await requireCoachOrAdmin();
   const admin = createAdminClient();
 
@@ -19,9 +52,11 @@ export async function savePrescription(alunoId: string, dateIso: string, workout
     {
       aluno_id: alunoId,
       data: dateIso,
+      rascunho: draftSnapshot(workout),
       modalidade: workout.discipline,
       titulo: workout.title,
       descricao: workout.description,
+      enviado: true,
       conteudo: {
         prescription: workout.prescription,
         structuredIntervals: workout.structuredIntervals,
@@ -34,7 +69,7 @@ export async function savePrescription(alunoId: string, dateIso: string, workout
   );
 
   if (error) {
-    console.error("[cockpit] erro do Postgres ao salvar a prescrição:", error.message);
-    throw new Error("Não foi possível salvar a prescrição. Tente novamente.");
+    console.error("[cockpit] erro do Postgres ao enviar a prescrição:", error.message);
+    throw new Error("Não foi possível enviar o treino. Tente novamente.");
   }
 }

@@ -69,15 +69,18 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
     const athlete = { id: aluno.id, name: aluno.nome, phone: aluno.whatsapp ?? "" };
     const todayIso = new Date().toISOString().slice(0, 10);
 
-    // Treino de verdade prescrito pelo treinador pra hoje (savePrescription,
+    // Treino de verdade prescrito pelo treinador pra hoje (sendPrescription,
     // em cockpit/prescription-actions.ts) tem prioridade sobre o exemplo
     // genérico da modalidade — sem isso, o painel do aluno nunca refletia
-    // o que o treinador acabou de salvar/enviar.
+    // o que o treinador acabou de enviar. `enviado = true` é o que separa
+    // isso de um rascunho que o treinador ainda está montando (esse nunca
+    // aparece aqui, só depois de "Enviar treino").
     const { data: treinoData } = await supabase
       .from("treinos")
       .select("titulo, modalidade, descricao, concluido, conteudo")
       .eq("aluno_id", aluno.id)
       .eq("data", todayIso)
+      .eq("enviado", true)
       .single();
 
     if (treinoData) {

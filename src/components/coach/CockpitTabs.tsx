@@ -15,7 +15,7 @@ import {
   type CreateStudentInput,
   type StudentProfileInput,
 } from "@/app/(coach)/cockpit/students-actions";
-import { savePrescription } from "@/app/(coach)/cockpit/prescription-actions";
+import { saveDraft, sendPrescription } from "@/app/(coach)/cockpit/prescription-actions";
 
 interface CockpitTabsProps {
   initialStudents: MockStudent[];
@@ -60,8 +60,7 @@ export function CockpitTabs({
     setStudents((prev) => prev.map((student) => (student.id === id ? updated : student)));
   }
 
-  async function saveWorkout(studentId: string, dateIso: string, workout: MockWorkoutDetail) {
-    await savePrescription(studentId, dateIso, workout);
+  function applyWorkoutLocally(studentId: string, workout: MockWorkoutDetail) {
     setWorkouts((prev) => ({ ...prev, [studentId]: workout }));
     setStudents((prev) =>
       prev.map((student) =>
@@ -70,6 +69,18 @@ export function CockpitTabs({
           : student
       )
     );
+  }
+
+  // "Salvar prescrição" — rascunho, o aluno não vê ainda.
+  async function saveWorkout(studentId: string, dateIso: string, workout: MockWorkoutDetail) {
+    await saveDraft(studentId, dateIso, workout);
+    applyWorkoutLocally(studentId, workout);
+  }
+
+  // "Enviar treino" — publica de vez, agora sim aparece no painel do aluno.
+  async function sendWorkout(studentId: string, dateIso: string, workout: MockWorkoutDetail) {
+    await sendPrescription(studentId, dateIso, workout);
+    applyWorkoutLocally(studentId, workout);
   }
 
   return (
@@ -106,6 +117,7 @@ export function CockpitTabs({
           selectedStudentId={selectedStudentId}
           onSelectStudent={setSelectedStudentId}
           onSaveWorkout={saveWorkout}
+          onSendWorkout={sendWorkout}
           initialExerciseLibrary={initialExerciseLibrary}
         />
       )}
