@@ -31,11 +31,34 @@ export function AnalyzeTab({ students, workouts, selectedStudentId, onSelectStud
   const student = students.find((s) => s.id === selectedStudentId) ?? students[0];
   const workout = student ? workouts[student.id] : undefined;
 
-  if (!student || !workout) {
+  if (!student) {
+    return <p className="text-sm text-g4-muted">Cadastre um aluno para liberar a análise.</p>;
+  }
+
+  // Sempre visível, tenha ou não treino pra analisar — sem isso, o
+  // treinador ficava travado no aluno sem treino, sem nenhum jeito de
+  // trocar pra outro que já tem prescrição enviada.
+  const studentPicker = (
+    <label className="block sm:max-w-sm">
+      <span className={labelClass}>Aluno</span>
+      <select value={student.id} onChange={(e) => onSelectStudent(e.target.value)} className={fieldClass}>
+        {students.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+
+  if (!workout) {
     return (
-      <p className="text-sm text-g4-muted">
-        Prescreva um treino na aba &quot;Criar/Prescrever treino&quot; para liberar a análise.
-      </p>
+      <div className="flex flex-col gap-4">
+        <Card>{studentPicker}</Card>
+        <p className="text-sm text-g4-muted">
+          Prescreva um treino na aba &quot;Criar/Prescrever treino&quot; para liberar a análise de {student.name}.
+        </p>
+      </div>
     );
   }
 
@@ -58,20 +81,7 @@ export function AnalyzeTab({ students, workouts, selectedStudentId, onSelectStud
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <label className="block sm:max-w-sm">
-          <span className={labelClass}>Aluno</span>
-          <select
-            value={student.id}
-            onChange={(e) => onSelectStudent(e.target.value)}
-            className={fieldClass}
-          >
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {studentPicker}
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-g4-border pt-4">
           <div className="flex items-center gap-4">
