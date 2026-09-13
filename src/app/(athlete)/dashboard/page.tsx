@@ -108,8 +108,21 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       .eq("enviado", true)
       .single();
 
-    if (treinoData) {
-      const workout = buildPrescribedWorkout(athlete, formatTodayLabel(), treinoData);
+    // Mesma ressalva de tipos do resto do arquivo: o generic da tabela via
+    // @supabase/ssr não propaga aqui.
+    const treino = treinoData as Parameters<typeof buildPrescribedWorkout>[2] | null;
+
+    if (treino) {
+      // A própria tela do aluno nunca desenha os gráficos de potência/FC/
+      // cadência (isso é só na aba "Analisar treino" do treinador) — sem
+      // tirar as amostras aqui, um treino longo (ex.: 5h47 de pedal = ~20 mil
+      // pontos, um por segundo) manda esse payload inteiro sem uso nenhum
+      // pro componente cliente, o que já foi visto travando o carregamento
+      // da página logo depois de enviar um .FIT grande.
+      const treinoParaAluno = treino.atividade_fit
+        ? { ...treino, atividade_fit: { ...treino.atividade_fit, samples: [] } }
+        : treino;
+      const workout = buildPrescribedWorkout(athlete, formatTodayLabel(), treinoParaAluno);
       return {
         workout,
         isAdmin,
