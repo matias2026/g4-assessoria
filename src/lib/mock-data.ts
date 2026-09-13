@@ -8,7 +8,19 @@
 // cadastrados pela aba "Alunos cadastrados" entram em memória (useState),
 // até a persistência real via Supabase.
 
-import type { WorkoutCompletionSource, WorkoutInterval, WorkoutStatus, TrainingSession } from "./supabase/types";
+import type {
+  BodyComposition,
+  CyclingProfile,
+  LastActivity,
+  RunningProfile,
+  StrengthGoal,
+  StrengthProfile,
+  StudentSex,
+  TrainingSession,
+  WorkoutCompletionSource,
+  WorkoutInterval,
+  WorkoutStatus,
+} from "./supabase/types";
 import type { ZoneDatum } from "@/components/workout/ZonesChart";
 
 // Treino exibido na aba "Analisar treino do aluno" (Planejado vs. Concluído),
@@ -194,7 +206,11 @@ export const TEMPLATE_ACADEMIA: WorkoutTemplate = {
       exercises: [
         {
           name: "Remo",
-          videoUrl: null,
+          // Placeholder de QA (vídeo público conhecido) — o treinador troca
+          // pelo vídeo real ao prescrever de verdade. Serve pra confirmar
+          // que o player incorporado funciona assim que um aluno real de
+          // Academia loga, sem precisar prescrever nada antes.
+          videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
           sets: [
             { reps: "4x8", load: "média", restSeconds: 90 },
             { reps: "4x8", load: "média", restSeconds: 90 },
@@ -295,58 +311,6 @@ export function defaultTrainingSessionsForDiscipline(discipline: string): Traini
   return discipline === "Academia" ? [structuredClone(DEFAULT_TRAINING_SESSION)] : [];
 }
 
-// Sexo do aluno (dado corporal geral, usado só como referência do treinador).
-export type StudentSex = "Masculino" | "Feminino" | "Outro";
-
-// Objetivo principal do aluno na Academia/Força.
-export type StrengthGoal = "Hipertrofia" | "Emagrecimento" | "Fortalecimento para endurance";
-
-// Composição corporal — opcional, complementa peso/altura.
-export interface BodyComposition {
-  bodyFatPct: number | null;
-  muscleMassKg: number | null;
-  waistCm: number | null;
-}
-
-// Perfil físico específico de ciclismo — só preenchido quando o aluno
-// pratica a modalidade (principal ou adicional). FTP mora aqui (não mais
-// solto em MockStudent) porque é um dado de ciclismo, não um dado geral.
-export interface CyclingProfile {
-  ftpWatts: number | null;
-  hrMax: number | null;
-  hrRest: number | null;
-  hrThreshold: number | null;
-  preferredCadence: number | null;
-  peakPowerShort: number | null; // pico curto (sprint), watts
-  peakPowerLong: number | null; // pico longo (~20min), watts
-  mtbNotes: string; // histórico de MTB (altimetria, TSS, IF) — texto livre
-}
-
-// Perfil físico específico de corrida.
-export interface RunningProfile {
-  thresholdPace: string; // "4:15" (min/km) — texto livre, sem cálculo
-  vo2max: number | null;
-  hrMax: number | null;
-  hrThreshold: number | null;
-  pr5k: string;
-  pr10k: string;
-  prHalfMarathon: string;
-  cadence: number | null; // passos/min
-  strideLengthCm: number | null;
-  verticalOscillationCm: number | null;
-}
-
-// Perfil físico específico de academia/força.
-export interface StrengthProfile {
-  goal: StrengthGoal | null;
-  squat1RM: number | null;
-  deadlift1RM: number | null;
-  benchPress1RM: number | null;
-  legPress1RM: number | null;
-  focusNotes: string; // foco dos treinos
-  asymmetryNotes: string; // assimetrias musculares relatadas
-}
-
 // Aluno cadastrado no Cockpit. `discipline` é a modalidade principal (dirige
 // o treino do dia e o resto do app, como sempre); `secondaryDisciplines`
 // cobre casos de dupla modalidade (ex.: Ciclismo de manhã + Academia à
@@ -371,7 +335,7 @@ export interface MockStudent {
   strength: StrengthProfile | null;
   todayStatus: WorkoutStatus;
   stravaSynced: boolean;
-  lastActivity: { name: string; distanceKm: number; date: string } | null;
+  lastActivity: LastActivity | null;
 }
 
 // Único aluno de exemplo — Carlos Silva — usado para validar todas as

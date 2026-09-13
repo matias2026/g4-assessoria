@@ -58,6 +58,65 @@ export interface ExerciseLibraryItem {
   videoUrl: string | null;
 }
 
+// Sexo do aluno (dado corporal geral, usado só como referência do treinador).
+export type StudentSex = "Masculino" | "Feminino" | "Outro";
+
+// Objetivo principal do aluno na Academia/Força.
+export type StrengthGoal = "Hipertrofia" | "Emagrecimento" | "Fortalecimento para endurance";
+
+// Composição corporal — opcional, complementa peso/altura.
+export interface BodyComposition {
+  bodyFatPct: number | null;
+  muscleMassKg: number | null;
+  waistCm: number | null;
+}
+
+// Perfil físico específico de ciclismo — só preenchido quando o aluno
+// pratica a modalidade (principal ou adicional). FTP mora aqui (não mais
+// solto em MockStudent) porque é um dado de ciclismo, não um dado geral.
+export interface CyclingProfile {
+  ftpWatts: number | null;
+  hrMax: number | null;
+  hrRest: number | null;
+  hrThreshold: number | null;
+  preferredCadence: number | null;
+  peakPowerShort: number | null; // pico curto (sprint), watts
+  peakPowerLong: number | null; // pico longo (~20min), watts
+  mtbNotes: string; // histórico de MTB (altimetria, TSS, IF) — texto livre
+}
+
+// Perfil físico específico de corrida.
+export interface RunningProfile {
+  thresholdPace: string; // "4:15" (min/km) — texto livre, sem cálculo
+  vo2max: number | null;
+  hrMax: number | null;
+  hrThreshold: number | null;
+  pr5k: string;
+  pr10k: string;
+  prHalfMarathon: string;
+  cadence: number | null; // passos/min
+  strideLengthCm: number | null;
+  verticalOscillationCm: number | null;
+}
+
+// Perfil físico específico de academia/força.
+export interface StrengthProfile {
+  goal: StrengthGoal | null;
+  squat1RM: number | null;
+  deadlift1RM: number | null;
+  benchPress1RM: number | null;
+  legPress1RM: number | null;
+  focusNotes: string; // foco dos treinos
+  asymmetryNotes: string; // assimetrias musculares relatadas
+}
+
+/** Última atividade sincronizada exibida no roster do Cockpit. */
+export interface LastActivity {
+  name: string;
+  distanceKm: number;
+  date: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -89,6 +148,15 @@ export interface Database {
           peso: number | null;
           altura: number | null;
           user_id: string | null;
+          secondary_disciplines: string[];
+          age: number | null;
+          sex: StudentSex | null;
+          body_composition: BodyComposition | null;
+          weight_history_notes: string;
+          medical_notes: string;
+          cycling_profile: CyclingProfile | null;
+          running_profile: RunningProfile | null;
+          strength_profile: StrengthProfile | null;
           created_at: string;
         };
         Insert: {
@@ -100,6 +168,15 @@ export interface Database {
           peso?: number | null;
           altura?: number | null;
           user_id?: string | null;
+          secondary_disciplines?: string[];
+          age?: number | null;
+          sex?: StudentSex | null;
+          body_composition?: BodyComposition | null;
+          weight_history_notes?: string;
+          medical_notes?: string;
+          cycling_profile?: CyclingProfile | null;
+          running_profile?: RunningProfile | null;
+          strength_profile?: StrengthProfile | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["alunos"]["Insert"]>;

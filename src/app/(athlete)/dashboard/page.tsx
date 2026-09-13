@@ -5,12 +5,76 @@ import { RoleNav } from "@/components/auth/RoleNav";
 import { WeeklyHistory } from "@/components/athlete/WeeklyHistory";
 import { AthleteWorkoutView } from "@/components/workout/AthleteWorkoutView";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
-import { DEMO_WORKOUT_ID, mockWeeklyHistory, mockWorkoutDetails } from "@/lib/mock-data";
+import {
+  buildWorkoutDraft,
+  DEMO_WORKOUT_ID,
+  mockWeeklyHistory,
+  mockWorkoutDetails,
+  type MockStudent,
+  type MockWorkoutDetail,
+} from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/server";
 
-// TODO: substituir os dados mock por consultas reais via src/lib/supabase/server
-// (profiles, workouts do dia e strava_tokens do atleta autenticado).
-export default function AthleteDashboardPage() {
-  const workout = mockWorkoutDetails[DEMO_WORKOUT_ID];
+function formatTodayLabel(): string {
+  const today = new Date();
+  const d = String(today.getDate()).padStart(2, "0");
+  const m = String(today.getMonth() + 1).padStart(2, "0");
+  return `Hoje · ${d}/${m}`;
+}
+
+// Resolve o treino de hoje pelo usuário logado de verdade — se ele tiver
+// uma linha em `alunos` (cadastrado pelo Cockpit já conectado), monta um
+// treino-modelo da modalidade real dele. Sem linha vinculada (contas mais
+// antigas, criadas só pelo painel admin) cai no demo atual, sem regressão.
+async function resolveWorkout(): Promise<MockWorkoutDetail> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data } = await supabase
+      .from("alunos")
+      .select("id, nome, whatsapp, modalidade")
+      .eq("user_id", user.id)
+      .single();
+    // Mesma ressalva de tipos do resto do código (RoleNav/proxy.ts): o
+    // generic da tabela via @supabase/ssr não propaga aqui.
+    const aluno = data as { id: string; nome: string; whatsapp: string | null; modalidade: string | null } | null;
+
+    if (aluno) {
+      const student: MockStudent = {
+        id: aluno.id,
+        name: aluno.nome,
+        phone: aluno.whatsapp ?? "",
+        discipline: aluno.modalidade ?? "Ciclismo",
+        secondaryDisciplines: [],
+        age: null,
+        sex: null,
+        heightCm: null,
+        weightKg: null,
+        bodyComposition: { bodyFatPct: null, muscleMassKg: null, waistCm: null },
+        weightHistoryNotes: "",
+        medicalNotes: "",
+        cycling: null,
+        running: null,
+        strength: null,
+        todayStatus: "pending",
+        stravaSynced: false,
+        lastActivity: null,
+      };
+      return buildWorkoutDraft(student, student.discipline, formatTodayLabel());
+    }
+  }
+
+  return mockWorkoutDetails[DEMO_WORKOUT_ID];
+}
+
+// TODO: substituir o restante dos dados mock (histórico semanal) por
+// consultas reais via src/lib/supabase/server quando treinos/strava_tokens
+// estiverem conectados — o treino do dia já resolve pelo aluno real.
+export default async function AthleteDashboardPage() {
+  const workout = await resolveWorkout();
   const talkToCoachLink = buildWhatsAppLink(workout.coachPhone, `Oi ${workout.coachName}!`);
 
   return (

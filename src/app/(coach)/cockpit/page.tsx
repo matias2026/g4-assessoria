@@ -2,15 +2,20 @@ import { Logo } from "@/components/ui/Logo";
 import { CockpitTabs } from "@/components/coach/CockpitTabs";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { RoleNav } from "@/components/auth/RoleNav";
-import { mockStudents, mockWorkoutDetails } from "@/lib/mock-data";
+import { mockWorkoutDetails } from "@/lib/mock-data";
 import { listExerciseLibrary } from "./actions";
+import { listStudents } from "./students-actions";
 
-// TODO: substituir os dados mock por consultas reais via src/lib/supabase/server
-// (profiles com role = 'coach', workouts da semana e strava_activities recentes).
+// TODO: substituir os treinos mock por consultas reais via src/lib/supabase/server
+// (workouts da semana e strava_activities recentes) — o cadastro de alunos
+// já é dado real (tabela alunos).
 export default async function CoachCockpitPage() {
-  // A biblioteca de exercícios já é dado real (tabela exercise_library) —
-  // nunca deixa a página quebrar se a consulta falhar.
-  const exerciseLibrary = await listExerciseLibrary().catch(() => []);
+  // Biblioteca de exercícios e alunos já são dado real — nunca deixa a
+  // página quebrar se alguma consulta falhar.
+  const [exerciseLibrary, students] = await Promise.all([
+    listExerciseLibrary().catch(() => []),
+    listStudents().catch(() => []),
+  ]);
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 sm:px-6">
@@ -28,7 +33,7 @@ export default async function CoachCockpitPage() {
       <RoleNav currentPath="/cockpit" />
 
       <CockpitTabs
-        initialStudents={mockStudents}
+        initialStudents={students}
         initialWorkouts={mockWorkoutDetails}
         initialExerciseLibrary={exerciseLibrary}
       />

@@ -8,6 +8,7 @@ import { RosterTab } from "@/components/coach/RosterTab";
 import { TodayOverviewTab } from "@/components/coach/TodayOverviewTab";
 import type { MockStudent, MockWorkoutDetail } from "@/lib/mock-data";
 import type { ExerciseLibraryItem } from "@/lib/supabase/types";
+import { createStudentAccount, type CreateStudentInput } from "@/app/(coach)/cockpit/students-actions";
 
 interface CockpitTabsProps {
   initialStudents: MockStudent[];
@@ -40,9 +41,10 @@ export function CockpitTabs({
   const [activeTab, setActiveTab] = useState<TabKey>("roster");
   const [selectedStudentId, setSelectedStudentId] = useState<string>(initialStudents[0]?.id ?? "");
 
-  function addStudent(student: MockStudent) {
-    setStudents((prev) => [...prev, student]);
-    setSelectedStudentId(student.id);
+  async function addStudent(input: CreateStudentInput) {
+    const created = await createStudentAccount(input);
+    setStudents((prev) => [...prev, created]);
+    setSelectedStudentId(created.id);
   }
 
   function saveWorkout(studentId: string, workout: MockWorkoutDetail) {

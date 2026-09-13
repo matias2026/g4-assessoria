@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusDot } from "@/components/ui/StatusDot";
 import type { MockStudent } from "@/lib/mock-data";
+import type { CreateStudentInput } from "@/app/(coach)/cockpit/students-actions";
 
 interface RosterTabProps {
   students: MockStudent[];
-  onAddStudent: (student: MockStudent) => void;
+  onAddStudent: (input: CreateStudentInput) => Promise<void>;
 }
 
 function formatFtp(student: MockStudent): string {

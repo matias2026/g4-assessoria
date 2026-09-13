@@ -7,7 +7,7 @@ import type { ExerciseLibraryItem, ProfileRole } from "@/lib/supabase/types";
 // Autentica/autoriza com o client de sessão (RLS); a leitura/escrita em si
 // roda com a service role, mesmo padrão de src/app/admin/actions.ts — o
 // generic de tabela do @supabase/ssr não propaga bem pra insert/upsert.
-async function requireCoachOrAdmin(): Promise<void> {
+export async function requireCoachOrAdmin(): Promise<void> {
   const supabase = await createClient();
   const {
     data: { user },

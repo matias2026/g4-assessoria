@@ -2,12 +2,20 @@
 
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
-import type { BodyComposition, CyclingProfile, MockStudent, RunningProfile, StrengthGoal, StrengthProfile, StudentSex } from "@/lib/mock-data";
+import type {
+  BodyComposition,
+  CyclingProfile,
+  RunningProfile,
+  StrengthGoal,
+  StrengthProfile,
+  StudentSex,
+} from "@/lib/supabase/types";
+import type { CreateStudentInput } from "@/app/(coach)/cockpit/students-actions";
 
 interface AddStudentModalProps {
   open: boolean;
   onClose: () => void;
-  onAddStudent: (student: MockStudent) => void;
+  onAddStudent: (input: CreateStudentInput) => Promise<void>;
 }
 
 const DISCIPLINES = ["Ciclismo", "Corrida", "Academia"];
@@ -30,6 +38,8 @@ function numOrNull(value: string): number | null {
 interface GeneralFields {
   name: string;
   phone: string;
+  email: string;
+  password: string;
   age: string;
   sex: StudentSex | "";
   heightCm: string;
@@ -78,6 +88,8 @@ interface StrengthFields {
 const BLANK_GENERAL: GeneralFields = {
   name: "",
   phone: "",
+  email: "",
+  password: "",
   age: "",
   sex: "",
   heightCm: "",
@@ -135,6 +147,8 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
   const [cycling, setCycling] = useState<CyclingFields>(BLANK_CYCLING);
   const [running, setRunning] = useState<RunningFields>(BLANK_RUNNING);
   const [strength, setStrength] = useState<StrengthFields>(BLANK_STRENGTH);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
 
@@ -171,9 +185,9 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
     );
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!general.name.trim() || !general.phone.trim()) return;
+    if (!general.name.trim() || !general.phone.trim() || !general.email.trim() || !general.password) return;
 
     const cyclingProfile: CyclingProfile | null = isCycling
       ? {
@@ -221,28 +235,33 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
       waistCm: numOrNull(general.waistCm),
     };
 
-    onAddStudent({
-      id: String(Date.now()),
-      name: general.name.trim(),
-      phone: general.phone.trim(),
-      discipline: primaryDiscipline,
-      secondaryDisciplines,
-      age: numOrNull(general.age),
-      sex: general.sex || null,
-      heightCm: numOrNull(general.heightCm),
-      weightKg: numOrNull(general.weightKg),
-      bodyComposition,
-      weightHistoryNotes: general.weightHistoryNotes.trim(),
-      medicalNotes: general.medicalNotes.trim(),
-      cycling: cyclingProfile,
-      running: runningProfile,
-      strength: strengthProfile,
-      todayStatus: "pending",
-      stravaSynced: false,
-      lastActivity: null,
-    });
-
-    onClose();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await onAddStudent({
+        email: general.email.trim(),
+        password: general.password,
+        name: general.name.trim(),
+        phone: general.phone.trim(),
+        discipline: primaryDiscipline,
+        secondaryDisciplines,
+        age: numOrNull(general.age),
+        sex: general.sex || null,
+        heightCm: numOrNull(general.heightCm),
+        weightKg: numOrNull(general.weightKg),
+        bodyComposition,
+        weightHistoryNotes: general.weightHistoryNotes.trim(),
+        medicalNotes: general.medicalNotes.trim(),
+        cycling: cyclingProfile,
+        running: runningProfile,
+        strength: strengthProfile,
+      });
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Não foi possível cadastrar o aluno.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -295,6 +314,29 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
                   required
                   className={fieldClass}
                   placeholder="+55 84 99999-0000"
+                />
+              </label>
+              <label className="block">
+                <span className={labelClass}>E-mail (login do aluno)</span>
+                <input
+                  type="email"
+                  value={general.email}
+                  onChange={(e) => patchGeneral({ email: e.target.value })}
+                  required
+                  className={fieldClass}
+                  placeholder="aluno@exemplo.com"
+                />
+              </label>
+              <label className="block">
+                <span className={labelClass}>Senha (mínimo 8 caracteres)</span>
+                <input
+                  type="password"
+                  value={general.password}
+                  onChange={(e) => patchGeneral({ password: e.target.value })}
+                  required
+                  minLength={8}
+                  className={fieldClass}
+                  placeholder="Senha provisória"
                 />
               </label>
               <label className="block">
@@ -755,8 +797,10 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
             </details>
           )}
 
-          <Button type="submit" variant="primary" className="mt-1">
-            Salvar aluno
+          {error && <p className="text-sm text-status-missed">{error}</p>}
+
+          <Button type="submit" variant="primary" className="mt-1" disabled={submitting}>
+            {submitting ? "Criando conta..." : "Salvar aluno"}
           </Button>
         </form>
       </div>
