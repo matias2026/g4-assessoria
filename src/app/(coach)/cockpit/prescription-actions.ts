@@ -43,6 +43,12 @@ export async function saveDraft(alunoId: string, dateIso: string, workout: MockW
  * pra titulo/modalidade/descricao/conteudo (o que a página do aluno lê)
  * e marca `enviado = true`. Também atualiza o rascunho junto, pra reabrir
  * a prescrição depois continuar a partir do que foi enviado por último.
+ *
+ * Zera explicitamente os campos de conclusão (concluido, rpe/sensação/
+ * comentários, duração/distância/TSS reais, arquivo .FIT) — sem isso, um
+ * upsert só atualiza as colunas do payload, então reenviar um treino novo
+ * pra uma data que já tinha um treino concluído antes fazia o treino novo
+ * já nascer "Concluído" com os dados (e o arquivo .FIT) do treino anterior.
  */
 export async function sendPrescription(alunoId: string, dateIso: string, workout: MockWorkoutDetail): Promise<void> {
   await requireCoachOrAdmin();
@@ -64,6 +70,15 @@ export async function sendPrescription(alunoId: string, dateIso: string, workout
         powerZones: workout.powerZones,
         planned: workout.planned,
       },
+      concluido: false,
+      duracao_real: null,
+      distancia_real: null,
+      tss_real: null,
+      rpe_esforco: null,
+      sensacao: null,
+      comentarios: null,
+      arquivo_fit_path: null,
+      atividade_fit: null,
     },
     { onConflict: "aluno_id,data" }
   );
