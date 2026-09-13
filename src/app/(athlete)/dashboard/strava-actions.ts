@@ -1,30 +1,28 @@
-import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+"use server";
+
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchAthleteActivities, refreshStravaToken } from "@/lib/strava/client";
 
-// Sincroniza as atividades recentes do atleta autenticado com strava_activities.
-// Renova o access token automaticamente quando expirado.
-export async function POST() {
+/**
+ * "Sincronizar agora" — puxa as atividades recentes do Strava sob demanda
+ * (não existia nenhum gatilho pra isso antes; a conexão OAuth em si já
+ * funcionava, só nunca buscava atividade nenhuma). Renova o token
+ * automaticamente quando expirado, mesma lógica que estava parada e sem uso
+ * em api/strava/sync/route.ts (removida — virou este Server Action, no
+ * mesmo padrão do resto do app).
+ */
+export async function syncStravaNow(): Promise<{ synced: number }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
-  }
+  if (!user) throw new Error("Não autenticado.");
 
   const admin = createAdminClient();
-  const { data: tokenRow } = await admin
-    .from("strava_tokens")
-    .select("*")
-    .eq("profile_id", user.id)
-    .single();
-
-  if (!tokenRow) {
-    return NextResponse.json({ error: "Strava não conectado." }, { status: 404 });
-  }
+  const { data: tokenRow } = await admin.from("strava_tokens").select("*").eq("profile_id", user.id).single();
+  if (!tokenRow) throw new Error("Strava não conectado.");
 
   let accessToken = tokenRow.access_token;
   const isExpired = new Date(tokenRow.expires_at).getTime() <= Date.now();
@@ -44,7 +42,13 @@ export async function POST() {
       .eq("profile_id", user.id);
   }
 
-  const activities = await fetchAthleteActivities(accessToken, { perPage: 30 });
+  let activities;
+  try {
+    activities = await fetchAthleteActivities(accessToken, { perPage: 30 });
+  } catch (e) {
+    console.error("[strava] erro ao buscar atividades:", e instanceof Error ? e.message : e);
+    throw new Error("Não foi possível buscar as atividades do Strava agora. Tente de novo em instantes.");
+  }
 
   if (activities.length > 0) {
     await admin.from("strava_activities").upsert(
@@ -63,5 +67,6 @@ export async function POST() {
     );
   }
 
-  return NextResponse.json({ synced: activities.length });
+  revalidatePath("/dashboard");
+  return { synced: activities.length };
 }

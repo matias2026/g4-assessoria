@@ -16,6 +16,7 @@ import {
   type MockWorkoutDetail,
 } from "@/lib/mock-data";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { ProfileRole } from "@/lib/supabase/types";
 
 function formatTodayLabel(): string {
@@ -35,6 +36,9 @@ interface ResolvedWorkout {
   coachName: string;
   coachPhone: string;
   discipline: string;
+  // Só true pro aluno real que já autorizou /api/strava/connect — a prévia
+  // do admin e o demo legado nunca têm strava_tokens de verdade.
+  stravaConnected: boolean;
 }
 
 // Resolve o treino de hoje pelo usuário logado de verdade — se ele tiver
@@ -59,6 +63,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       coachName: workout.coachName,
       coachPhone: workout.coachPhone,
       discipline: workout.discipline,
+      stravaConnected: false,
     };
   }
 
@@ -81,6 +86,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       coachName: workout.coachName,
       coachPhone: workout.coachPhone,
       discipline: workout.discipline,
+      stravaConnected: false,
     };
   }
 
@@ -95,6 +101,17 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
     const athlete = { id: aluno.id, name: aluno.nome, phone: aluno.whatsapp ?? "" };
     const todayIso = new Date().toISOString().slice(0, 10);
     const discipline = aluno.modalidade ?? "Ciclismo";
+
+    // strava_tokens é sensível (guarda access/refresh token), então lê com a
+    // service role em vez do client de sessão — mesmo padrão do lado do
+    // treinador em cockpit/students-actions.ts.
+    const admin = createAdminClient();
+    const { data: tokenRow } = await admin
+      .from("strava_tokens")
+      .select("profile_id")
+      .eq("profile_id", user.id)
+      .maybeSingle();
+    const stravaConnected = tokenRow !== null;
 
     // Treino de verdade prescrito pelo treinador pra hoje (sendPrescription,
     // em cockpit/prescription-actions.ts) — `enviado = true` é o que
@@ -130,6 +147,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
         coachName: workout.coachName,
         coachPhone: workout.coachPhone,
         discipline: workout.discipline,
+        stravaConnected,
       };
     }
 
@@ -142,6 +160,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       coachName: DEFAULT_COACH_NAME,
       coachPhone: DEFAULT_COACH_PHONE,
       discipline,
+      stravaConnected,
     };
   }
 
@@ -158,6 +177,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       coachName: workout.coachName,
       coachPhone: workout.coachPhone,
       discipline: workout.discipline,
+      stravaConnected: false,
     };
   }
 
@@ -168,13 +188,14 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
     athleteName: workout.athleteName,
     coachName: workout.coachName,
     coachPhone: workout.coachPhone,
+    stravaConnected: false,
     discipline: workout.discipline,
   };
 }
 
 // TODO: substituir o restante dos dados mock (histórico semanal) por
-// consultas reais via src/lib/supabase/server quando treinos/strava_tokens
-// estiverem conectados — o treino do dia já resolve pelo aluno real.
+// consultas reais — treino do dia e status do Strava já resolvem pelo
+// aluno real.
 //
 // Sempre busca o aluno/treino fresco — sem isso o Next poderia manter a
 // página presa no que existia num render anterior (mesmo motivo
@@ -187,7 +208,8 @@ export default async function AthleteDashboardPage({
   searchParams: Promise<{ preview?: string }>;
 }) {
   const { preview } = await searchParams;
-  const { workout, isAdmin, athleteName, coachName, coachPhone, discipline } = await resolveWorkout(preview);
+  const { workout, isAdmin, athleteName, coachName, coachPhone, discipline, stravaConnected } =
+    await resolveWorkout(preview);
   const talkToCoachLink = buildWhatsAppLink(coachPhone, `Oi ${coachName}!`);
 
   return (
@@ -202,7 +224,7 @@ export default async function AthleteDashboardPage({
       {isAdmin && <AdminPreviewSwitcher basePath="/dashboard" activeDiscipline={discipline} />}
 
       {workout ? (
-        <AthleteWorkoutView workout={workout} isPreview={isAdmin} />
+        <AthleteWorkoutView workout={workout} isPreview={isAdmin} stravaConnected={stravaConnected} />
       ) : (
         <NoWorkoutCard talkToCoachLink={talkToCoachLink} coachName={coachName} />
       )}

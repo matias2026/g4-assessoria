@@ -19,6 +19,7 @@ import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { formatDistance, formatDuration } from "@/lib/workout-metrics";
 import type { MockWorkoutDetail } from "@/lib/mock-data";
 import { completeOwnWorkout } from "@/app/(athlete)/dashboard/profile-actions";
+import { syncStravaNow } from "@/app/(athlete)/dashboard/strava-actions";
 
 const GARMIN_CONNECT_URL = "https://connect.garmin.com/modern/";
 
@@ -29,6 +30,9 @@ interface AthleteWorkoutViewProps {
   // requireOwnAlunoId, que não acha ficha nenhuma pro admin e falha, então
   // essas ações ficam escondidas em vez de crashar ao clicar.
   isPreview?: boolean;
+  // Real (lido de strava_tokens em dashboard/page.tsx) — sem isso o badge
+  // ficava sempre em "Strava não conectado", mesmo pra quem já conectou.
+  stravaConnected?: boolean;
 }
 
 /**
@@ -36,14 +40,14 @@ interface AthleteWorkoutViewProps {
  * dispositivo) + Feedback do Professor, tudo em um fluxo único — sem cards
  * soltos e desconectados.
  */
-export function AthleteWorkoutView({ workout, isPreview = false }: AthleteWorkoutViewProps) {
+export function AthleteWorkoutView({ workout, isPreview = false, stravaConnected = false }: AthleteWorkoutViewProps) {
   const [status, setStatus] = useState(workout.status);
   const [completed, setCompleted] = useState(workout.completed);
   const [modalOpen, setModalOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
-
-  const stravaConnected = false; // TODO: ler de strava_tokens quando o Supabase estiver conectado
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   const talkToCoachLink = buildWhatsAppLink(
     workout.coachPhone,
@@ -82,6 +86,21 @@ export function AthleteWorkoutView({ workout, isPreview = false }: AthleteWorkou
     }
   }
 
+  async function handleSync() {
+    setSyncMessage(null);
+    setSyncing(true);
+    try {
+      const { synced } = await syncStravaNow();
+      setSyncMessage(
+        synced > 0 ? `${synced} atividade${synced > 1 ? "s" : ""} sincronizada${synced > 1 ? "s" : ""}.` : "Nenhuma atividade nova."
+      );
+    } catch (e) {
+      setSyncMessage(e instanceof Error ? e.message : "Não foi possível sincronizar agora.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Treino do dia */}
@@ -115,13 +134,23 @@ export function AthleteWorkoutView({ workout, isPreview = false }: AthleteWorkou
                   : "Strava conectado"
                 : "Strava não conectado"}
             </Badge>
-            {!stravaConnected && (
+            {stravaConnected ? (
+              <button
+                type="button"
+                onClick={handleSync}
+                disabled={syncing}
+                className="text-xs font-semibold text-lime-deep underline underline-offset-2 focus-ring disabled:opacity-60"
+              >
+                {syncing ? "Sincronizando..." : "Sincronizar agora"}
+              </button>
+            ) : (
               <LinkButton href="/api/strava/connect" variant="ghost" className="px-2 py-1 text-xs">
                 Conectar
               </LinkButton>
             )}
           </div>
         </div>
+        {syncMessage && <p className="mt-2 text-right text-xs text-g4-muted">{syncMessage}</p>}
       </Card>
 
       <AthleteTrainingSessions sessions={workout.trainingSessions} />
