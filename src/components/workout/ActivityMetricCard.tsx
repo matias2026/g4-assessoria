@@ -77,7 +77,7 @@ export function ActivityMetricCard({
   const showAltitudeBackdrop = dataKey !== "altitudeMeters";
 
   return (
-    <div className="rounded-2xl bg-neutral-900 p-4 text-neutral-100">
+    <div className="rounded-2xl bg-neutral-900 p-3 text-neutral-100 sm:p-4">
       <h3 className="text-base font-bold">{title}</h3>
 
       <div className="mt-3 h-56">

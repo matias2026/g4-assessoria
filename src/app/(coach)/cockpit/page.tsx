@@ -8,7 +8,7 @@ import { mockStudents, mockWorkoutDetails } from "@/lib/mock-data";
 // (profiles com role = 'coach', workouts da semana e strava_activities recentes).
 export default function CoachCockpitPage() {
   return (
-    <main className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-8">
+    <main className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 sm:px-6">
       {/* Header minimalista: só logo + título e o botão de sair isolado.
           O switcher de área (admin) fica numa faixa própria abaixo, sem
           disputar espaço aqui. */}
