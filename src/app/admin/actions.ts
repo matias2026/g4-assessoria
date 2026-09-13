@@ -52,6 +52,7 @@ interface CreateAccountInput {
   password: string;
   fullName: string;
   role: ProfileRole;
+  phone?: string | null;
 }
 
 // Lógica compartilhada por "Criar conta" (formulário direto) e "Aprovar"
@@ -59,7 +60,7 @@ interface CreateAccountInput {
 // (pré-checagem, pra não criar um usuário órfão no Auth à toa) e no banco
 // (trigger enforce_athlete_cap, que vale de verdade mesmo se alguém pular
 // esta função e inserir direto via SQL/service role).
-async function createAccountCore({ email, password, fullName, role }: CreateAccountInput): Promise<string | null> {
+async function createAccountCore({ email, password, fullName, role, phone }: CreateAccountInput): Promise<string | null> {
   if (!email || !password || !fullName) return "Preencha nome, e-mail e senha.";
   if (password.length < 8) return "A senha precisa ter pelo menos 8 caracteres.";
   if (!["coach", "athlete", "admin"].includes(role)) return "Papel inválido.";
@@ -92,6 +93,24 @@ async function createAccountCore({ email, password, fullName, role }: CreateAcco
     return "Não foi possível criar a conta. Tente novamente.";
   }
 
+  // Sem isso, um aluno aprovado por aqui fica com login mas sem ficha:
+  // não aparece na roster do Cockpit (listStudents lê de alunos) nem vê
+  // o próprio treino na área do atleta (resolveWorkout também lê de
+  // alunos). O perfil completo (modalidade, medidas etc.) continua sendo
+  // preenchido depois pelo treinador — isso só garante que a ficha exista.
+  if (role === "athlete") {
+    const { error: alunoError } = await admin
+      .from("alunos")
+      .insert({ user_id: created.user.id, nome: fullName, whatsapp: phone ?? null });
+
+    if (alunoError) {
+      await admin.from("profiles").delete().eq("id", created.user.id);
+      await admin.auth.admin.deleteUser(created.user.id);
+      console.error("[admin] erro do Postgres ao criar ficha do aluno:", alunoError.message);
+      return "Não foi possível criar a conta. Tente novamente.";
+    }
+  }
+
   return null;
 }
 
@@ -109,7 +128,7 @@ export async function createAccount(
   const fullName = String(formData.get("full_name") ?? "").trim();
   const role = String(formData.get("role") ?? "") as ProfileRole;
 
-  const error = await createAccountCore({ email, password, fullName, role });
+  const error = await createAccountCore({ email, password, fullName, role, phone: null });
   if (error) return { ...initialState, error };
 
   revalidatePath("/admin");
@@ -173,7 +192,7 @@ export async function approveRequest(requestId: string): Promise<ApproveRequestR
 
   const { data: reqRow } = await admin
     .from("access_requests")
-    .select("id, full_name, email, password, role_requested, status")
+    .select("id, full_name, email, phone, password, role_requested, status")
     .eq("id", requestId)
     .single();
 
@@ -190,6 +209,7 @@ export async function approveRequest(requestId: string): Promise<ApproveRequestR
     password: reqRow.password,
     fullName: reqRow.full_name,
     role: reqRow.role_requested,
+    phone: reqRow.phone,
   });
 
   if (error) return { error };
