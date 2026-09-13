@@ -153,10 +153,10 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
       {/* 2. Resumo de treinos concluídos */}
       <Card>
         <CardTitle>Resumo de treinos concluídos</CardTitle>
-        {!summaryLoaded ? (
-          <p className="mt-2 text-sm text-g4-muted">Carregando...</p>
-        ) : summaryError ? (
+        {summaryError ? (
           <p className="mt-2 text-sm text-status-missed">{summaryError}</p>
+        ) : !summaryLoaded ? (
+          <p className="mt-2 text-sm text-g4-muted">Carregando...</p>
         ) : summary && summary.totalCount > 0 ? (
           <div className="mt-2">
             <p className="text-sm text-g4-ink">
@@ -205,7 +205,9 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
       {/* 3. Gráfico de evolução (carga semanal — TSS quando existe, senão minutos) */}
       <Card>
         <CardTitle>Evolução</CardTitle>
-        {!summaryLoaded ? (
+        {summaryError ? (
+          <p className="mt-2 text-sm text-status-missed">{summaryError}</p>
+        ) : !summaryLoaded ? (
           <p className="mt-2 text-sm text-g4-muted">Carregando...</p>
         ) : summary && summary.loadMetric && summary.weeklyLoad.length >= 2 ? (
           <div className="mt-3 flex flex-col gap-2">
@@ -237,7 +239,9 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
       {/* 4. Alerta de overtraining (compara carga da semana atual x anterior) */}
       <Card>
         <CardTitle>Alerta de overtraining</CardTitle>
-        {!summaryLoaded ? (
+        {summaryError ? (
+          <p className="mt-2 text-sm text-status-missed">{summaryError}</p>
+        ) : !summaryLoaded ? (
           <p className="mt-2 text-sm text-g4-muted">Carregando...</p>
         ) : summary && summary.loadMetric && summary.weeklyLoad.length >= 2 ? (
           (() => {
