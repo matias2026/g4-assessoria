@@ -9,7 +9,12 @@ import { RosterTab } from "@/components/coach/RosterTab";
 import { TodayOverviewTab } from "@/components/coach/TodayOverviewTab";
 import type { MockStudent, MockWorkoutDetail } from "@/lib/mock-data";
 import type { ExerciseLibraryItem } from "@/lib/supabase/types";
-import { createStudentAccount, type CreateStudentInput } from "@/app/(coach)/cockpit/students-actions";
+import {
+  completeStudentProfile,
+  createStudentAccount,
+  type CreateStudentInput,
+  type StudentProfileInput,
+} from "@/app/(coach)/cockpit/students-actions";
 
 interface CockpitTabsProps {
   initialStudents: MockStudent[];
@@ -49,6 +54,11 @@ export function CockpitTabs({
     setSelectedStudentId(created.id);
   }
 
+  async function saveProfile(id: string, input: StudentProfileInput) {
+    const updated = await completeStudentProfile(id, input);
+    setStudents((prev) => prev.map((student) => (student.id === id ? updated : student)));
+  }
+
   function saveWorkout(studentId: string, workout: MockWorkoutDetail) {
     setWorkouts((prev) => ({ ...prev, [studentId]: workout }));
     setStudents((prev) =>
@@ -83,7 +93,9 @@ export function CockpitTabs({
         ))}
       </nav>
 
-      {activeTab === "roster" && <RosterTab students={students} onAddStudent={addStudent} />}
+      {activeTab === "roster" && (
+        <RosterTab students={students} onAddStudent={addStudent} onSaveProfile={saveProfile} />
+      )}
 
       {activeTab === "prescribe" && (
         <PrescribeTab

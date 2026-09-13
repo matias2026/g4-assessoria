@@ -10,12 +10,18 @@ import type {
   StrengthProfile,
   StudentSex,
 } from "@/lib/supabase/types";
-import type { CreateStudentInput } from "@/app/(coach)/cockpit/students-actions";
+import type { MockStudent } from "@/lib/mock-data";
+import type { CreateStudentInput, StudentProfileInput } from "@/app/(coach)/cockpit/students-actions";
 
 interface AddStudentModalProps {
   open: boolean;
   onClose: () => void;
   onAddStudent: (input: CreateStudentInput) => Promise<void>;
+  // Quando presente, o modal edita a ficha desse aluno em vez de criar
+  // conta nova — sem e-mail/senha (o login já existe) e chamando
+  // onSaveProfile no lugar de onAddStudent.
+  editingStudent?: MockStudent | null;
+  onSaveProfile?: (id: string, input: StudentProfileInput) => Promise<void>;
 }
 
 const DISCIPLINES = ["Ciclismo", "Corrida", "Academia"];
@@ -33,6 +39,10 @@ function numOrNull(value: string): number | null {
   if (value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+function numToStr(value: number | null | undefined): string {
+  return value == null ? "" : String(value);
 }
 
 interface GeneralFields {
@@ -132,6 +142,69 @@ const BLANK_STRENGTH: StrengthFields = {
   asymmetryNotes: "",
 };
 
+function generalFieldsFromStudent(student: MockStudent): GeneralFields {
+  return {
+    ...BLANK_GENERAL,
+    name: student.name,
+    phone: student.phone,
+    age: numToStr(student.age),
+    sex: student.sex ?? "",
+    heightCm: numToStr(student.heightCm),
+    weightKg: numToStr(student.weightKg),
+    bodyFatPct: numToStr(student.bodyComposition.bodyFatPct),
+    muscleMassKg: numToStr(student.bodyComposition.muscleMassKg),
+    waistCm: numToStr(student.bodyComposition.waistCm),
+    weightHistoryNotes: student.weightHistoryNotes,
+    medicalNotes: student.medicalNotes,
+  };
+}
+
+function cyclingFieldsFromStudent(student: MockStudent): CyclingFields {
+  const c = student.cycling;
+  if (!c) return BLANK_CYCLING;
+  return {
+    ftpWatts: numToStr(c.ftpWatts),
+    hrMax: numToStr(c.hrMax),
+    hrRest: numToStr(c.hrRest),
+    hrThreshold: numToStr(c.hrThreshold),
+    preferredCadence: numToStr(c.preferredCadence),
+    peakPowerShort: numToStr(c.peakPowerShort),
+    peakPowerLong: numToStr(c.peakPowerLong),
+    mtbNotes: c.mtbNotes,
+  };
+}
+
+function runningFieldsFromStudent(student: MockStudent): RunningFields {
+  const r = student.running;
+  if (!r) return BLANK_RUNNING;
+  return {
+    thresholdPace: r.thresholdPace,
+    vo2max: numToStr(r.vo2max),
+    hrMax: numToStr(r.hrMax),
+    hrThreshold: numToStr(r.hrThreshold),
+    pr5k: r.pr5k,
+    pr10k: r.pr10k,
+    prHalfMarathon: r.prHalfMarathon,
+    cadence: numToStr(r.cadence),
+    strideLengthCm: numToStr(r.strideLengthCm),
+    verticalOscillationCm: numToStr(r.verticalOscillationCm),
+  };
+}
+
+function strengthFieldsFromStudent(student: MockStudent): StrengthFields {
+  const s = student.strength;
+  if (!s) return BLANK_STRENGTH;
+  return {
+    goal: s.goal ?? "",
+    squat1RM: numToStr(s.squat1RM),
+    deadlift1RM: numToStr(s.deadlift1RM),
+    benchPress1RM: numToStr(s.benchPress1RM),
+    legPress1RM: numToStr(s.legPress1RM),
+    focusNotes: s.focusNotes,
+    asymmetryNotes: s.asymmetryNotes,
+  };
+}
+
 /**
  * Modal de cadastro de aluno: dados corporais gerais + seções específicas
  * por modalidade (Ciclismo/Corrida/Academia), mostradas só quando a
@@ -140,13 +213,33 @@ const BLANK_STRENGTH: StrengthFields = {
  * poluir a tela com ~35 campos de uma vez. TODO: persistir via Supabase
  * quando o projeto estiver conectado (hoje só entra em memória).
  */
-export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModalProps) {
-  const [general, setGeneral] = useState<GeneralFields>(BLANK_GENERAL);
-  const [primaryDiscipline, setPrimaryDiscipline] = useState(DISCIPLINES[0]);
-  const [secondaryDisciplines, setSecondaryDisciplines] = useState<string[]>([]);
-  const [cycling, setCycling] = useState<CyclingFields>(BLANK_CYCLING);
-  const [running, setRunning] = useState<RunningFields>(BLANK_RUNNING);
-  const [strength, setStrength] = useState<StrengthFields>(BLANK_STRENGTH);
+export function AddStudentModal({
+  open,
+  onClose,
+  onAddStudent,
+  editingStudent,
+  onSaveProfile,
+}: AddStudentModalProps) {
+  // Estado inicial lazy a partir do aluno em edição (ou em branco, pra
+  // cadastro novo) — o pai remonta este componente (key trocando) toda vez
+  // que o modal abre pra um aluno diferente, então isso já resolve sozinho
+  // sem precisar de um useEffect só pra "resetar" o formulário.
+  const [general, setGeneral] = useState<GeneralFields>(() =>
+    editingStudent ? generalFieldsFromStudent(editingStudent) : BLANK_GENERAL
+  );
+  const [primaryDiscipline, setPrimaryDiscipline] = useState(() => editingStudent?.discipline ?? DISCIPLINES[0]);
+  const [secondaryDisciplines, setSecondaryDisciplines] = useState<string[]>(
+    () => editingStudent?.secondaryDisciplines ?? []
+  );
+  const [cycling, setCycling] = useState<CyclingFields>(() =>
+    editingStudent ? cyclingFieldsFromStudent(editingStudent) : BLANK_CYCLING
+  );
+  const [running, setRunning] = useState<RunningFields>(() =>
+    editingStudent ? runningFieldsFromStudent(editingStudent) : BLANK_RUNNING
+  );
+  const [strength, setStrength] = useState<StrengthFields>(() =>
+    editingStudent ? strengthFieldsFromStudent(editingStudent) : BLANK_STRENGTH
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -187,7 +280,8 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!general.name.trim() || !general.phone.trim() || !general.email.trim() || !general.password) return;
+    const missingAccountFields = !editingStudent && (!general.email.trim() || !general.password);
+    if (!general.name.trim() || !general.phone.trim() || missingAccountFields) return;
 
     const cyclingProfile: CyclingProfile | null = isCycling
       ? {
@@ -235,30 +329,34 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
       waistCm: numOrNull(general.waistCm),
     };
 
+    const profileInput = {
+      name: general.name.trim(),
+      phone: general.phone.trim(),
+      discipline: primaryDiscipline,
+      secondaryDisciplines,
+      age: numOrNull(general.age),
+      sex: general.sex || null,
+      heightCm: numOrNull(general.heightCm),
+      weightKg: numOrNull(general.weightKg),
+      bodyComposition,
+      weightHistoryNotes: general.weightHistoryNotes.trim(),
+      medicalNotes: general.medicalNotes.trim(),
+      cycling: cyclingProfile,
+      running: runningProfile,
+      strength: strengthProfile,
+    };
+
     setError(null);
     setSubmitting(true);
     try {
-      await onAddStudent({
-        email: general.email.trim(),
-        password: general.password,
-        name: general.name.trim(),
-        phone: general.phone.trim(),
-        discipline: primaryDiscipline,
-        secondaryDisciplines,
-        age: numOrNull(general.age),
-        sex: general.sex || null,
-        heightCm: numOrNull(general.heightCm),
-        weightKg: numOrNull(general.weightKg),
-        bodyComposition,
-        weightHistoryNotes: general.weightHistoryNotes.trim(),
-        medicalNotes: general.medicalNotes.trim(),
-        cycling: cyclingProfile,
-        running: runningProfile,
-        strength: strengthProfile,
-      });
+      if (editingStudent) {
+        await onSaveProfile?.(editingStudent.id, profileInput);
+      } else {
+        await onAddStudent({ ...profileInput, email: general.email.trim(), password: general.password });
+      }
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Não foi possível cadastrar o aluno.");
+      setError(e instanceof Error ? e.message : "Não foi possível salvar a ficha do aluno.");
     } finally {
       setSubmitting(false);
     }
@@ -268,7 +366,7 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Cadastrar novo aluno"
+      aria-label={editingStudent ? "Completar ficha do aluno" : "Cadastrar novo aluno"}
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
       onClick={onClose}
     >
@@ -280,7 +378,11 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
             com o formulário, o que fazia o título sumir/cortar no topo
             (pior ainda com a barra do Safari no iOS). */}
         <div className="flex shrink-0 items-center justify-between border-b border-g4-border p-5">
-          <h2 className="text-lg font-bold text-g4-ink">Novo aluno</h2>
+          <h2 className="text-lg font-bold text-g4-ink">
+            {editingStudent
+              ? `${editingStudent.profileComplete ? "Editar" : "Completar"} ficha — ${editingStudent.name}`
+              : "Novo aluno"}
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -316,29 +418,36 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
                   placeholder="+55 84 99999-0000"
                 />
               </label>
-              <label className="block">
-                <span className={labelClass}>E-mail (login do aluno)</span>
-                <input
-                  type="email"
-                  value={general.email}
-                  onChange={(e) => patchGeneral({ email: e.target.value })}
-                  required
-                  className={fieldClass}
-                  placeholder="aluno@exemplo.com"
-                />
-              </label>
-              <label className="block">
-                <span className={labelClass}>Senha (mínimo 8 caracteres)</span>
-                <input
-                  type="password"
-                  value={general.password}
-                  onChange={(e) => patchGeneral({ password: e.target.value })}
-                  required
-                  minLength={8}
-                  className={fieldClass}
-                  placeholder="Senha provisória"
-                />
-              </label>
+              {/* Login já existe na edição — o aluno aprovado por
+                  /solicitar-acesso escolheu a própria senha; e-mail/senha
+                  só fazem sentido ao criar a conta pela primeira vez. */}
+              {!editingStudent && (
+                <>
+                  <label className="block">
+                    <span className={labelClass}>E-mail (login do aluno)</span>
+                    <input
+                      type="email"
+                      value={general.email}
+                      onChange={(e) => patchGeneral({ email: e.target.value })}
+                      required
+                      className={fieldClass}
+                      placeholder="aluno@exemplo.com"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className={labelClass}>Senha (mínimo 8 caracteres)</span>
+                    <input
+                      type="password"
+                      value={general.password}
+                      onChange={(e) => patchGeneral({ password: e.target.value })}
+                      required
+                      minLength={8}
+                      className={fieldClass}
+                      placeholder="Senha provisória"
+                    />
+                  </label>
+                </>
+              )}
               <label className="block">
                 <span className={labelClass}>Idade</span>
                 <input
@@ -800,7 +909,13 @@ export function AddStudentModal({ open, onClose, onAddStudent }: AddStudentModal
           {error && <p className="text-sm text-status-missed">{error}</p>}
 
           <Button type="submit" variant="primary" className="mt-1" disabled={submitting}>
-            {submitting ? "Criando conta..." : "Salvar aluno"}
+            {submitting
+              ? editingStudent
+                ? "Salvando..."
+                : "Criando conta..."
+              : editingStudent
+                ? "Salvar ficha"
+                : "Salvar aluno"}
           </Button>
         </form>
       </div>

@@ -336,6 +336,9 @@ export interface MockStudent {
   todayStatus: WorkoutStatus;
   stravaSynced: boolean;
   lastActivity: LastActivity | null;
+  // false só pra conta aprovada por /solicitar-acesso, que nasce só com
+  // nome (sem modalidade) — precisa que o treinador complete a ficha.
+  profileComplete: boolean;
 }
 
 // Único aluno de exemplo — Carlos Silva — usado para validar todas as
@@ -369,6 +372,7 @@ export const mockStudents: MockStudent[] = [
     todayStatus: "done",
     stravaSynced: true,
     lastActivity: { name: "Pedal matinal", distanceKm: 33, date: "hoje" },
+    profileComplete: true,
   },
   {
     id: "2",
@@ -400,6 +404,7 @@ export const mockStudents: MockStudent[] = [
     todayStatus: "pending",
     stravaSynced: true,
     lastActivity: { name: "Rodagem regenerativa", distanceKm: 8, date: "ontem" },
+    profileComplete: true,
   },
   {
     id: "3",
@@ -428,6 +433,7 @@ export const mockStudents: MockStudent[] = [
     todayStatus: "pending",
     stravaSynced: false,
     lastActivity: null,
+    profileComplete: true,
   },
 ];
 

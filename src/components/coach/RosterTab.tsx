@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusDot } from "@/components/ui/StatusDot";
 import type { MockStudent } from "@/lib/mock-data";
-import type { CreateStudentInput } from "@/app/(coach)/cockpit/students-actions";
+import type { CreateStudentInput, StudentProfileInput } from "@/app/(coach)/cockpit/students-actions";
 
 interface RosterTabProps {
   students: MockStudent[];
   onAddStudent: (input: CreateStudentInput) => Promise<void>;
+  onSaveProfile: (id: string, input: StudentProfileInput) => Promise<void>;
 }
 
 function formatFtp(student: MockStudent): string {
@@ -30,8 +31,26 @@ function formatFtp(student: MockStudent): string {
  * completo em AddStudentModal). Fica em memória (useState no CockpitTabs)
  * até a persistência real via Supabase.
  */
-export function RosterTab({ students, onAddStudent }: RosterTabProps) {
+export function RosterTab({ students, onAddStudent, onSaveProfile }: RosterTabProps) {
   const [showForm, setShowForm] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<MockStudent | null>(null);
+  // Incrementa a cada abertura — combinado ao id do aluno na key do modal,
+  // força um remount mesmo reabrindo pro mesmo aluno (ou "novo" de novo)
+  // logo depois de fechar sem salvar, então o formulário nunca reaparece
+  // com dados de uma edição anterior descartada.
+  const [openCount, setOpenCount] = useState(0);
+
+  function openNewStudent() {
+    setEditingStudent(null);
+    setShowForm(true);
+    setOpenCount((n) => n + 1);
+  }
+
+  function openEditStudent(student: MockStudent) {
+    setEditingStudent(student);
+    setShowForm(true);
+    setOpenCount((n) => n + 1);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -40,15 +59,21 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
           <h2 className="text-lg font-bold text-g4-ink">Alunos cadastrados ({students.length})</h2>
           <p className="text-sm text-g4-muted">Cadastro geral: FTP, peso, modalidade e status do dia.</p>
         </div>
-        <Button variant="primary" className="w-full sm:w-auto sm:px-4" onClick={() => setShowForm(true)}>
+        <Button variant="primary" className="w-full sm:w-auto sm:px-4" onClick={openNewStudent}>
           + Adicionar novo aluno
         </Button>
       </div>
 
+      {/* key muda a cada abertura — remonta o modal do zero, garantindo que
+          o formulário nasça com os dados certos sem precisar de um
+          useEffect só pra resetar estado. */}
       <AddStudentModal
+        key={`${editingStudent?.id ?? "new"}:${openCount}`}
         open={showForm}
         onClose={() => setShowForm(false)}
         onAddStudent={onAddStudent}
+        editingStudent={editingStudent}
+        onSaveProfile={onSaveProfile}
       />
 
       {/* Celular: cards empilhados — a tabela larga (6 colunas) esconderia FTP,
@@ -75,12 +100,20 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
                 Peso <span className="text-g4-ink">{student.weightKg != null ? `${student.weightKg} kg` : "—"}</span>
               </p>
             </div>
-            <div className="mt-3 flex items-center gap-4">
+            <div className="mt-3 flex flex-wrap items-center gap-4">
               <StatusDot status={student.todayStatus} />
               <Badge tone={student.stravaSynced ? "lime" : "neutral"}>
                 {student.stravaSynced ? "Strava sincronizado" : "Strava não conectado"}
               </Badge>
+              {!student.profileComplete && <Badge tone="danger">Ficha incompleta</Badge>}
             </div>
+            <Button
+              variant="secondary"
+              className="mt-3 w-full"
+              onClick={() => openEditStudent(student)}
+            >
+              {student.profileComplete ? "Editar ficha" : "Completar ficha"}
+            </Button>
           </Card>
         ))}
       </div>
@@ -96,6 +129,7 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
               <th className="px-5 py-3 font-medium">Peso</th>
               <th className="px-5 py-3 font-medium">Status do dia</th>
               <th className="px-5 py-3 font-medium">Strava</th>
+              <th className="px-5 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-g4-border">
@@ -110,7 +144,9 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
                     </div>
                   </div>
                 </td>
-                <td className="px-5 py-3 text-g4-muted">{student.discipline}</td>
+                <td className="px-5 py-3 text-g4-muted">
+                  {student.profileComplete ? student.discipline : <Badge tone="danger">Ficha incompleta</Badge>}
+                </td>
                 <td className="px-5 py-3 text-g4-muted">{formatFtp(student)}</td>
                 <td className="px-5 py-3 text-g4-muted">
                   {student.weightKg != null ? `${student.weightKg} kg` : "—"}
@@ -122,6 +158,11 @@ export function RosterTab({ students, onAddStudent }: RosterTabProps) {
                   <Badge tone={student.stravaSynced ? "lime" : "neutral"}>
                     {student.stravaSynced ? "Sincronizado" : "Não conectado"}
                   </Badge>
+                </td>
+                <td className="px-5 py-3 text-right">
+                  <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => openEditStudent(student)}>
+                    {student.profileComplete ? "Editar ficha" : "Completar ficha"}
+                  </Button>
                 </td>
               </tr>
             ))}

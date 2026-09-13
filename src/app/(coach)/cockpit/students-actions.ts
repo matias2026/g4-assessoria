@@ -46,6 +46,10 @@ function mapAlunoRow(row: AlunoRow): MockStudent {
     todayStatus: "pending",
     stravaSynced: false,
     lastActivity: null,
+    // Só fica sem modalidade quem foi aprovado por /solicitar-acesso
+    // (createAccountCore cria a ficha mínima) — quem passa pelo cadastro
+    // completo daqui sempre grava uma modalidade.
+    profileComplete: row.modalidade !== null,
   };
 }
 
@@ -147,6 +151,49 @@ export async function createStudentAccount(input: CreateStudentInput): Promise<M
     await admin.from("profiles").delete().eq("id", created.user.id);
     await admin.auth.admin.deleteUser(created.user.id);
     console.error("[cockpit] erro do Postgres ao criar aluno:", alunoError.message);
+    throw new Error("Não foi possível salvar a ficha do aluno. Tente novamente.");
+  }
+
+  return mapAlunoRow(alunoRow);
+}
+
+export type StudentProfileInput = Omit<CreateStudentInput, "email" | "password">;
+
+/**
+ * Preenche a ficha de um aluno que já tem login (aprovado por
+ * /solicitar-acesso, que só cria nome — ver admin/actions.ts) ou completa
+ * dados de um aluno já cadastrado. Diferente de createStudentAccount: não
+ * mexe em Auth/profiles, só atualiza a linha em alunos.
+ */
+export async function completeStudentProfile(id: string, input: StudentProfileInput): Promise<MockStudent> {
+  await requireCoachOrAdmin();
+  const admin = createAdminClient();
+
+  const { data: alunoRow, error } = await admin
+    .from("alunos")
+    .update({
+      nome: input.name,
+      whatsapp: input.phone || null,
+      modalidade: input.discipline,
+      ftp: input.cycling?.ftpWatts ?? null,
+      peso: input.weightKg,
+      altura: input.heightCm,
+      secondary_disciplines: input.secondaryDisciplines,
+      age: input.age,
+      sex: input.sex,
+      body_composition: input.bodyComposition,
+      weight_history_notes: input.weightHistoryNotes,
+      medical_notes: input.medicalNotes,
+      cycling_profile: input.cycling,
+      running_profile: input.running,
+      strength_profile: input.strength,
+    })
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) {
+    console.error("[cockpit] erro do Postgres ao atualizar ficha do aluno:", error.message);
     throw new Error("Não foi possível salvar a ficha do aluno. Tente novamente.");
   }
 
