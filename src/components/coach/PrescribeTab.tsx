@@ -8,12 +8,7 @@ import { IntervalEditor } from "@/components/workout/IntervalEditor";
 import { ExercisePrescriptionEditor } from "@/components/workout/ExercisePrescriptionEditor";
 import { WorkoutPrescriptionEditor, type PlannedMetrics } from "@/components/workout/WorkoutPrescriptionEditor";
 import { buildWhatsAppLink, buildWorkoutWhatsAppMessage } from "@/lib/whatsapp";
-import {
-  buildWorkoutDraft,
-  defaultIntervalsForDiscipline,
-  defaultTrainingSessionsForDiscipline,
-  templateForDiscipline,
-} from "@/lib/mock-data";
+import { blankPrescriptionFields, buildWorkoutDraft } from "@/lib/mock-data";
 import type { MockStudent, MockWorkoutDetail } from "@/lib/mock-data";
 import type { ExerciseLibraryItem, SetPreset, TrainingSession, WorkoutInterval } from "@/lib/supabase/types";
 import { saveExerciseLibraryItem } from "@/app/(coach)/cockpit/actions";
@@ -204,54 +199,45 @@ function PrescriptionForm({
   const isCycling = discipline === "Ciclismo";
   const isAcademia = discipline === "Academia";
 
-  // Recarrega descrição/prescrição/métricas planejadas/blocos/exercícios a
-  // partir do modelo pronto da modalidade — usado tanto ao trocar de
-  // modalidade quanto ao voltar do título manual para a lista.
-  function applyTemplate(nextDiscipline: string) {
-    const template = templateForDiscipline(nextDiscipline);
-    setDescription(template.description);
-    setPrescription(template.prescription);
-    setPlanned(template.planned);
-    setStructuredIntervals(defaultIntervalsForDiscipline(nextDiscipline));
-    setTrainingSessions(defaultTrainingSessionsForDiscipline(nextDiscipline));
+  // Zera descrição/prescrição/métricas planejadas/blocos/exercícios — usado
+  // tanto ao trocar de modalidade quanto ao voltar do título manual para a
+  // lista. Nunca puxa o conteúdo de exemplo de TEMPLATE_CICLISMO/CORRIDA/
+  // ACADEMIA: um título pronto (ex. "Rodagem longa em Z2") é só um rótulo
+  // pra agilizar o cadastro, não uma prescrição real — o treinador escreve
+  // cada uma do zero, senão a tela mostraria o texto de outro treino.
+  function applyBlankFields(nextDiscipline: string) {
+    const blank = blankPrescriptionFields(nextDiscipline);
+    setDescription(blank.description);
+    setPrescription(blank.prescription);
+    setPlanned(blank.planned);
+    setStructuredIntervals(blank.structuredIntervals);
+    setTrainingSessions(blank.trainingSessions);
   }
 
   function handleDisciplineChange(next: string) {
     setDiscipline(next);
     setTitle(WORKOUT_TITLES[next][0]);
     setManualTitle(false);
-    applyTemplate(next);
+    applyBlankFields(next);
     markDirty();
   }
 
-  // "Criar treino manual": título vira texto livre e todos os campos da
-  // modalidade voltam a um ponto de partida em branco, pro treinador
-  // montar o treino do zero (em vez de partir do modelo pronto).
+  // "Criar treino manual": título vira texto livre; os campos da modalidade
+  // já ficam em branco de qualquer forma (applyBlankFields), só o título é
+  // diferente do caminho normal.
   function startManualTitle() {
     setManualTitle(true);
     setTitle("");
-    setDescription("");
-    setPrescription({ warmup: "", mainSet: "", cooldown: "", videoUrl: null });
-    setPlanned({
-      durationSeconds: null,
-      distanceMeters: null,
-      tss: null,
-      ifScore: null,
-      hrMin: null,
-      hrAvg: null,
-      hrMax: null,
-    });
-    setStructuredIntervals(defaultIntervalsForDiscipline(discipline));
-    setTrainingSessions(defaultTrainingSessionsForDiscipline(discipline));
+    applyBlankFields(discipline);
     markDirty();
   }
 
-  // Reversível: volta pra lista de títulos prontos e recarrega o modelo da
-  // modalidade atual (mesmo efeito de trocar a modalidade, sem trocá-la).
+  // Reversível: volta pra lista de títulos prontos, com os campos em branco
+  // (mesmo efeito de trocar a modalidade, sem trocá-la).
   function usePresetTitle() {
     setManualTitle(false);
     setTitle(WORKOUT_TITLES[discipline][0]);
-    applyTemplate(discipline);
+    applyBlankFields(discipline);
     markDirty();
   }
 

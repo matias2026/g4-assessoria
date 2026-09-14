@@ -534,15 +534,52 @@ export const mockWorkoutDetails: Record<string, MockWorkoutDetail> = {
   },
 };
 
-// Monta um rascunho de treino a partir do modelo da modalidade — ponto de
-// partida na aba "Criar/Prescrever treino" para um aluno sem prescrição
-// prévia (ou ao trocar a modalidade).
+// Campos em branco de uma prescrição nova — nenhum texto/número de exemplo,
+// só a estrutura que o formulário espera. Usado tanto ao criar o rascunho
+// inicial (buildWorkoutDraft) quanto ao trocar a modalidade/voltar da opção
+// manual em PrescribeTab, pra nunca reaproveitar a descrição/métricas de
+// outro treino (ex.: título "Rodagem longa em Z2" mostrando o texto de uma
+// sessão de limiar) — o treinador preenche cada prescrição do zero.
+export interface BlankPrescriptionFields {
+  description: string;
+  prescription: MockWorkoutDetail["prescription"];
+  planned: MockWorkoutDetail["planned"];
+  structuredIntervals: WorkoutInterval[];
+  trainingSessions: TrainingSession[];
+}
+
+export function blankPrescriptionFields(discipline: string): BlankPrescriptionFields {
+  return {
+    description: "",
+    prescription: { warmup: "", mainSet: "", cooldown: "", videoUrl: null },
+    planned: {
+      durationSeconds: null,
+      distanceMeters: null,
+      tss: null,
+      ifScore: null,
+      hrMin: null,
+      hrAvg: null,
+      hrMax: null,
+    },
+    structuredIntervals: defaultIntervalsForDiscipline(discipline),
+    trainingSessions: defaultTrainingSessionsForDiscipline(discipline),
+  };
+}
+
+// Monta um rascunho de treino em branco — ponto de partida na aba
+// "Criar/Prescrever treino" para um aluno sem prescrição prévia (ou ao
+// trocar a modalidade). Só o título/modalidade vêm de um valor padrão (o
+// primeiro título da lista da modalidade, ver WORKOUT_TITLES em
+// PrescribeTab.tsx); descrição, blocos e métricas ficam em branco — nunca
+// preenchidos com o conteúdo de exemplo de TEMPLATE_CICLISMO/CORRIDA/
+// ACADEMIA, que existe só para o treino de exemplo do aluno (buildExampleWorkout).
 export function buildWorkoutDraft(
   student: MockStudent,
   discipline: string,
   scheduledDateLabel: string
 ): MockWorkoutDetail {
   const template = templateForDiscipline(discipline);
+  const blank = blankPrescriptionFields(discipline);
 
   return {
     id: student.id,
@@ -554,12 +591,12 @@ export function buildWorkoutDraft(
     discipline: template.discipline,
     scheduledDateLabel,
     status: "pending",
-    description: template.description,
-    prescription: template.prescription,
-    structuredIntervals: defaultIntervalsForDiscipline(template.discipline),
-    trainingSessions: defaultTrainingSessionsForDiscipline(template.discipline),
-    powerZones: template.powerZones,
-    planned: template.planned,
+    description: blank.description,
+    prescription: blank.prescription,
+    structuredIntervals: blank.structuredIntervals,
+    trainingSessions: blank.trainingSessions,
+    powerZones: [],
+    planned: blank.planned,
     completed: null,
     uploadedActivity: null,
   };
