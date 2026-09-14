@@ -3,17 +3,57 @@
 @tailwind utilities;
 
 @layer base {
+  /* Valores claros (padrão) — trocados pelos escuros abaixo quando
+     [data-theme="dark"] está na <html> (ver ThemeToggle.tsx e o script
+     anti-flash em layout.tsx). Os nomes batem com os tokens de
+     tailwind.config.ts (g4.bg = --color-g4-bg etc.). */
+  :root {
+    --color-g4-bg: #f4f5f7;
+    --color-g4-surface: #ffffff;
+    --color-g4-surface-alt: #eef0f3;
+    --color-g4-border: #e2e5ea;
+    --color-g4-muted: #68707b;
+    --color-g4-ink: #14161a;
+    --color-lime-deep: #3f6212;
+    --color-status-done: #4d7c0f;
+    --color-status-pending: #b45309;
+    --color-status-missed: #b91c1c;
+  }
+
+  [data-theme="dark"] {
+    /* Mesmo grafite do login (ver src/app/login/page.tsx) — o app inteiro
+       escuro usa a mesma paleta, não uma nova. */
+    --color-g4-bg: #0f1115;
+    --color-g4-surface: #161b22;
+    --color-g4-surface-alt: #1f2530;
+    --color-g4-border: #2a323d;
+    --color-g4-muted: #9aa3af;
+    --color-g4-ink: #f2f4f6;
+    /* Mais claras que no tema claro — as versões originais (verde-escuro,
+       âmbar/vermelho fosco) foram pensadas pra contraste sobre fundo
+       branco e murcham num fundo quase preto. */
+    --color-lime-deep: #bef264;
+    --color-status-done: #84cc16;
+    --color-status-pending: #fbbf24;
+    --color-status-missed: #f87171;
+  }
+
   body {
     @apply bg-g4-bg text-g4-ink antialiased;
   }
 
   ::selection {
-    @apply bg-lime text-g4-ink;
+    /* Sempre texto escuro sobre o lime da seleção — não usa text-g4-ink
+       (que fica quase branco no tema escuro) pelo mesmo motivo do token
+       ink-on-lime em tailwind.config.ts. */
+    @apply bg-lime;
+    color: #14161a;
   }
 }
 
 @layer components {
-  /* Foco visível consistente para navegação por teclado sobre fundo claro. */
+  /* Foco visível consistente pra navegação por teclado — ring-offset-g4-bg
+     já acompanha o tema automaticamente (é o mesmo token do fundo). */
   .focus-ring {
     @apply outline-none ring-2 ring-lime-deep ring-offset-2 ring-offset-g4-bg;
   }

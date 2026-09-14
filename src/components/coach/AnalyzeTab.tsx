@@ -19,7 +19,7 @@ interface AnalyzeTabProps {
 }
 
 const fieldClass =
-  "mt-1 w-full rounded-xl border border-g4-border bg-white p-2.5 text-sm text-g4-ink focus-ring";
+  "mt-1 w-full rounded-xl border border-g4-border bg-g4-surface p-2.5 text-sm text-g4-ink focus-ring";
 const labelClass = "text-xs font-medium text-g4-muted";
 
 /**

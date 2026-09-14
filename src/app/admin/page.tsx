@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { RoleNav } from "@/components/auth/RoleNav";
 import { CreateAccountForm } from "./CreateAccountForm";
@@ -55,7 +56,10 @@ export default async function AdminPage() {
             Aprove pedidos de /solicitar-acesso ou crie contas direto — sem outro jeito de entrar no site.
           </p>
         </div>
-        <LogoutButton />
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <LogoutButton />
+        </div>
       </div>
 
       <RoleNav currentPath="/admin" />
@@ -74,7 +78,7 @@ export default async function AdminPage() {
           />
         </div>
         {athleteCount >= ATHLETE_CAP && (
-          <p className="mt-2 text-sm text-red-600">Limite atingido — o banco recusa novos alunos até liberar vaga.</p>
+          <p className="mt-2 text-sm text-status-missed">Limite atingido — o banco recusa novos alunos até liberar vaga.</p>
         )}
       </Card>
 

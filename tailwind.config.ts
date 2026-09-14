@@ -5,33 +5,42 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Painel claro estilo TrainingPeaks: fundo branco/cinza-claro,
-        // texto em preto fosco. Nada de fundo escuro.
+        // Cada tom aqui é uma custom property (ver globals.css) com um valor
+        // claro em :root e um valor escuro em [data-theme="dark"] — trocar
+        // o tema no ThemeToggle não muda nenhuma classe Tailwind, só o
+        // atributo data-theme na <html>, então todo componente que já usa
+        // esses tokens (bg-g4-bg, text-g4-ink etc.) fica escuro-compatível
+        // de graça, sem precisar de variante dark: espalhada pelo código.
         g4: {
-          bg: "#f4f5f7",
-          surface: "#ffffff",
-          "surface-alt": "#eef0f3",
-          border: "#e2e5ea",
-          muted: "#68707b",
-          ink: "#14161a",
+          bg: "var(--color-g4-bg)",
+          surface: "var(--color-g4-surface)",
+          "surface-alt": "var(--color-g4-surface-alt)",
+          border: "var(--color-g4-border)",
+          muted: "var(--color-g4-muted)",
+          ink: "var(--color-g4-ink)",
         },
         // Verde neon/lima esportivo, reservado para ações, status e barras
         // de progresso. `deep` é a variante com contraste suficiente para
-        // texto/ícones sobre fundo claro.
+        // texto/ícones — no escuro fica mais clara pra continuar legível.
         lime: {
           DEFAULT: "#c6ff1e",
           soft: "#e4ff8f",
           dim: "#8fb814",
-          deep: "#3f6212",
+          deep: "var(--color-lime-deep)",
         },
         status: {
-          done: "#4d7c0f",
-          pending: "#b45309",
-          missed: "#b91c1c",
+          done: "var(--color-status-done)",
+          pending: "var(--color-status-pending)",
+          missed: "var(--color-status-missed)",
           "done-dot": "#84cc16",
           "pending-dot": "#f59e0b",
           "missed-dot": "#ef4444",
         },
+        // Texto sobre um fundo `bg-lime` sólido (abas ativas, botão
+        // primário) — sempre escuro nos dois temas, porque o próprio lime
+        // não muda de tom: usar text-g4-ink aqui ficaria ilegível no tema
+        // escuro (texto quase branco em cima de verde limão).
+        "ink-on-lime": "#14161a",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

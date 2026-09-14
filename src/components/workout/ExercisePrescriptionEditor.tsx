@@ -24,7 +24,7 @@ interface ExercisePrescriptionEditorProps {
 }
 
 const fieldClass =
-  "mt-1 w-full rounded-lg border border-g4-border bg-white p-2 text-sm text-g4-ink focus-ring";
+  "mt-1 w-full rounded-lg border border-g4-border bg-g4-surface p-2 text-sm text-g4-ink focus-ring";
 const miniLabelClass =
   "block text-[11px] font-semibold uppercase tracking-wide text-g4-muted lg:whitespace-nowrap";
 
@@ -114,7 +114,7 @@ export function ExercisePrescriptionEditor({
             {library.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-4 rounded-xl border border-g4-border bg-white p-3"
+                className="flex items-center justify-between gap-4 rounded-xl border border-g4-border bg-g4-surface p-3"
               >
                 <span className="text-sm font-medium text-g4-ink">{item.name}</span>
                 {item.videoUrl ? (
@@ -145,7 +145,7 @@ export function ExercisePrescriptionEditor({
             <input
               value={session.name}
               onChange={(e) => updateSession(sessionIndex, { name: e.target.value })}
-              className="min-w-0 flex-1 rounded-lg border border-g4-border bg-white p-2 text-sm font-semibold text-g4-ink focus-ring"
+              className="min-w-0 flex-1 rounded-lg border border-g4-border bg-g4-surface p-2 text-sm font-semibold text-g4-ink focus-ring"
               placeholder="Nome do treino"
             />
             <div className="flex gap-4">
@@ -154,7 +154,7 @@ export function ExercisePrescriptionEditor({
                 onClick={() => moveSession(sessionIndex, -1)}
                 disabled={sessionIndex === 0}
                 aria-label="Mover treino para cima"
-                className="rounded-lg border border-g4-border px-2 py-1 text-xs text-g4-muted hover:bg-white disabled:opacity-40"
+                className="rounded-lg border border-g4-border px-2 py-1 text-xs text-g4-muted hover:bg-g4-surface disabled:opacity-40"
               >
                 ▲
               </button>
@@ -163,7 +163,7 @@ export function ExercisePrescriptionEditor({
                 onClick={() => moveSession(sessionIndex, 1)}
                 disabled={sessionIndex === sessions.length - 1}
                 aria-label="Mover treino para baixo"
-                className="rounded-lg border border-g4-border px-2 py-1 text-xs text-g4-muted hover:bg-white disabled:opacity-40"
+                className="rounded-lg border border-g4-border px-2 py-1 text-xs text-g4-muted hover:bg-g4-surface disabled:opacity-40"
               >
                 ▼
               </button>
@@ -306,7 +306,7 @@ function ExerciseRow({
   }
 
   return (
-    <div className="rounded-xl border border-g4-border bg-white p-3">
+    <div className="rounded-xl border border-g4-border bg-g4-surface p-3">
       <div className="grid gap-4 sm:grid-cols-[1.3fr_1fr_auto] sm:items-end">
         <label className="block">
           <span className={miniLabelClass}>Exercício</span>
@@ -400,7 +400,7 @@ function ExerciseRow({
                   value={presetName}
                   onChange={(e) => setPresetName(e.target.value)}
                   placeholder="Nome do preset"
-                  className="min-w-0 flex-1 rounded-lg border border-g4-border bg-white p-2 text-sm text-g4-ink focus-ring"
+                  className="min-w-0 flex-1 rounded-lg border border-g4-border bg-g4-surface p-2 text-sm text-g4-ink focus-ring"
                 />
                 <Button variant="primary" className="px-3 py-1.5 text-xs" onClick={() => confirmSavePreset(index)}>
                   Salvar
@@ -442,7 +442,7 @@ function ExerciseRow({
             <select
               value={presetToApply}
               onChange={(e) => setPresetToApply(e.target.value)}
-              className="rounded-lg border border-g4-border bg-white p-2 text-xs text-g4-ink focus-ring"
+              className="rounded-lg border border-g4-border bg-g4-surface p-2 text-xs text-g4-ink focus-ring"
             >
               <option value="">Escolher preset...</option>
               {presets.map((preset) => (

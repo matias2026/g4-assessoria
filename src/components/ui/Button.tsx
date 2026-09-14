@@ -8,9 +8,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-lime text-g4-ink hover:brightness-95",
+  // bg-lime não muda de tom entre os temas — o texto usa ink-on-lime (fixo,
+  // sempre escuro) em vez de text-g4-ink, senão ficaria quase branco em
+  // cima de verde limão no tema escuro.
+  primary: "bg-lime text-ink-on-lime hover:brightness-95",
   secondary:
-    "bg-white text-g4-ink border border-g4-border hover:border-lime-deep/50 hover:bg-g4-surface-alt",
+    "bg-g4-surface text-g4-ink border border-g4-border hover:border-lime-deep/50 hover:bg-g4-surface-alt",
   ghost: "bg-transparent text-g4-ink hover:bg-g4-surface-alt",
 };
 

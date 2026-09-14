@@ -24,7 +24,7 @@ export function AdminPreviewSwitcher({ basePath, activeDiscipline }: AdminPrevie
             className={cn(
               "flex-1 rounded-xl px-4 py-2 text-center text-sm font-semibold transition-colors focus-ring",
               activeDiscipline === discipline
-                ? "bg-lime text-g4-ink"
+                ? "bg-lime text-ink-on-lime"
                 : "text-g4-muted hover:bg-g4-surface-alt hover:text-g4-ink"
             )}
           >

@@ -18,7 +18,7 @@ export function DeleteAccountButton({ profileId }: { profileId: string }) {
           <Button
             type="button"
             variant="ghost"
-            className="px-3 py-1 text-xs text-red-600"
+            className="px-3 py-1 text-xs text-status-missed"
             disabled={isPending}
             onClick={() => {
               setError(null);
@@ -38,17 +38,17 @@ export function DeleteAccountButton({ profileId }: { profileId: string }) {
             Cancelar
           </Button>
         </div>
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs text-status-missed">{error}</p>}
       </div>
     );
   }
 
   return (
     <div className="flex flex-col items-end gap-4">
-      <Button type="button" variant="ghost" className="px-3 py-1 text-xs text-red-600" onClick={() => setConfirming(true)}>
+      <Button type="button" variant="ghost" className="px-3 py-1 text-xs text-status-missed" onClick={() => setConfirming(true)}>
         Excluir
       </Button>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-status-missed">{error}</p>}
     </div>
   );
 }

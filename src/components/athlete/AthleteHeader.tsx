@@ -1,4 +1,5 @@
 import { Logo } from "@/components/ui/Logo";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { AthleteMenu } from "@/components/athlete/AthleteMenu";
 import { RoleNav } from "@/components/auth/RoleNav";
 
@@ -29,7 +30,10 @@ export function AthleteHeader({ athleteName, talkToCoachLink, currentPath, previ
             <h1 className="truncate text-2xl font-bold text-g4-ink">{athleteName}</h1>
           </div>
         </div>
-        <AthleteMenu talkToCoachLink={talkToCoachLink} previewDiscipline={previewDiscipline} />
+        <div className="flex shrink-0 items-center gap-1">
+          <ThemeToggle />
+          <AthleteMenu talkToCoachLink={talkToCoachLink} previewDiscipline={previewDiscipline} />
+        </div>
       </header>
 
       <RoleNav currentPath={currentPath} />

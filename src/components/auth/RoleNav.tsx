@@ -33,7 +33,7 @@ export async function RoleNav({ currentPath }: { currentPath: string }) {
         <Link
           key={link.href}
           href={link.href}
-          className="shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-medium text-g4-muted transition-colors hover:bg-white hover:text-g4-ink"
+          className="shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-medium text-g4-muted transition-colors hover:bg-g4-surface hover:text-g4-ink"
         >
           {link.label}
         </Link>

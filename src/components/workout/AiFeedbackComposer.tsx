@@ -63,7 +63,7 @@ export function AiFeedbackComposer({ draftInput, initialValue }: AiFeedbackCompo
         }}
         rows={4}
         placeholder="Escreva o feedback ou gere um rascunho com IA para editar."
-        className="mt-3 w-full resize-none rounded-xl border border-g4-border bg-white p-3 text-sm text-g4-ink focus-ring"
+        className="mt-3 w-full resize-none rounded-xl border border-g4-border bg-g4-surface p-3 text-sm text-g4-ink focus-ring"
       />
 
       {error && <p className="mt-2 text-xs text-status-missed">{error}</p>}

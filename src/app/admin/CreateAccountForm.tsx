@@ -17,7 +17,7 @@ export function CreateAccountForm() {
           <input
             name="full_name"
             required
-            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
         </label>
 
@@ -27,7 +27,7 @@ export function CreateAccountForm() {
             name="role"
             required
             defaultValue="athlete"
-            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
           >
             <option value="athlete">Aluno</option>
             <option value="coach">Treinador</option>
@@ -41,7 +41,7 @@ export function CreateAccountForm() {
             type="email"
             name="email"
             required
-            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
         </label>
 
@@ -53,12 +53,12 @@ export function CreateAccountForm() {
             required
             minLength={8}
             placeholder="mín. 8 caracteres"
-            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
         </label>
       </div>
 
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.error && <p className="text-sm text-status-missed">{state.error}</p>}
       {state.success && <p className="text-sm text-lime-deep">{state.success}</p>}
 
       <Button type="submit" variant="primary" className="self-start px-5" disabled={pending}>

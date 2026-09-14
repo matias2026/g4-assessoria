@@ -49,7 +49,7 @@ export function RequestAccessForm() {
           onClick={() => setRole("athlete")}
           className={cn(
             "rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus-ring",
-            role === "athlete" ? "bg-lime text-g4-ink" : "text-g4-muted hover:text-g4-ink"
+            role === "athlete" ? "bg-lime text-ink-on-lime" : "text-g4-muted hover:text-g4-ink"
           )}
         >
           Sou aluno
@@ -59,7 +59,7 @@ export function RequestAccessForm() {
           onClick={() => setRole("coach")}
           className={cn(
             "rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus-ring",
-            role === "coach" ? "bg-lime text-g4-ink" : "text-g4-muted hover:text-g4-ink"
+            role === "coach" ? "bg-lime text-ink-on-lime" : "text-g4-muted hover:text-g4-ink"
           )}
         >
           Sou treinador
@@ -80,7 +80,7 @@ export function RequestAccessForm() {
           <input
             name="full_name"
             required
-            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
         </label>
 
@@ -90,7 +90,7 @@ export function RequestAccessForm() {
             type="email"
             name="email"
             required
-            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
         </label>
 
@@ -103,7 +103,7 @@ export function RequestAccessForm() {
             placeholder="mín. 8 caracteres"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="w-full rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
         </label>
 
@@ -114,16 +114,16 @@ export function RequestAccessForm() {
             minLength={8}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="w-full rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
-          {passwordMismatch && <span className="text-xs text-red-600">As senhas não coincidem.</span>}
+          {passwordMismatch && <span className="text-xs text-status-missed">As senhas não coincidem.</span>}
         </label>
 
         <label className="flex flex-col gap-4 text-sm">
           <span className="font-medium text-g4-ink">WhatsApp (opcional)</span>
           <input
             name="phone"
-            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
         </label>
 
@@ -132,13 +132,13 @@ export function RequestAccessForm() {
           <textarea
             name="message"
             rows={3}
-            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
           />
         </label>
 
         {SITE_KEY && <div className="g-recaptcha" data-sitekey={SITE_KEY} />}
 
-        {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+        {state.error && <p className="text-sm text-status-missed">{state.error}</p>}
 
         <Button type="submit" variant="primary" className="mt-1 w-full" disabled={pending || passwordMismatch}>
           {pending ? "Enviando..." : "Enviar pedido"}

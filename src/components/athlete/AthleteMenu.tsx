@@ -56,7 +56,7 @@ export function AthleteMenu({ talkToCoachLink, previewDiscipline }: AthleteMenuP
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-40 cursor-default"
           />
-          <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-g4-border bg-white shadow-lg">
+          <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-g4-border bg-g4-surface shadow-lg">
             <nav className="flex flex-col py-1.5">
               {MENU_ROUTES.map((route) => (
                 <Link

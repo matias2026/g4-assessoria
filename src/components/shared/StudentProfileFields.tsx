@@ -220,7 +220,7 @@ export function StudentProfileFields({
           </label>
           <div className="block">
             <span className={labelClass}>Modalidades adicionais</span>
-            <div className="mt-1 flex flex-wrap gap-4 rounded-xl border border-g4-border bg-white p-2.5">
+            <div className="mt-1 flex flex-wrap gap-4 rounded-xl border border-g4-border bg-g4-surface p-2.5">
               {DISCIPLINES.filter((d) => d !== primaryDiscipline).map((d) => (
                 <label key={d} className="flex items-center gap-4 text-sm text-g4-ink">
                   <input

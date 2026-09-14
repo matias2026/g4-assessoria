@@ -28,7 +28,7 @@ export function ToggleActiveButton({ profileId, active }: { profileId: string; a
       >
         {isPending ? "..." : active ? "Suspender" : "Reativar"}
       </Button>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-status-missed">{error}</p>}
     </div>
   );
 }

@@ -65,7 +65,7 @@ export function RequestActions({ requestId }: { requestId: string }) {
           Negar
         </Button>
       </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-status-missed">{error}</p>}
     </div>
   );
 }

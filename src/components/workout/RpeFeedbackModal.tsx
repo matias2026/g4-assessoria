@@ -77,8 +77,8 @@ export function RpeFeedbackModal({ open, onClose, onSubmit, submitting = false, 
                 className={cn(
                   "rounded-xl border py-2 text-sm font-semibold transition-colors focus-ring",
                   rpe === value
-                    ? "border-lime bg-lime text-g4-ink"
-                    : "border-g4-border bg-white text-g4-ink hover:border-lime-deep/50 hover:bg-g4-surface-alt"
+                    ? "border-lime bg-lime text-ink-on-lime"
+                    : "border-g4-border bg-g4-surface text-g4-ink hover:border-lime-deep/50 hover:bg-g4-surface-alt"
                 )}
               >
                 {value}
@@ -103,7 +103,7 @@ export function RpeFeedbackModal({ open, onClose, onSubmit, submitting = false, 
                     "flex flex-1 flex-col items-center gap-4 rounded-xl border py-2 transition-colors focus-ring",
                     feeling === value
                       ? "border-lime bg-lime/15"
-                      : "border-g4-border bg-white hover:border-lime-deep/50 hover:bg-g4-surface-alt"
+                      : "border-g4-border bg-g4-surface hover:border-lime-deep/50 hover:bg-g4-surface-alt"
                   )}
                 >
                   <span className="text-xl" aria-hidden>
@@ -125,7 +125,7 @@ export function RpeFeedbackModal({ open, onClose, onSubmit, submitting = false, 
             onChange={(e) => setComments(e.target.value)}
             rows={3}
             placeholder="Como se sentiu, alguma dor ou dificuldade..."
-            className="mt-1 w-full resize-none rounded-xl border border-g4-border bg-white p-2.5 text-sm text-g4-ink focus-ring"
+            className="mt-1 w-full resize-none rounded-xl border border-g4-border bg-g4-surface p-2.5 text-sm text-g4-ink focus-ring"
           />
         </label>
 

@@ -1,4 +1,5 @@
 import { Logo } from "@/components/ui/Logo";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { CockpitTabs } from "@/components/coach/CockpitTabs";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { RoleNav } from "@/components/auth/RoleNav";
@@ -30,7 +31,10 @@ export default async function CoachCockpitPage() {
           <Logo className="h-9" />
           <h1 className="text-lg font-bold text-g4-ink sm:text-xl">Cockpit do treinador</h1>
         </div>
-        <LogoutButton />
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <LogoutButton />
+        </div>
       </header>
 
       <RoleNav currentPath="/cockpit" />

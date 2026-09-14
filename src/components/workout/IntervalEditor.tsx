@@ -30,7 +30,7 @@ function zoneForPct(pct: number): (typeof ZONES)[number] {
 }
 
 const fieldClass =
-  "mt-1 w-full rounded-lg border border-g4-border bg-white p-2 text-sm text-g4-ink focus-ring";
+  "mt-1 w-full rounded-lg border border-g4-border bg-g4-surface p-2 text-sm text-g4-ink focus-ring";
 const miniLabelClass =
   "block text-[11px] font-semibold uppercase tracking-wide text-g4-muted lg:whitespace-nowrap";
 
