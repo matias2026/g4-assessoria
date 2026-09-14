@@ -7,6 +7,7 @@ import { mapAlunoRow } from "@/lib/map-aluno-row";
 import type { StudentProfileInput } from "@/app/(coach)/cockpit/students-actions";
 import { mockStudents, PREVIEW_DISCIPLINES, type MockStudent } from "@/lib/mock-data";
 import { parseFitFile } from "@/lib/fit-import";
+import { computeMonitoringSummary, type MonitoringSummary } from "@/lib/monitoring";
 import type { ProfileRole } from "@/lib/supabase/types";
 
 // Autoatendimento do aluno em "Meu perfil": ele só pode ler/editar a
@@ -76,6 +77,32 @@ export async function getOwnProfile(previewDiscipline?: string): Promise<OwnProf
   }
 
   return { student: null, isAdmin, isPreview: false };
+}
+
+/**
+ * Resumo de treinos concluídos + Evolução — os mesmos dois cards que o
+ * treinador vê em "Monitoramento do aluno" (ver getMonitoringSummary em
+ * cockpit/monitoring-actions.ts), só que aqui sempre sobre o próprio aluno
+ * logado, nunca sobre um id vindo do cliente. O cálculo em si mora em
+ * src/lib/monitoring.ts, compartilhado entre os dois lados.
+ */
+export async function getOwnMonitoringSummary(): Promise<MonitoringSummary> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autenticado.");
+
+  const { data: profileData } = await supabase.from("profiles").select("active").eq("id", user.id).single();
+  if (!(profileData as { active: boolean } | null)?.active) {
+    throw new Error("Esta conta está suspensa. Fale com seu treinador.");
+  }
+
+  const admin = createAdminClient();
+  const { data } = await admin.from("alunos").select("id").eq("user_id", user.id).single();
+  if (!data) throw new Error("Nenhuma ficha de aluno encontrada pra esse login.");
+
+  return computeMonitoringSummary(data.id, user.id);
 }
 
 /** "Minha ficha": o próprio aluno completa/edita os dados corporais e por modalidade. */

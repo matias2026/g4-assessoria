@@ -9,12 +9,9 @@ import { StatusDot } from "@/components/ui/StatusDot";
 import { AthleteTrainingSessions } from "@/components/workout/AthleteTrainingSessions";
 import { CoachFeedbackCard } from "@/components/workout/CoachFeedbackCard";
 import { DeviceTutorial } from "@/components/workout/DeviceTutorial";
-import { DownloadFitButton } from "@/components/workout/DownloadFitButton";
-import { DownloadZwoButton } from "@/components/workout/DownloadZwoButton";
 import { RpeFeedbackModal, type RpeFeedback } from "@/components/workout/RpeFeedbackModal";
 import { UploadFitButton } from "@/components/workout/UploadFitButton";
 import { VideoEmbed } from "@/components/workout/VideoEmbed";
-import { canExportStructuredWorkout } from "@/lib/workout-export";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { formatDistance, formatDuration } from "@/lib/workout-metrics";
 import type { MockWorkoutDetail } from "@/lib/mock-data";
@@ -175,21 +172,6 @@ export function AthleteWorkoutView({ workout, isPreview = false, stravaConnected
                   treinador, em vez do RPE manual sozinho. */}
               <UploadFitButton onUploaded={() => setStatus("done")} />
             </>
-          )}
-
-          {canExportStructuredWorkout(workout) && (
-            <div className="grid grid-cols-2 gap-4">
-              <DownloadFitButton
-                title={workout.title}
-                discipline={workout.discipline}
-                structuredIntervals={workout.structuredIntervals}
-              />
-              <DownloadZwoButton
-                title={workout.title}
-                discipline={workout.discipline}
-                structuredIntervals={workout.structuredIntervals}
-              />
-            </div>
           )}
 
           <LinkButton href={GARMIN_CONNECT_URL} target="_blank" rel="noreferrer" variant="secondary">

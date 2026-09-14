@@ -43,8 +43,7 @@ const EMPTY_INTERVAL: WorkoutInterval = {
 
 /**
  * Editor dos blocos estruturados por %FTP/zona (aquecimento, tiros,
- * recuperação, desaquecimento) — a mesma lista que alimenta o export .ZWO
- * (`src/lib/workout-export.ts`), então só aparece para ciclismo. Cada linha
+ * recuperação, desaquecimento) — só aparece para ciclismo. Cada linha
  * é um segmento independente; a duração aqui é sempre em minutos. A zona
  * (Z1–Z5) é derivada do %FTP máximo do bloco — escolher uma zona ajusta a
  * faixa de %FTP automaticamente, e editar o %FTP direto atualiza a zona

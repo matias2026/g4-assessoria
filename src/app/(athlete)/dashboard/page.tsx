@@ -1,6 +1,7 @@
 import { AdminPreviewSwitcher } from "@/components/athlete/AdminPreviewSwitcher";
 import { AthleteHeader } from "@/components/athlete/AthleteHeader";
 import { NoWorkoutCard } from "@/components/athlete/NoWorkoutCard";
+import { TrainingSummaryCards } from "@/components/athlete/TrainingSummaryCards";
 import { WeeklyHistory } from "@/components/athlete/WeeklyHistory";
 import { AthleteWorkoutView } from "@/components/workout/AthleteWorkoutView";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
@@ -228,6 +229,7 @@ export default async function AthleteDashboardPage({
       ) : (
         <NoWorkoutCard talkToCoachLink={talkToCoachLink} coachName={coachName} />
       )}
+      <TrainingSummaryCards isPreview={isAdmin} />
       <WeeklyHistory days={mockWeeklyHistory} />
     </main>
   );
