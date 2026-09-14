@@ -24,6 +24,11 @@ export interface CompletedSession {
   trimp: number | null;
   relativeEffort: number | null;
   rpe: number | null;
+  // Só populadas quando a sessão veio de um treino com atividade_fit (.FIT
+  // ou Strava anexada ao dia) — uma atividade solta do Strava (sem virar
+  // treino do dia) não tem cadência guardada em lugar nenhum hoje.
+  avgCadence: number | null;
+  avgHeartRate: number | null;
 }
 
 // A maioria dos .FIT/Strava não vem com TSS calculado (precisa de FTP
@@ -46,6 +51,19 @@ export interface AcwrResult {
   metric: LoadMetric;
 }
 
+export interface CardiacEfficiencyPoint {
+  weekStartIso: string;
+  value: number; // média de (cadência média / FC média) das sessões da semana
+}
+
+export interface CardiacEfficiencyResult {
+  points: CardiacEfficiencyPoint[];
+  pctChange: number; // variação entre as 2 últimas semanas com dado
+  // true quando a eficiência caiu o suficiente pra sugerir fadiga
+  // acumulada (mesma cadência exigindo FC cada vez mais alta).
+  declining: boolean;
+}
+
 export interface MonitoringSummary {
   sessions: CompletedSession[];
   totalCount: number;
@@ -59,7 +77,15 @@ export interface MonitoringSummary {
   // null quando a carga crônica (28 dias) ainda está zerada — sem uma
   // base histórica, a razão não significa nada.
   acwr: AcwrResult | null;
+  // null quando não há pelo menos 2 semanas com cadência e FC média juntas
+  // na mesma sessão.
+  cardiacEfficiency: CardiacEfficiencyResult | null;
 }
+
+// Limiar de queda de eficiência cardíaca pra soar o alerta — mesma cadência
+// pedindo X% mais FC que na semana anterior é sinal clássico de fadiga
+// acumulada/desacoplamento aeróbico.
+const CARDIAC_EFFICIENCY_DROP_THRESHOLD = 0.08;
 
 // Segunda-feira (UTC) da semana ISO de uma data "YYYY-MM-DD".
 function isoWeekStart(dateIso: string): string {
@@ -152,6 +178,8 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
       trimp: trimpFor(row.atividade_fit?.avgHeartRate ?? null, durationSeconds),
       relativeEffort: row.atividade_fit?.relativeEffort ?? null,
       rpe: row.rpe_esforco,
+      avgCadence: row.atividade_fit?.avgCadence ?? null,
+      avgHeartRate: row.atividade_fit?.avgHeartRate ?? null,
     });
   }
 
@@ -173,6 +201,10 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
       trimp: trimpFor(activity.average_heartrate, activity.moving_time_seconds),
       relativeEffort: activity.relative_effort,
       rpe: null,
+      // strava_activities não guarda cadência (só o resumo básico) — só
+      // fica disponível quando a atividade vira treino do dia, acima.
+      avgCadence: null,
+      avgHeartRate: activity.average_heartrate,
     });
   }
 
@@ -228,6 +260,34 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
     }
   }
 
+  // Eficiência cardíaca (cadência/FC) — desacoplamento aeróbico entre
+  // semanas: se a mesma cadência passa a exigir uma FC mais alta, a razão
+  // cai, sinal clássico de fadiga acumulada mesmo com volume/carga
+  // estáveis (o ACWR sozinho não pega isso).
+  const efficiencyWeeklySum = new Map<string, { sum: number; count: number }>();
+  for (const session of sessions) {
+    if (session.avgCadence == null || session.avgHeartRate == null || session.avgHeartRate === 0) continue;
+    const week = isoWeekStart(session.dateIso);
+    const entry = efficiencyWeeklySum.get(week) ?? { sum: 0, count: 0 };
+    entry.sum += session.avgCadence / session.avgHeartRate;
+    entry.count += 1;
+    efficiencyWeeklySum.set(week, entry);
+  }
+  const efficiencyPoints = [...efficiencyWeeklySum.entries()]
+    .map(([weekStartIso, { sum, count }]) => ({ weekStartIso, value: sum / count }))
+    .sort((a, b) => a.weekStartIso.localeCompare(b.weekStartIso));
+
+  let cardiacEfficiency: CardiacEfficiencyResult | null = null;
+  if (efficiencyPoints.length >= 2) {
+    const [previous, current] = efficiencyPoints.slice(-2);
+    const pctChange = previous.value > 0 ? ((current.value - previous.value) / previous.value) * 100 : 0;
+    cardiacEfficiency = {
+      points: efficiencyPoints,
+      pctChange,
+      declining: previous.value > 0 && (previous.value - current.value) / previous.value >= CARDIAC_EFFICIENCY_DROP_THRESHOLD,
+    };
+  }
+
   return {
     sessions,
     totalCount: sessions.length,
@@ -237,5 +297,6 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
     weeklyLoad,
     loadMetric,
     acwr,
+    cardiacEfficiency,
   };
 }

@@ -317,7 +317,57 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
         )}
       </Card>
 
-      {/* 5. Notas do treinador (privadas) */}
+      {/* 5. Eficiência cardíaca (cadência/FC) — desacoplamento aeróbico entre semanas */}
+      <Card>
+        <CardTitle>Eficiência cardíaca</CardTitle>
+        <p className="mt-1 text-xs text-g4-muted">
+          Cadência ÷ FC média por semana — se cai ao longo do tempo, a mesma cadência está exigindo uma FC cada vez
+          mais alta (sinal de fadiga acumulada), mesmo com carga estável.
+        </p>
+        {summaryError ? (
+          <p className="mt-2 text-sm text-status-missed">{summaryError}</p>
+        ) : !summaryLoaded ? (
+          <p className="mt-2 text-sm text-g4-muted">Carregando...</p>
+        ) : summary && summary.cardiacEfficiency ? (
+          (() => {
+            const { points, pctChange, declining } = summary.cardiacEfficiency;
+            return (
+              <div className="mt-3">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm text-g4-ink">
+                    {declining
+                      ? `Eficiência caiu ${Math.abs(Math.round(pctChange))}% em relação à semana anterior — vale investigar fadiga acumulada ou necessidade de recuperação.`
+                      : `Eficiência ${pctChange >= 0 ? "estável ou em alta" : "com leve queda"} em relação à semana anterior (${pctChange >= 0 ? "+" : ""}${Math.round(pctChange)}%).`}
+                  </p>
+                  <Badge tone={declining ? "warning" : "lime"}>{declining ? "Atenção" : "OK"}</Badge>
+                </div>
+                <div className="mt-3 flex flex-col gap-2">
+                  {points.map((point) => {
+                    const maxValue = Math.max(...points.map((p) => p.value));
+                    const widthPct = maxValue > 0 ? Math.round((point.value / maxValue) * 100) : 0;
+                    return (
+                      <div key={point.weekStartIso} className="flex items-center gap-4 text-sm">
+                        <span className="w-14 shrink-0 text-g4-muted">{formatWeekLabel(point.weekStartIso)}</span>
+                        <div className="h-2 flex-1 rounded-full bg-g4-surface-alt">
+                          <div className="h-2 rounded-full bg-lime" style={{ width: `${widthPct}%` }} />
+                        </div>
+                        <span className="w-16 shrink-0 text-right text-g4-ink">{point.value.toFixed(2)} rpm/bpm</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()
+        ) : (
+          <p className="mt-2 text-sm text-g4-muted">
+            Sem pelo menos 2 semanas com cadência e FC média na mesma sessão ainda — depende de treinos com sensor de
+            cadência e de FC juntos (a maioria dos treinos só por GPS não tem os dois).
+          </p>
+        )}
+      </Card>
+
+      {/* 6. Notas do treinador (privadas) */}
       <Card>
         <div className="flex items-center justify-between gap-4">
           <CardTitle>Notas do treinador</CardTitle>
