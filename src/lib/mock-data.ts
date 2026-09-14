@@ -123,10 +123,10 @@ export const TEMPLATE_CICLISMO: WorkoutTemplate = {
   // no mainSet acima; a lista estruturada não precisa duplicar a série
   // inteira linha a linha.
   structuredIntervals: [
-    { type: "warmup", durationSeconds: 15 * 60, targetLowPct: 50, targetHighPct: 70 },
-    { type: "interval", durationSeconds: 5 * 60, targetLowPct: 90, targetHighPct: 90 },
-    { type: "recovery", durationSeconds: 3 * 60, targetLowPct: 45, targetHighPct: 45 },
-    { type: "cooldown", durationSeconds: 10 * 60, targetLowPct: 40, targetHighPct: 50 },
+    { type: "warmup", durationSeconds: 15 * 60, power: { lowPct: 50, highPct: 70 } },
+    { type: "interval", durationSeconds: 5 * 60, power: { lowPct: 90, highPct: 90 } },
+    { type: "recovery", durationSeconds: 3 * 60, power: { lowPct: 45, highPct: 45 } },
+    { type: "cooldown", durationSeconds: 10 * 60, power: { lowPct: 40, highPct: 50 } },
   ],
   trainingSessions: [],
   powerZones: [
@@ -301,16 +301,46 @@ export function templateForDiscipline(discipline: string): WorkoutTemplate {
 
 // Ponto de partida de um treino novo: um único bloco limpo — o treinador
 // adiciona os demais manualmente ("+ Adicionar bloco"), em vez de a tela já
-// nascer poluída com uma série inteira gerada automaticamente.
-const DEFAULT_INTERVAL: WorkoutInterval = {
+// nascer poluída com uma série inteira gerada automaticamente. Ciclismo
+// já entra com um alvo de potência (%FTP é o alvo mais comum ali); Corrida
+// não tem FTP na ficha, então o bloco nasce sem nenhum alvo marcado — o
+// treinador escolhe FC/cadência pelos chips.
+const DEFAULT_CYCLING_INTERVAL: WorkoutInterval = {
   type: "warmup",
   durationSeconds: 10 * 60,
-  targetLowPct: 50,
-  targetHighPct: 70,
+  power: { lowPct: 50, highPct: 70 },
+};
+
+const DEFAULT_RUNNING_INTERVAL: WorkoutInterval = {
+  type: "warmup",
+  durationSeconds: 10 * 60,
 };
 
 export function defaultIntervalsForDiscipline(discipline: string): WorkoutInterval[] {
-  return discipline === "Ciclismo" ? [{ ...DEFAULT_INTERVAL }] : [];
+  if (discipline === "Ciclismo") return [{ ...DEFAULT_CYCLING_INTERVAL }];
+  if (discipline === "Corrida") return [{ ...DEFAULT_RUNNING_INTERVAL }];
+  return [];
+}
+
+/**
+ * Converte intervalos salvos no formato antigo (um único alvo
+ * `targetLowPct`/`targetHighPct` direto no bloco, de antes dos blocos
+ * combináveis por Potência/FC/Cadência) pro formato atual — sem isso, uma
+ * prescrição salva antes dessa mudança de schema (jsonb, sem migração de
+ * banco) perderia o alvo de potência ao ser reaberta.
+ */
+function normalizeStructuredIntervals(intervals: WorkoutInterval[]): WorkoutInterval[] {
+  return intervals.map((interval) => {
+    const legacy = interval as WorkoutInterval & { targetLowPct?: number; targetHighPct?: number };
+    if (legacy.power || legacy.hr || legacy.cadence || legacy.targetLowPct == null || legacy.targetHighPct == null) {
+      return interval;
+    }
+    return {
+      type: legacy.type,
+      durationSeconds: legacy.durationSeconds,
+      power: { lowPct: legacy.targetLowPct, highPct: legacy.targetHighPct },
+    };
+  });
 }
 
 // Ponto de partida de um treino novo de Academia: um treino nomeado com um
@@ -424,6 +454,7 @@ export const mockStudents: MockStudent[] = [
       thresholdPace: "4:45",
       vo2max: 48,
       hrMax: 192,
+      hrRest: 52,
       hrThreshold: 172,
       pr5k: "21:30",
       pr10k: "45:10",
@@ -671,7 +702,7 @@ export function buildPrescribedWorkout(
     status: treino.concluido ? "done" : "pending",
     description: treino.descricao ?? "",
     prescription: conteudo.prescription ?? { warmup: "", mainSet: "", cooldown: "", videoUrl: null },
-    structuredIntervals: conteudo.structuredIntervals ?? [],
+    structuredIntervals: normalizeStructuredIntervals(conteudo.structuredIntervals ?? []),
     trainingSessions: conteudo.trainingSessions ?? [],
     powerZones: conteudo.powerZones ?? [],
     planned: conteudo.planned ?? {

@@ -183,6 +183,8 @@ function PrescriptionForm({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Qualquer edição depois de salvar/enviar invalida os dois selos — o
   // treinador precisa salvar/enviar de novo pra refletir a mudança.
@@ -197,6 +199,7 @@ function PrescriptionForm({
   );
 
   const isCycling = discipline === "Ciclismo";
+  const isRunning = discipline === "Corrida";
   const isAcademia = discipline === "Academia";
 
   // Zera descrição/prescrição/métricas planejadas/blocos/exercícios — usado
@@ -279,6 +282,32 @@ function PrescriptionForm({
       setSendError(e instanceof Error ? e.message : "Não foi possível enviar o treino.");
     } finally {
       setSending(false);
+    }
+  }
+
+  // Baixa o .FIT gerado a partir dos blocos atuais pro treinador testar num
+  // dispositivo de verdade (cabo USB) antes de enviar pro aluno — import
+  // sob demanda porque o SDK da Garmin só roda no navegador e não precisa
+  // entrar no bundle inicial do Cockpit.
+  async function handleTestDownload() {
+    setExportError(null);
+    setExporting(true);
+    try {
+      const { buildFitWorkout } = await import("@/lib/workout-export");
+      const bytes = buildFitWorkout({ title, discipline, structuredIntervals });
+      const blob = new Blob([new Uint8Array(bytes)], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${(title || "treino").replace(/[^a-z0-9]+/gi, "-")}.fit`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : "Não foi possível gerar o arquivo .FIT.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -376,12 +405,12 @@ function PrescriptionForm({
         error={saveError}
       />
 
-      {isCycling && (
+      {(isCycling || isRunning) && (
         <Card>
-          <CardTitle>Blocos por %FTP / zona</CardTitle>
+          <CardTitle>Definir treino por blocos</CardTitle>
           <p className="mt-1 text-xs text-g4-muted">
-            Aquecimento, tiros, recuperação e desaquecimento — a mesma estrutura usada para gerar o
-            arquivo .ZWO do aluno.
+            Aquecimento, tiros, recuperação e desaquecimento — cada bloco pode combinar Potência, Frequência
+            cardíaca e Cadência ao mesmo tempo (ex.: &quot;sprint a 180bpm com cadência a 100rpm&quot;).
           </p>
           <IntervalEditor
             intervals={structuredIntervals}
@@ -389,7 +418,24 @@ function PrescriptionForm({
               setStructuredIntervals(next);
               markDirty();
             }}
+            showPower={isCycling}
+            hrMax={student.cycling?.hrMax ?? student.running?.hrMax ?? null}
+            hrRest={student.cycling?.hrRest ?? student.running?.hrRest ?? null}
           />
+        </Card>
+      )}
+
+      {(isCycling || isRunning) && structuredIntervals.length > 0 && (
+        <Card>
+          <CardTitle>Testar no dispositivo</CardTitle>
+          <p className="mt-1 text-xs text-g4-muted">
+            Baixa um .FIT com os blocos de cima, pra você mesmo carregar num relógio/ciclocomputador via
+            cabo USB e conferir se o treino ficou do jeito que foi montado — antes de enviar pro aluno.
+          </p>
+          <Button variant="secondary" className="mt-3 px-5" onClick={handleTestDownload} disabled={exporting}>
+            {exporting ? "Gerando..." : "Baixar .FIT de teste"}
+          </Button>
+          {exportError && <p className="mt-2 text-sm text-status-missed">{exportError}</p>}
         </Card>
       )}
 

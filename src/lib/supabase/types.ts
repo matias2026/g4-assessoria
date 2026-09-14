@@ -14,12 +14,43 @@ export type WorkoutCompletionSource = "strava" | "manual";
 
 export type WorkoutIntervalType = "warmup" | "steady" | "interval" | "recovery" | "cooldown";
 
-/** Segmento de treino estruturado (base para gerar o arquivo .ZWO). Alvo em %FTP. */
+/** Alvo de potência do bloco, em %FTP (zona Coggan) — só faz sentido pra ciclismo. */
+export interface IntervalPowerTarget {
+  lowPct: number;
+  highPct: number;
+}
+
+/**
+ * Alvo de frequência cardíaca do bloco — zona (1-5, mesma classificação
+ * Karvonen do Monitoramento, ver src/lib/hr-zones.ts), não bpm digitado à
+ * mão. O bpm de cada zona é calculado na hora (tela e exportação .FIT) a
+ * partir da FC máx/repouso cadastrada na ficha do aluno, nunca guardado
+ * aqui — assim a mesma prescrição continua válida se a ficha for
+ * atualizada depois.
+ */
+export interface IntervalHrTarget {
+  zone: 1 | 2 | 3 | 4 | 5;
+}
+
+/** Alvo de cadência do bloco, em rpm (ciclismo) ou passos/min (corrida). */
+export interface IntervalCadenceTarget {
+  low: number;
+  high: number;
+}
+
+/**
+ * Segmento de treino estruturado (base pra gerar o arquivo .FIT de teste
+ * do treinador — ver src/lib/workout-export.ts). Um bloco pode combinar
+ * mais de um alvo ao mesmo tempo (ex.: "sprint a 180bpm com cadência a
+ * 100rpm") — todos os campos de alvo são independentes e opcionais; nulo/
+ * ausente = esse tipo de alvo não se aplica a esse bloco.
+ */
 export interface WorkoutInterval {
   type: WorkoutIntervalType;
   durationSeconds: number;
-  targetLowPct: number;
-  targetHighPct: number;
+  power?: IntervalPowerTarget | null;
+  hr?: IntervalHrTarget | null;
+  cadence?: IntervalCadenceTarget | null;
 }
 
 /** Uma série de um exercício — texto livre em série/rep e carga, como no padrão de apps de musculação. */
@@ -167,6 +198,10 @@ export interface RunningProfile {
   thresholdPace: string; // "4:15" (min/km) — texto livre, sem cálculo
   vo2max: number | null;
   hrMax: number | null;
+  // Só ciclismo pedia isso até agora — corrida precisa pra calcular bpm de
+  // zona de FC nos blocos de treino (fórmula de Karvonen exige FC de
+  // repouso, não só máxima).
+  hrRest: number | null;
   hrThreshold: number | null;
   pr5k: string;
   pr10k: string;

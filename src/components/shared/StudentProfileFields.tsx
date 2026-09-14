@@ -372,6 +372,16 @@ export function StudentProfileFields({
               />
             </label>
             <label className="block">
+              <span className={labelClass}>FC de repouso</span>
+              <input
+                type="number"
+                min={0}
+                value={running.hrRest}
+                onChange={(e) => onPatchRunning({ hrRest: e.target.value })}
+                className={fieldClass}
+              />
+            </label>
+            <label className="block">
               <span className={labelClass}>FC de limiar</span>
               <input
                 type="number"

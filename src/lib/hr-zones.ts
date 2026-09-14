@@ -13,6 +13,41 @@ export function classifyHrZone(heartRate: number, hrRest: number, hrMax: number)
   return 5;
 }
 
+// Limites de %HRR por zona — mesmos limiares de classifyHrZone, só na
+// direção contrária (zona conhecida → faixa de bpm, não bpm → zona). Z5 não
+// tem teto natural na classificação (qualquer coisa >= 90% HRR); aqui usa
+// 100% (= FC máx) como teto pra virar um intervalo fechado.
+const ZONE_HRR_BOUNDS: Record<HrZone, readonly [number, number]> = {
+  1: [0, 0.6],
+  2: [0.6, 0.7],
+  3: [0.7, 0.8],
+  4: [0.8, 0.9],
+  5: [0.9, 1],
+};
+
+export interface HrZoneRange {
+  low: number;
+  high: number;
+}
+
+/**
+ * Faixa de bpm de uma zona (1-5), calculada a partir da FC máx/repouso do
+ * aluno — o inverso de classifyHrZone. Usada pra prescrever um bloco de
+ * treino por zona (o treinador escolhe "Z4", o app mostra/exporta o bpm
+ * correspondente a esse aluno específico) em vez de bpm digitado à mão.
+ * null quando a ficha não tem FC máx/repouso cadastrada (nunca inventa um
+ * valor padrão pra preencher a lacuna).
+ */
+export function hrZoneRange(zone: HrZone, hrRest: number | null, hrMax: number | null): HrZoneRange | null {
+  if (hrRest == null || hrMax == null || hrMax <= hrRest) return null;
+  const [lowHrr, highHrr] = ZONE_HRR_BOUNDS[zone];
+  const reserve = hrMax - hrRest;
+  return {
+    low: Math.round(hrRest + lowHrr * reserve),
+    high: Math.round(hrRest + highHrr * reserve),
+  };
+}
+
 export interface ZoneSeconds {
   z1: number;
   z2: number;

@@ -64,6 +64,7 @@ export interface RunningFields {
   thresholdPace: string;
   vo2max: string;
   hrMax: string;
+  hrRest: string;
   hrThreshold: string;
   pr5k: string;
   pr10k: string;
@@ -110,6 +111,7 @@ export const BLANK_RUNNING: RunningFields = {
   thresholdPace: "",
   vo2max: "",
   hrMax: "",
+  hrRest: "",
   hrThreshold: "",
   pr5k: "",
   pr10k: "",
@@ -167,6 +169,7 @@ export function runningFieldsFromStudent(student: MockStudent): RunningFields {
     thresholdPace: r.thresholdPace,
     vo2max: numToStr(r.vo2max),
     hrMax: numToStr(r.hrMax),
+    hrRest: numToStr(r.hrRest),
     hrThreshold: numToStr(r.hrThreshold),
     pr5k: r.pr5k,
     pr10k: r.pr10k,
@@ -228,6 +231,7 @@ export function buildProfileInput(
         thresholdPace: running.thresholdPace.trim(),
         vo2max: numOrNull(running.vo2max),
         hrMax: numOrNull(running.hrMax),
+        hrRest: numOrNull(running.hrRest),
         hrThreshold: numOrNull(running.hrThreshold),
         pr5k: running.pr5k.trim(),
         pr10k: running.pr10k.trim(),
