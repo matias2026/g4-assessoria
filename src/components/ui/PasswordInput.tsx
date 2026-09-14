@@ -3,7 +3,11 @@
 import { forwardRef, useState, type InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-type PasswordInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type">;
+interface PasswordInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
+  // Substitui as cores padrão (tema claro) do botão de olho — usado na tela
+  // de login, que é tema escuro. Quando omitido, mantém o visual de sempre.
+  toggleClassName?: string;
+}
 
 // Ícone de olho (mostrar/ocultar) sem depender de nenhuma lib de ícones —
 // o projeto já usa emoji/SVG inline pontualmente em vez de puxar mais uma dependência.
@@ -21,7 +25,7 @@ function EyeIcon({ crossed }: { crossed: boolean }) {
 // pede senha (login, pedir acesso, alterar senha, cadastro de aluno) pra
 // dar pra conferir o que foi digitado antes de enviar.
 export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(function PasswordInput(
-  { className, ...props },
+  { className, toggleClassName, ...props },
   ref
 ) {
   const [visible, setVisible] = useState(false);
@@ -35,7 +39,10 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(fu
         tabIndex={-1}
         aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
         aria-pressed={visible}
-        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-g4-muted hover:text-g4-ink focus-ring"
+        className={cn(
+          "absolute inset-y-0 right-0 flex w-11 items-center justify-center",
+          toggleClassName ?? "text-g4-muted hover:text-g4-ink focus-ring"
+        )}
       >
         <EyeIcon crossed={visible} />
       </button>

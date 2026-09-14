@@ -4,8 +4,6 @@ import { useState } from "react";
 import { useActionState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { signIn, type LoginState } from "./actions";
 
@@ -13,22 +11,29 @@ const initialState: LoginState = { error: null };
 
 type LoginRole = "athlete" | "coach";
 
+// Botão de olho da senha, mesma cor no tema escuro desta tela — a versão
+// padrão do componente assume fundo claro (ver PasswordInput.tsx).
+const PASSWORD_TOGGLE_CLASSES =
+  "text-gray-500 hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400/50 rounded-lg";
+
+const FIELD_CLASSES =
+  "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-gray-500 outline-none transition-colors focus:border-lime-400/70 focus:bg-white/[0.07]";
+
 export function LoginForm({ next }: { next: string }) {
   const [state, formAction, pending] = useActionState(signIn, initialState);
   const [role, setRole] = useState<LoginRole>("athlete");
 
   return (
-    <Card className="w-full max-w-sm p-6">
-      <h1 className="text-lg font-bold text-g4-ink">Entrar</h1>
-      <p className="mt-1 text-sm text-g4-muted">Acesso restrito a treinador e aluno cadastrado.</p>
+    <div className="mt-6">
+      <p className="text-center text-sm text-gray-400">Acesso restrito a treinador e aluno cadastrado.</p>
 
-      <div className="mt-4 grid grid-cols-2 gap-4 rounded-xl bg-g4-surface-alt p-1">
+      <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-white/5 p-1">
         <button
           type="button"
           onClick={() => setRole("athlete")}
           className={cn(
-            "rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus-ring",
-            role === "athlete" ? "bg-lime text-g4-ink" : "text-g4-muted hover:text-g4-ink"
+            "rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400/60",
+            role === "athlete" ? "bg-lime-400 text-[#0f1115] shadow-sm" : "text-gray-400 hover:text-gray-200"
           )}
         >
           Sou aluno
@@ -37,52 +42,52 @@ export function LoginForm({ next }: { next: string }) {
           type="button"
           onClick={() => setRole("coach")}
           className={cn(
-            "rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus-ring",
-            role === "coach" ? "bg-lime text-g4-ink" : "text-g4-muted hover:text-g4-ink"
+            "rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400/60",
+            role === "coach" ? "bg-lime-400 text-[#0f1115] shadow-sm" : "text-gray-400 hover:text-gray-200"
           )}
         >
           Sou treinador
         </button>
       </div>
 
-      <form action={formAction} className="mt-4 flex flex-col gap-4">
+      <form action={formAction} className="mt-5 flex flex-col gap-4">
         <input type="hidden" name="next" value={next} />
         <input type="hidden" name="expected_role" value={role} />
 
-        <label className="flex flex-col gap-4 text-sm">
-          <span className="font-medium text-g4-ink">E-mail</span>
-          <input
-            type="email"
-            name="email"
-            required
-            autoComplete="email"
-            className="rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
-          />
+        <label className="flex flex-col gap-2 text-sm">
+          <span className="font-medium text-gray-300">E-mail</span>
+          <input type="email" name="email" required autoComplete="email" className={FIELD_CLASSES} />
         </label>
 
-        <label className="flex flex-col gap-4 text-sm">
-          <span className="font-medium text-g4-ink">Senha</span>
+        <label className="flex flex-col gap-2 text-sm">
+          <span className="font-medium text-gray-300">Senha</span>
           <PasswordInput
             name="password"
             required
             autoComplete="current-password"
-            className="w-full rounded-xl border border-g4-border bg-white px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className={FIELD_CLASSES}
+            toggleClassName={PASSWORD_TOGGLE_CLASSES}
           />
         </label>
 
-        {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+        {state.error && <p className="text-sm text-red-400">{state.error}</p>}
 
-        <Button type="submit" variant="primary" className="mt-1 w-full" disabled={pending}>
+        <button
+          type="submit"
+          disabled={pending}
+          className="mt-1 w-full rounded-xl bg-lime-400 px-4 py-3 text-sm font-semibold text-[#0f1115] transition-colors hover:bg-lime-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#161b22] disabled:pointer-events-none disabled:opacity-50"
+        >
           {pending ? "Entrando..." : role === "athlete" ? "Entrar como aluno" : "Entrar como treinador"}
-        </Button>
+        </button>
       </form>
 
-      <p className="mt-4 text-center text-xs text-g4-muted">
+      <p className="mt-5 text-center text-xs leading-relaxed text-gray-500">
         Ainda não tem conta?{" "}
-        <Link href="/solicitar-acesso" className="font-medium text-g4-ink underline">
-          Peça acesso
+        <Link href="/solicitar-acesso" className="font-medium text-lime-400 underline underline-offset-2 hover:text-lime-300">
+          Criar conta
         </Link>
+        . O treinador revisa antes de liberar o login.
       </p>
-    </Card>
+    </div>
   );
 }
