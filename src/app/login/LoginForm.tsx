@@ -55,13 +55,17 @@ export function LoginForm({ next }: { next: string }) {
         </button>
       </div>
 
-      <form action={formAction} className="mt-5 flex flex-col gap-4">
+      {/* autoComplete="off" nos dois campos + no <form>: pede pro navegador não
+          oferecer salvar/preencher e-mail e senha aqui. Não é garantido —
+          Chrome/Edge modernos costumam ignorar esse pedido em formulários de
+          login — mas reduz a chance de autopreenchimento em telas novas. */}
+      <form action={formAction} autoComplete="off" className="mt-5 flex flex-col gap-4">
         <input type="hidden" name="next" value={next} />
         <input type="hidden" name="expected_role" value={role} />
 
         <label className="flex flex-col gap-2 text-sm">
           <span className="font-medium text-gray-300">E-mail</span>
-          <input type="email" name="email" required autoComplete="email" className={FIELD_CLASSES} />
+          <input type="email" name="email" required autoComplete="off" className={FIELD_CLASSES} />
         </label>
 
         <label className="flex flex-col gap-2 text-sm">
@@ -69,7 +73,7 @@ export function LoginForm({ next }: { next: string }) {
           <PasswordInput
             name="password"
             required
-            autoComplete="current-password"
+            autoComplete="off"
             className={FIELD_CLASSES}
             toggleClassName={PASSWORD_TOGGLE_CLASSES}
           />

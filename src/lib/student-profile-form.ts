@@ -19,11 +19,14 @@ export const DISCIPLINES = ["Ciclismo", "Corrida", "Academia"];
 export const SEX_OPTIONS: StudentSex[] = ["Masculino", "Feminino", "Outro"];
 export const STRENGTH_GOALS: StrengthGoal[] = ["Hipertrofia", "Emagrecimento", "Fortalecimento para endurance"];
 
-export const fieldClass = "mt-1 w-full rounded-xl border border-g4-border bg-white p-2.5 text-sm text-g4-ink focus-ring";
+// bg-g4-surface (não bg-white fixo) — no tema escuro text-g4-ink vira quase
+// branco, então um fundo branco fixo deixava o texto digitado quase
+// invisível (parecia campo vazio/placeholder, mas o dado estava lá).
+export const fieldClass = "mt-1 w-full rounded-xl border border-g4-border bg-g4-surface p-2.5 text-sm text-g4-ink focus-ring";
 export const labelClass = "text-xs font-medium text-g4-muted";
 export const sectionClass = "rounded-2xl border border-g4-border bg-g4-surface-alt/40 p-4";
 export const summaryClass = "cursor-pointer text-sm font-semibold text-g4-ink marker:text-lime-deep";
-export const subSectionClass = "mt-3 rounded-xl border border-g4-border bg-white/60 p-3";
+export const subSectionClass = "mt-3 rounded-xl border border-g4-border bg-g4-surface/60 p-3";
 
 export function numOrNull(value: string): number | null {
   if (value.trim() === "") return null;
