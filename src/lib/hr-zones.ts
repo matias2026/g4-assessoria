@@ -1,0 +1,45 @@
+// Zonas de FC por %reserva cardíaca (Karvonen: (FC - FCrep) / (FCmáx -
+// FCrep)) — mesma base do TRIMP (src/lib/trimp.ts), reaproveitada aqui pra
+// classificar cada amostra de FC de uma atividade numa zona de 1 a 5.
+export type HrZone = 1 | 2 | 3 | 4 | 5;
+
+export function classifyHrZone(heartRate: number, hrRest: number, hrMax: number): HrZone {
+  if (hrMax <= hrRest) return 1;
+  const hrr = (heartRate - hrRest) / (hrMax - hrRest);
+  if (hrr < 0.6) return 1;
+  if (hrr < 0.7) return 2;
+  if (hrr < 0.8) return 3;
+  if (hrr < 0.9) return 4;
+  return 5;
+}
+
+export interface ZoneSeconds {
+  z1: number;
+  z2: number;
+  z3: number;
+  z4: number;
+  z5: number;
+}
+
+/**
+ * Segundos passados em cada zona de FC ao longo de uma sessão, a partir das
+ * amostras de série temporal (.FIT ponto a ponto, ou streams "medium" da
+ * Strava). O intervalo entre duas amostras conta pra zona da amostra
+ * inicial — aproximação padrão quando o intervalo não é sempre igual (caso
+ * dos streams da Strava, diferente do .FIT que é sempre 1 amostra/segundo).
+ */
+export function computeZoneSeconds(
+  samples: { timestamp: number; heartRate: number }[],
+  hrRest: number,
+  hrMax: number
+): ZoneSeconds {
+  const zones: ZoneSeconds = { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 };
+  const key = (zone: HrZone): keyof ZoneSeconds => `z${zone}` as keyof ZoneSeconds;
+  for (let i = 0; i < samples.length - 1; i++) {
+    const delta = samples[i + 1].timestamp - samples[i].timestamp;
+    if (delta <= 0 || !samples[i].heartRate) continue;
+    const zone = classifyHrZone(samples[i].heartRate, hrRest, hrMax);
+    zones[key(zone)] += delta;
+  }
+  return zones;
+}

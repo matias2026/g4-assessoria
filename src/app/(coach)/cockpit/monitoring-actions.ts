@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeTrimp } from "@/lib/trimp";
+import { computeZoneSeconds } from "@/lib/hr-zones";
 import { requireCoachOrAdmin } from "./actions";
 
 // Janela de 6 semanas: cobre os 28 dias da carga crônica do ACWR com folga,
@@ -64,6 +65,30 @@ export interface CardiacEfficiencyResult {
   declining: boolean;
 }
 
+export interface WeeklyZoneMinutes {
+  weekStartIso: string;
+  leve: number; // Z1+Z2 — minutos
+  moderado: number; // Z3 — minutos
+  intenso: number; // Z4+Z5 — minutos
+}
+
+export interface ZoneLoadResult {
+  weeks: WeeklyZoneMinutes[];
+  // true quando o "intenso" (Z4+Z5) da última semana saltou em relação à
+  // anterior — gatilho clássico de overtraining mesmo quando o volume
+  // total (ACWR) ainda parece normal.
+  intensoSpike: boolean;
+  intensoPctChange: number | null;
+}
+
+export interface RpeTrendResult {
+  recentAvg: number; // média de RPE dos últimos 7 dias
+  baselineAvg: number; // média de RPE das ~3 semanas anteriores a isso
+  // true quando o RPE recente subiu bem acima do baseline — sinal
+  // subjetivo do aluno reforçando (ou não) o que os dados objetivos dizem.
+  rising: boolean;
+}
+
 export interface MonitoringSummary {
   sessions: CompletedSession[];
   totalCount: number;
@@ -80,12 +105,33 @@ export interface MonitoringSummary {
   // null quando não há pelo menos 2 semanas com cadência e FC média juntas
   // na mesma sessão.
   cardiacEfficiency: CardiacEfficiencyResult | null;
+  // null quando nenhuma sessão do período tem amostras de FC ponto a ponto
+  // (só treinos com .FIT/Strava anexado têm isso — atividade solta da
+  // Strava sem virar treino do dia, não).
+  zoneLoad: ZoneLoadResult | null;
+  // null quando não há RPE suficiente (pelo menos 1 no recente e 1 no
+  // baseline) pra comparar.
+  rpeTrend: RpeTrendResult | null;
 }
 
 // Limiar de queda de eficiência cardíaca pra soar o alerta — mesma cadência
 // pedindo X% mais FC que na semana anterior é sinal clássico de fadiga
 // acumulada/desacoplamento aeróbico.
 const CARDIAC_EFFICIENCY_DROP_THRESHOLD = 0.08;
+
+// Salto de 50%+ no tempo em zona intensa (Z4+Z5) de uma semana pra outra —
+// gatilho mais comum de overtraining segundo a literatura, mesmo quando o
+// volume total (ACWR) ainda está dentro da faixa normal.
+const ZONE_INTENSO_SPIKE_THRESHOLD = 0.5;
+
+// RPE recente (últimos 7 dias) vs. baseline (as ~3 semanas antes disso) —
+// janelas que não se sobrepõem, pra comparar "como o aluno está se sentindo
+// agora" com "como vinha se sentindo antes".
+const RPE_RECENT_DAYS = 7;
+const RPE_BASELINE_DAYS = 21;
+// RPE subiu pelo menos 1.5 ponto (escala 0-10) acima do baseline — sinal
+// subjetivo forte o bastante pra valer como apoio ao alerta objetivo.
+const RPE_RISING_THRESHOLD = 1.5;
 
 // Segunda-feira (UTC) da semana ISO de uma data "YYYY-MM-DD".
 function isoWeekStart(dateIso: string): string {
@@ -166,6 +212,13 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
   const sessions: CompletedSession[] = [];
   const treinoDates = new Set<string>();
 
+  // Segundos em cada zona de FC por semana — só sessões com amostras ponto a
+  // ponto (.FIT ou streams da Strava anexados ao treino do dia) alimentam
+  // isso; a amostra bruta nunca sai daqui nem vai pro `CompletedSession`
+  // (o mesmo problema de payload de Server Action já resolvido antes no
+  // dashboard do aluno se aplicaria aqui também).
+  const weeklyZoneSeconds = new Map<string, { z1: number; z2: number; z3: number; z4: number; z5: number }>();
+
   for (const row of treinoResult.data ?? []) {
     treinoDates.add(row.data);
     const durationSeconds = row.atividade_fit?.durationSeconds ?? null;
@@ -181,6 +234,19 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
       avgCadence: row.atividade_fit?.avgCadence ?? null,
       avgHeartRate: row.atividade_fit?.avgHeartRate ?? null,
     });
+
+    const samples = row.atividade_fit?.samples;
+    if (samples && samples.length > 1 && hrMax != null && hrRest != null) {
+      const zoneSeconds = computeZoneSeconds(samples, hrRest, hrMax);
+      const week = isoWeekStart(row.data);
+      const entry = weeklyZoneSeconds.get(week) ?? { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 };
+      entry.z1 += zoneSeconds.z1;
+      entry.z2 += zoneSeconds.z2;
+      entry.z3 += zoneSeconds.z3;
+      entry.z4 += zoneSeconds.z4;
+      entry.z5 += zoneSeconds.z5;
+      weeklyZoneSeconds.set(week, entry);
+    }
   }
 
   for (const activity of stravaRows) {
@@ -288,6 +354,55 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
     };
   }
 
+  // Tempo em zona de FC por semana (Z1-Z5 agregados em leve/moderado/
+  // intenso) — cruza com o ACWR: um salto de intenso sem o volume total
+  // ter mudado muito é o gatilho mais comum de overtraining.
+  const zoneWeeks: WeeklyZoneMinutes[] = [...weeklyZoneSeconds.entries()]
+    .map(([weekStartIso, z]) => ({
+      weekStartIso,
+      leve: (z.z1 + z.z2) / 60,
+      moderado: z.z3 / 60,
+      intenso: (z.z4 + z.z5) / 60,
+    }))
+    .sort((a, b) => a.weekStartIso.localeCompare(b.weekStartIso));
+
+  let zoneLoad: ZoneLoadResult | null = null;
+  if (zoneWeeks.length > 0) {
+    let intensoSpike = false;
+    let intensoPctChange: number | null = null;
+    if (zoneWeeks.length >= 2) {
+      const [previous, current] = zoneWeeks.slice(-2);
+      if (previous.intenso > 0) {
+        intensoPctChange = ((current.intenso - previous.intenso) / previous.intenso) * 100;
+        intensoSpike = intensoPctChange / 100 >= ZONE_INTENSO_SPIKE_THRESHOLD;
+      } else if (current.intenso > 0) {
+        // Não tinha zona intensa nenhuma na semana anterior e apareceu
+        // agora — não dá pra calcular %, mas o salto absoluto já é o sinal.
+        intensoSpike = true;
+      }
+    }
+    zoneLoad = { weeks: zoneWeeks, intensoSpike, intensoPctChange };
+  }
+
+  // RPE recente (últimos 7 dias) vs. baseline (3 semanas antes disso) — sinal
+  // subjetivo do aluno, cruzado com o que o ACWR/eficiência cardíaca dizem.
+  const recentRpeValues: number[] = [];
+  const baselineRpeValues: number[] = [];
+  for (const session of sessions) {
+    if (session.rpe == null) continue;
+    const daysAgo = Math.floor((Date.now() - new Date(`${session.dateIso}T00:00:00Z`).getTime()) / (24 * 60 * 60 * 1000));
+    if (daysAgo < 0) continue;
+    if (daysAgo < RPE_RECENT_DAYS) recentRpeValues.push(session.rpe);
+    else if (daysAgo < RPE_RECENT_DAYS + RPE_BASELINE_DAYS) baselineRpeValues.push(session.rpe);
+  }
+
+  let rpeTrend: RpeTrendResult | null = null;
+  if (recentRpeValues.length > 0 && baselineRpeValues.length > 0) {
+    const recentAvg = recentRpeValues.reduce((a, b) => a + b, 0) / recentRpeValues.length;
+    const baselineAvg = baselineRpeValues.reduce((a, b) => a + b, 0) / baselineRpeValues.length;
+    rpeTrend = { recentAvg, baselineAvg, rising: recentAvg - baselineAvg >= RPE_RISING_THRESHOLD };
+  }
+
   return {
     sessions,
     totalCount: sessions.length,
@@ -298,5 +413,7 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
     loadMetric,
     acwr,
     cardiacEfficiency,
+    zoneLoad,
+    rpeTrend,
   };
 }

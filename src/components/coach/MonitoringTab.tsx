@@ -297,6 +297,9 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
                   : ratio < 0.8
                     ? `Carga ${METRIC_LABEL[metric]} abaixo do normal — semana leve ou de recuperação, sem sinal de risco.`
                     : `Carga ${METRIC_LABEL[metric]} dentro da faixa segura (0.8–1.3) — o aluno está assimilando bem o volume atual.`;
+            const intensoSpike = summary.zoneLoad?.intensoSpike ?? false;
+            const rpeTrend = summary.rpeTrend;
+
             return (
               <div className="mt-3">
                 <div className="flex items-center justify-between gap-4">
@@ -307,6 +310,24 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
                   ACWR {ratio.toFixed(2)} — aguda (7d): {Math.round(acuteLoad)} {METRIC_UNIT[metric]} · crônica
                   (méd./semana): {Math.round(chronicWeeklyAvg)} {METRIC_UNIT[metric]}
                 </p>
+                {(intensoSpike || rpeTrend) && (
+                  <div className="mt-3 flex flex-col gap-1.5 border-t border-g4-border pt-3">
+                    {intensoSpike && (
+                      <p className="text-xs text-g4-ink">
+                        ⚠️ Tempo em zona intensa (Z4+Z5) deu um salto em relação à semana anterior — gatilho comum de
+                        overtraining mesmo quando o volume total parece normal. Ver &quot;Tempo nas zonas de FC&quot;
+                        abaixo.
+                      </p>
+                    )}
+                    {rpeTrend && (
+                      <p className="text-xs text-g4-ink">
+                        {rpeTrend.rising
+                          ? `RPE subjetivo do aluno também subiu — de ${rpeTrend.baselineAvg.toFixed(1)} pra ${rpeTrend.recentAvg.toFixed(1)} nos últimos 7 dias${tone !== "lime" ? ", reforçando o sinal objetivo acima" : ", mesmo com a carga objetiva dentro da faixa segura — vale conversar com o aluno"}.`
+                          : `RPE subjetivo segue estável (${rpeTrend.recentAvg.toFixed(1)} recente vs. ${rpeTrend.baselineAvg.toFixed(1)} antes)${tone !== "lime" ? " — o aluno ainda não relata sentir o esforço extra, mas vale acompanhar" : ""}.`}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })()
@@ -367,7 +388,63 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
         )}
       </Card>
 
-      {/* 6. Notas do treinador (privadas) */}
+      {/* 6. Tempo nas zonas de FC (Z1-Z5, agregado em leve/moderado/intenso) */}
+      <Card>
+        <CardTitle>Tempo nas zonas de FC</CardTitle>
+        <p className="mt-1 text-xs text-g4-muted">
+          Minutos por semana em zona leve (Z1+Z2), moderada (Z3) e intensa (Z4+Z5) — um salto no intenso sem aumento
+          de volume total é o gatilho mais comum de overtraining.
+        </p>
+        {summaryError ? (
+          <p className="mt-2 text-sm text-status-missed">{summaryError}</p>
+        ) : !summaryLoaded ? (
+          <p className="mt-2 text-sm text-g4-muted">Carregando...</p>
+        ) : summary && summary.zoneLoad ? (
+          <div className="mt-3 flex flex-col gap-3">
+            {summary.zoneLoad.intensoSpike && (
+              <p className="text-sm text-status-pending">
+                ⚠️ Zona intensa saltou
+                {summary.zoneLoad.intensoPctChange != null
+                  ? ` ${Math.round(summary.zoneLoad.intensoPctChange)}%`
+                  : ""}{" "}
+                em relação à semana anterior.
+              </p>
+            )}
+            {summary.zoneLoad.weeks.map((week) => {
+              const total = week.leve + week.moderado + week.intenso;
+              return (
+                <div key={week.weekStartIso} className="text-sm">
+                  <div className="flex items-center justify-between text-g4-muted">
+                    <span>{formatWeekLabel(week.weekStartIso)}</span>
+                    <span>{Math.round(total)} min</span>
+                  </div>
+                  <div className="mt-1 flex h-2 overflow-hidden rounded-full bg-g4-surface-alt">
+                    {total > 0 && (
+                      <>
+                        <div className="h-2 bg-status-done" style={{ width: `${(week.leve / total) * 100}%` }} />
+                        <div className="h-2 bg-status-pending" style={{ width: `${(week.moderado / total) * 100}%` }} />
+                        <div className="h-2 bg-status-missed" style={{ width: `${(week.intenso / total) * 100}%` }} />
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <p className="text-xs text-g4-muted">
+              <span className="mr-3">🟢 leve</span>
+              <span className="mr-3">🟡 moderada</span>
+              <span>🔴 intensa</span>
+            </p>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-g4-muted">
+            Sem amostras de FC ponto a ponto ainda — depende de um treino com arquivo .FIT ou atividade da Strava
+            anexada ao dia (registrando FC durante o treino, não só a média).
+          </p>
+        )}
+      </Card>
+
+      {/* 7. Notas do treinador (privadas) */}
       <Card>
         <div className="flex items-center justify-between gap-4">
           <CardTitle>Notas do treinador</CardTitle>
