@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { computeTrimp } from "@/lib/trimp";
 import { requireCoachOrAdmin } from "./actions";
 
 // Janela de 6 semanas: cobre os 28 dias da carga crônica do ACWR com folga,
@@ -17,16 +18,21 @@ export interface CompletedSession {
   distanceMeters: number | null;
   durationSeconds: number | null;
   tss: number | null;
+  // TRIMP (Banister) — calculado localmente a partir de FC média + duração
+  // + FC máx/repouso cadastradas na ficha do aluno (ver src/lib/trimp.ts).
+  // null quando falta FC média da sessão ou FC máx/repouso na ficha.
+  trimp: number | null;
   relativeEffort: number | null;
   rpe: number | null;
 }
 
 // A maioria dos .FIT/Strava não vem com TSS calculado (precisa de FTP
-// calibrado). Prioridade de métrica de carga: TSS > Relative Effort da
-// Strava (suffer_score, baseado em FC/potência) > minutos treinados — essa
-// última sempre existe, garantindo que o Evolução/Alerta nunca fiquem sem
-// nenhum dado quando há treino concluído.
-export type LoadMetric = "tss" | "relative_effort" | "minutes";
+// calibrado). Prioridade de métrica de carga: TSS > TRIMP (FC média +
+// duração, calculado por nós, funciona pra .FIT e Strava) > Relative
+// Effort da Strava (suffer_score, só existe pra atividade sincronizada) >
+// minutos treinados — essa última sempre existe, garantindo que o
+// Evolução/Alerta nunca fiquem sem nenhum dado quando há treino concluído.
+export type LoadMetric = "tss" | "trimp" | "relative_effort" | "minutes";
 
 export interface WeeklyLoad {
   weekStartIso: string;
@@ -73,6 +79,7 @@ function isoDateDaysAgo(n: number): string {
 
 function sessionLoad(session: CompletedSession, metric: LoadMetric): number | null {
   if (metric === "tss") return session.tss;
+  if (metric === "trimp") return session.trimp;
   if (metric === "relative_effort") return session.relativeEffort;
   return session.durationSeconds != null ? session.durationSeconds / 60 : null;
 }
@@ -94,7 +101,7 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
   since.setUTCDate(since.getUTCDate() - WINDOW_DAYS);
   const sinceDateIso = since.toISOString().slice(0, 10);
 
-  const [treinoResult, stravaRows] = await Promise.all([
+  const [treinoResult, stravaRows, alunoResult] = await Promise.all([
     admin
       .from("treinos")
       .select("data, distancia_real, tss_real, rpe_esforco, atividade_fit")
@@ -104,15 +111,30 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
     userId
       ? admin
           .from("strava_activities")
-          .select("start_date, distance_meters, moving_time_seconds, relative_effort")
+          .select("start_date, distance_meters, moving_time_seconds, average_heartrate, relative_effort")
           .eq("profile_id", userId)
           .gte("start_date", since.toISOString())
           .then((r) => r.data ?? [])
       : Promise.resolve([]),
+    admin.from("alunos").select("sex, cycling_profile, running_profile").eq("id", studentId).single(),
   ]);
 
   if (treinoResult.error) {
     console.error("[cockpit] erro ao buscar treinos concluídos p/ monitoramento:", treinoResult.error.message);
+  }
+
+  // FC máx/repouso cadastradas na ficha — só o perfil de ciclismo pede FC de
+  // repouso hoje, então TRIMP só fica disponível pra quem tem isso
+  // preenchido (normalmente ciclistas). Sem inventar um valor padrão pra
+  // preencher a lacuna.
+  const aluno = alunoResult.data;
+  const hrMax = aluno?.cycling_profile?.hrMax ?? aluno?.running_profile?.hrMax ?? null;
+  const hrRest = aluno?.cycling_profile?.hrRest ?? null;
+  const sex = aluno?.sex ?? null;
+
+  function trimpFor(avgHeartRate: number | null, durationSeconds: number | null): number | null {
+    if (avgHeartRate == null || durationSeconds == null || hrMax == null || hrRest == null) return null;
+    return computeTrimp({ avgHeartRate, durationSeconds, hrRest, hrMax, sex });
   }
 
   const sessions: CompletedSession[] = [];
@@ -120,12 +142,14 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
 
   for (const row of treinoResult.data ?? []) {
     treinoDates.add(row.data);
+    const durationSeconds = row.atividade_fit?.durationSeconds ?? null;
     sessions.push({
       dateIso: row.data,
       source: row.atividade_fit?.source === "strava" ? "strava" : row.atividade_fit ? "fit" : "rpe",
       distanceMeters: row.distancia_real ?? row.atividade_fit?.distanceMeters ?? null,
-      durationSeconds: row.atividade_fit?.durationSeconds ?? null,
+      durationSeconds,
       tss: row.tss_real,
+      trimp: trimpFor(row.atividade_fit?.avgHeartRate ?? null, durationSeconds),
       relativeEffort: row.atividade_fit?.relativeEffort ?? null,
       rpe: row.rpe_esforco,
     });
@@ -146,6 +170,7 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
       // atleta lá — não temos isso aqui, então fica de fora em vez de
       // estimar um número que pareceria real.
       tss: null,
+      trimp: trimpFor(activity.average_heartrate, activity.moving_time_seconds),
       relativeEffort: activity.relative_effort,
       rpe: null,
     });
@@ -161,11 +186,13 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
 
   const loadMetric: LoadMetric | null = sessions.some((s) => s.tss != null)
     ? "tss"
-    : sessions.some((s) => s.relativeEffort != null)
-      ? "relative_effort"
-      : sessions.some((s) => s.durationSeconds != null)
-        ? "minutes"
-        : null;
+    : sessions.some((s) => s.trimp != null)
+      ? "trimp"
+      : sessions.some((s) => s.relativeEffort != null)
+        ? "relative_effort"
+        : sessions.some((s) => s.durationSeconds != null)
+          ? "minutes"
+          : null;
 
   const weeklyMap = new Map<string, number>();
   const dailyLoad = new Map<string, number>();

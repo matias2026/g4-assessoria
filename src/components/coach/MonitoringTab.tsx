@@ -29,9 +29,10 @@ function formatWeekLabel(weekStartIso: string): string {
   return `${day}/${month}`;
 }
 
-const METRIC_UNIT: Record<LoadMetric, string> = { tss: "TSS", relative_effort: "RE", minutes: "min" };
+const METRIC_UNIT: Record<LoadMetric, string> = { tss: "TSS", trimp: "TRIMP", relative_effort: "RE", minutes: "min" };
 const METRIC_LABEL: Record<LoadMetric, string> = {
   tss: "de carga (TSS)",
+  trimp: "de carga cardíaca (TRIMP)",
   relative_effort: "de esforço (Relative Effort)",
   minutes: "de volume (minutos treinados)",
 };
