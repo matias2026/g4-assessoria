@@ -4,7 +4,10 @@ import { NoWorkoutCard } from "@/components/athlete/NoWorkoutCard";
 import { TrainingSummaryCards } from "@/components/athlete/TrainingSummaryCards";
 import { WeeklyHistory } from "@/components/athlete/WeeklyHistory";
 import { AthleteWorkoutView } from "@/components/workout/AthleteWorkoutView";
+import TreinoCarousel, { type Treino } from "@/components/workout/TreinoCarousel";
+import { setWeekWorkoutCompletion } from "@/app/(athlete)/dashboard/profile-actions";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { formatDistance, formatDuration } from "@/lib/workout-metrics";
 import {
   buildExampleWorkout,
   buildPrescribedWorkout,
@@ -18,7 +21,75 @@ import {
 } from "@/lib/mock-data";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { ProfileRole } from "@/lib/supabase/types";
+import type { PrescriptionContent, ProfileRole } from "@/lib/supabase/types";
+
+const WEEKDAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+// Segunda a domingo da semana de `reference`, em ISO (YYYY-MM-DD) — usado
+// pra buscar só os treinos já enviados dessa semana no carrossel da Home.
+function currentWeekRangeIso(reference: Date): { startIso: string; endIso: string } {
+  const day = reference.getDay(); // 0 = domingo
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(reference);
+  monday.setDate(reference.getDate() + diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const toIso = (d: Date) => d.toISOString().slice(0, 10);
+  return { startIso: toIso(monday), endIso: toIso(sunday) };
+}
+
+function formatDayLabel(dateIso: string): string {
+  const [y, m, d] = dateIso.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return WEEKDAY_LABELS[date.getDay()];
+}
+
+function formatShortDate(dateIso: string): string {
+  const [, m, d] = dateIso.split("-");
+  return `${d}/${m}`;
+}
+
+// Treinos da semana atual já enviados pro aluno (enviado = true), pro
+// carrossel "Treino da semana" na Home — dias sem prescrição simplesmente
+// não entram na lista, nunca um card inventado pra preencher espaço.
+async function fetchWeekTreinos(alunoId: string): Promise<Treino[]> {
+  const supabase = await createClient();
+  const { startIso, endIso } = currentWeekRangeIso(new Date());
+
+  const { data } = await supabase
+    .from("treinos")
+    .select("data, titulo, modalidade, descricao, concluido, conteudo")
+    .eq("aluno_id", alunoId)
+    .eq("enviado", true)
+    .gte("data", startIso)
+    .lte("data", endIso)
+    .order("data", { ascending: true });
+
+  const rows =
+    (data as
+      | {
+          data: string;
+          titulo: string | null;
+          modalidade: string | null;
+          descricao: string | null;
+          concluido: boolean | null;
+          conteudo: PrescriptionContent | null;
+        }[]
+      | null) ?? [];
+
+  return rows.map((row, index) => ({
+    id: index + 1,
+    dia: formatDayLabel(row.data),
+    data: formatShortDate(row.data),
+    dataIso: row.data,
+    modalidade: row.modalidade ?? "Ciclismo",
+    titulo: row.titulo ?? "Treino do dia",
+    descricao: row.descricao || "Sem descrição.",
+    duracao: formatDuration(row.conteudo?.planned?.durationSeconds ?? null),
+    distancia: formatDistance(row.conteudo?.planned?.distanceMeters ?? null),
+    concluido: row.concluido ?? false,
+  }));
+}
 
 function formatTodayLabel(): string {
   const today = new Date();
@@ -40,6 +111,9 @@ interface ResolvedWorkout {
   // Só true pro aluno real que já autorizou /api/strava/connect — a prévia
   // do admin e o demo legado nunca têm strava_tokens de verdade.
   stravaConnected: boolean;
+  // Treinos da semana atual já enviados — só pro aluno real com ficha
+  // vinculada; prévia do admin e demo legado ficam sempre em [].
+  weekTreinos: Treino[];
 }
 
 // Resolve o treino de hoje pelo usuário logado de verdade — se ele tiver
@@ -65,6 +139,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       coachPhone: workout.coachPhone,
       discipline: workout.discipline,
       stravaConnected: false,
+      weekTreinos: [],
     };
   }
 
@@ -88,6 +163,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       coachPhone: workout.coachPhone,
       discipline: workout.discipline,
       stravaConnected: false,
+      weekTreinos: [],
     };
   }
 
@@ -113,6 +189,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       .eq("profile_id", user.id)
       .maybeSingle();
     const stravaConnected = tokenRow !== null;
+    const weekTreinos = await fetchWeekTreinos(aluno.id);
 
     // Treino de verdade prescrito pelo treinador pra hoje (sendPrescription,
     // em cockpit/prescription-actions.ts) — `enviado = true` é o que
@@ -149,6 +226,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
         coachPhone: workout.coachPhone,
         discipline: workout.discipline,
         stravaConnected,
+        weekTreinos,
       };
     }
 
@@ -162,6 +240,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       coachPhone: DEFAULT_COACH_PHONE,
       discipline,
       stravaConnected,
+      weekTreinos,
     };
   }
 
@@ -179,6 +258,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       coachPhone: workout.coachPhone,
       discipline: workout.discipline,
       stravaConnected: false,
+      weekTreinos: [],
     };
   }
 
@@ -191,6 +271,7 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
     coachPhone: workout.coachPhone,
     stravaConnected: false,
     discipline: workout.discipline,
+    weekTreinos: [],
   };
 }
 
@@ -209,7 +290,7 @@ export default async function AthleteDashboardPage({
   searchParams: Promise<{ preview?: string }>;
 }) {
   const { preview } = await searchParams;
-  const { workout, isAdmin, athleteName, coachName, coachPhone, discipline, stravaConnected } =
+  const { workout, isAdmin, athleteName, coachName, coachPhone, discipline, stravaConnected, weekTreinos } =
     await resolveWorkout(preview);
   const talkToCoachLink = buildWhatsAppLink(coachPhone, `Oi ${coachName}!`);
 
@@ -228,6 +309,9 @@ export default async function AthleteDashboardPage({
         <AthleteWorkoutView workout={workout} isPreview={isAdmin} stravaConnected={stravaConnected} />
       ) : (
         <NoWorkoutCard talkToCoachLink={talkToCoachLink} coachName={coachName} />
+      )}
+      {weekTreinos.length > 0 && (
+        <TreinoCarousel treinos={weekTreinos} onToggleComplete={setWeekWorkoutCompletion} />
       )}
       <TrainingSummaryCards isPreview={isAdmin} />
       <WeeklyHistory days={mockWeeklyHistory} />

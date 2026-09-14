@@ -188,6 +188,35 @@ export async function completeOwnWorkout(feedback: { rpe: number; feeling: numbe
 }
 
 /**
+ * Marca/desmarca concluído pra um dia específico da semana (carrossel de
+ * treinos da semana na Home) — diferente de completeOwnWorkout, que
+ * sempre grava feedback de RPE pro treino de hoje. Aqui é só o check
+ * rápido do dia, sem RPE, e só atualiza (nunca insere) — não cria um
+ * treino novo pra um dia sem prescrição real.
+ */
+export async function setWeekWorkoutCompletion(dateIso: string, concluido: boolean): Promise<void> {
+  const alunoId = await requireOwnAlunoId();
+  const todayIso = new Date().toISOString().slice(0, 10);
+  if (dateIso > todayIso) {
+    throw new Error("Não dá pra marcar como concluído um treino de um dia que ainda não chegou.");
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("treinos")
+    .update({ concluido })
+    .eq("aluno_id", alunoId)
+    .eq("data", dateIso);
+
+  if (error) {
+    console.error("[dashboard] erro do Postgres ao marcar treino da semana:", error.message);
+    throw new Error("Não foi possível atualizar esse treino. Tente novamente.");
+  }
+
+  revalidatePath("/dashboard");
+}
+
+/**
  * "Enviar arquivo .FIT" (upload manual): decodifica o arquivo, guarda o
  * binário original no Storage (pra reprocessar/baixar depois) e o
  * resumo + amostras já prontos em `treinos.atividade_fit` — é isso que a
