@@ -117,3 +117,26 @@ export async function fetchActivityStreams(accessToken: string, activityId: numb
     velocity_smooth: raw.velocity_smooth?.data,
   };
 }
+
+/**
+ * Relative Effort (a Strava chama de "suffer_score") — só vem no detalhe da
+ * atividade, não na listagem (/athlete/activities). É a métrica de esforço
+ * da própria Strava (baseada em FC, ou em potência quando não há FC), usada
+ * como base do ACWR quando a atividade não tem TSS calculado.
+ */
+export async function fetchActivityRelativeEffort(accessToken: string, activityId: number): Promise<number | null> {
+  const response = await fetch(`${STRAVA_API_BASE}/activities/${activityId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    // Sem FC/potência (ex.: atividade sem sensor nenhum) a Strava não
+    // calcula suffer_score — não é um erro real, só não existe pra essa.
+    if (response.status === 404) return null;
+    throw new Error(`Falha ao buscar detalhe da atividade do Strava: ${response.status}`);
+  }
+
+  const data = (await response.json()) as { suffer_score?: number | null };
+  return data.suffer_score ?? null;
+}

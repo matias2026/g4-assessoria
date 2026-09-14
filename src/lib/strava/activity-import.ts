@@ -35,7 +35,8 @@ function totalAscent(altitude: number[] | undefined): number | null {
  */
 export function buildUploadedActivityFromStrava(
   activity: StravaSummaryActivity,
-  streams: StravaStreamSet
+  streams: StravaStreamSet,
+  relativeEffort: number | null = null
 ): UploadedActivity {
   const times = streams.time ?? [];
   const samples = times.map((t, i) => ({
@@ -62,6 +63,7 @@ export function buildUploadedActivityFromStrava(
     avgPower: average(streams.watts),
     maxPower: max(streams.watts),
     calories: null,
+    relativeEffort,
     samples,
   };
 }

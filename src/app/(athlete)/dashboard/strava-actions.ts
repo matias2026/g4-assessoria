@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fetchActivityStreams, fetchAthleteActivities, refreshStravaToken } from "@/lib/strava/client";
+import {
+  fetchActivityRelativeEffort,
+  fetchActivityStreams,
+  fetchAthleteActivities,
+  refreshStravaToken,
+} from "@/lib/strava/client";
 import { buildUploadedActivityFromStrava } from "@/lib/strava/activity-import";
 import { formatDurationLabel } from "@/lib/fit-import";
 
@@ -89,6 +94,44 @@ export async function syncStravaNow(): Promise<{ synced: number }> {
     );
   }
 
+  // Relative Effort (suffer_score) — base do ACWR no Alerta de overtraining
+  // — só vem no detalhe de cada atividade, não na listagem. Busca só pra
+  // quem ainda não tem, pra não rebuscar em toda sincronização.
+  const { data: missingEffortRows } = await admin
+    .from("strava_activities")
+    .select("strava_activity_id")
+    .in(
+      "strava_activity_id",
+      activities.map((a) => a.id)
+    )
+    .is("relative_effort", null);
+
+  for (const row of missingEffortRows ?? []) {
+    try {
+      const relativeEffort = await fetchActivityRelativeEffort(accessToken, row.strava_activity_id);
+      if (relativeEffort != null) {
+        await admin
+          .from("strava_activities")
+          .update({ relative_effort: relativeEffort })
+          .eq("strava_activity_id", row.strava_activity_id);
+      }
+    } catch (e) {
+      console.error("[strava] erro ao buscar relative effort:", e instanceof Error ? e.message : e);
+    }
+  }
+
+  // Já com relative_effort atualizado (loop acima) — reconsulta pra ter o
+  // valor de todas as atividades desta sincronização à mão, sem refazer
+  // chamada nenhuma à Strava.
+  const { data: effortRows } = await admin
+    .from("strava_activities")
+    .select("strava_activity_id, relative_effort")
+    .in(
+      "strava_activity_id",
+      activities.map((a) => a.id)
+    );
+  const relativeEffortById = new Map((effortRows ?? []).map((r) => [r.strava_activity_id, r.relative_effort]));
+
   const { data: aluno } = await admin.from("alunos").select("id").eq("user_id", user.id).maybeSingle();
 
   if (aluno) {
@@ -115,7 +158,7 @@ export async function syncStravaNow(): Promise<{ synced: number }> {
         continue;
       }
 
-      const uploadedActivity = buildUploadedActivityFromStrava(activity, streams);
+      const uploadedActivity = buildUploadedActivityFromStrava(activity, streams, relativeEffortById.get(activity.id) ?? null);
 
       await admin
         .from("treinos")

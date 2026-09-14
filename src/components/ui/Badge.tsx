@@ -1,7 +1,7 @@
 import { type HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-type BadgeTone = "lime" | "neutral" | "danger";
+type BadgeTone = "lime" | "neutral" | "danger" | "warning";
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: BadgeTone;
@@ -11,6 +11,9 @@ const toneClasses: Record<BadgeTone, string> = {
   lime: "bg-lime/15 text-lime-deep border-lime/40",
   neutral: "bg-g4-surface-alt text-g4-muted border-g4-border",
   danger: "bg-status-missed/10 text-status-missed border-status-missed/30",
+  // Mesma cor do StatusDot "Pendente" — reaproveita o âmbar já usado no
+  // resto do app em vez de introduzir um amarelo novo só pro semáforo de ACWR.
+  warning: "bg-status-pending/10 text-status-pending border-status-pending/30",
 };
 
 export function Badge({ tone = "neutral", className, ...props }: BadgeProps) {

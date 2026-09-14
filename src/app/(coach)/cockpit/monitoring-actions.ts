@@ -3,9 +3,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireCoachOrAdmin } from "./actions";
 
-// Janela de 6 semanas: dá pra ver uma tendência de carga sem carregar o
-// histórico inteiro do aluno a cada troca de seleção no Monitoramento.
+// Janela de 6 semanas: cobre os 28 dias da carga crônica do ACWR com folga,
+// sem carregar o histórico inteiro do aluno a cada troca de seleção.
 const WINDOW_DAYS = 42;
+const ACWR_ACUTE_DAYS = 7;
+const ACWR_CHRONIC_DAYS = 28;
 
 export type CompletedSessionSource = "fit" | "strava" | "rpe";
 
@@ -15,19 +17,27 @@ export interface CompletedSession {
   distanceMeters: number | null;
   durationSeconds: number | null;
   tss: number | null;
+  relativeEffort: number | null;
   rpe: number | null;
 }
 
-// A maioria dos .FIT enviados não vem de um head unit com medidor de
-// potência configurado, então `tss_real` normalmente fica null mesmo num
-// treino real e completo (caso real: Ericlis subiu 29km de ciclismo sem
-// TSS no arquivo). "tss" é usado quando existe pelo menos uma sessão com
-// TSS; senão cai pra "minutes" (duração), que todo .FIT/Strava sempre tem.
-export type LoadMetric = "tss" | "minutes";
+// A maioria dos .FIT/Strava não vem com TSS calculado (precisa de FTP
+// calibrado). Prioridade de métrica de carga: TSS > Relative Effort da
+// Strava (suffer_score, baseado em FC/potência) > minutos treinados — essa
+// última sempre existe, garantindo que o Evolução/Alerta nunca fiquem sem
+// nenhum dado quando há treino concluído.
+export type LoadMetric = "tss" | "relative_effort" | "minutes";
 
 export interface WeeklyLoad {
   weekStartIso: string;
-  value: number; // TSS somado, ou minutos somados — ver `loadMetric`
+  value: number; // soma na métrica escolhida — ver `loadMetric`
+}
+
+export interface AcwrResult {
+  ratio: number; // carga aguda / carga crônica (média semanal)
+  acuteLoad: number; // soma dos últimos 7 dias
+  chronicWeeklyAvg: number; // média semanal dos últimos 28 dias (soma/4)
+  metric: LoadMetric;
 }
 
 export interface MonitoringSummary {
@@ -38,8 +48,11 @@ export interface MonitoringSummary {
   avgRpe: number | null;
   weeklyLoad: WeeklyLoad[];
   // null só quando não há nenhum dado de carga possível (nem TSS, nem
-  // duração) — aí weeklyLoad vem sempre vazio.
+  // Relative Effort, nem duração) — aí weeklyLoad vem sempre vazio.
   loadMetric: LoadMetric | null;
+  // null quando a carga crônica (28 dias) ainda está zerada — sem uma
+  // base histórica, a razão não significa nada.
+  acwr: AcwrResult | null;
 }
 
 // Segunda-feira (UTC) da semana ISO de uma data "YYYY-MM-DD".
@@ -49,6 +62,19 @@ function isoWeekStart(dateIso: string): string {
   const diffToMonday = day === 0 ? 6 : day - 1;
   d.setUTCDate(d.getUTCDate() - diffToMonday);
   return d.toISOString().slice(0, 10);
+}
+
+function isoDateDaysAgo(n: number): string {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+function sessionLoad(session: CompletedSession, metric: LoadMetric): number | null {
+  if (metric === "tss") return session.tss;
+  if (metric === "relative_effort") return session.relativeEffort;
+  return session.durationSeconds != null ? session.durationSeconds / 60 : null;
 }
 
 /**
@@ -78,7 +104,7 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
     userId
       ? admin
           .from("strava_activities")
-          .select("start_date, distance_meters, moving_time_seconds")
+          .select("start_date, distance_meters, moving_time_seconds, relative_effort")
           .eq("profile_id", userId)
           .gte("start_date", since.toISOString())
           .then((r) => r.data ?? [])
@@ -100,6 +126,7 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
       distanceMeters: row.distancia_real ?? row.atividade_fit?.distanceMeters ?? null,
       durationSeconds: row.atividade_fit?.durationSeconds ?? null,
       tss: row.tss_real,
+      relativeEffort: row.atividade_fit?.relativeEffort ?? null,
       rpe: row.rpe_esforco,
     });
   }
@@ -115,10 +142,11 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
       source: "strava",
       distanceMeters: activity.distance_meters,
       durationSeconds: activity.moving_time_seconds,
-      // Strava só devolve TSS/IF com um FTP calibrado na própria conta do
-      // atleta lá — não temos isso aqui, então fica de fora do card de
-      // evolução em vez de estimar um número que pareceria real.
+      // Strava só devolve TSS com um FTP calibrado na própria conta do
+      // atleta lá — não temos isso aqui, então fica de fora em vez de
+      // estimar um número que pareceria real.
       tss: null,
+      relativeEffort: activity.relative_effort,
       rpe: null,
     });
   }
@@ -133,22 +161,45 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
 
   const loadMetric: LoadMetric | null = sessions.some((s) => s.tss != null)
     ? "tss"
-    : sessions.some((s) => s.durationSeconds != null)
-      ? "minutes"
-      : null;
+    : sessions.some((s) => s.relativeEffort != null)
+      ? "relative_effort"
+      : sessions.some((s) => s.durationSeconds != null)
+        ? "minutes"
+        : null;
 
   const weeklyMap = new Map<string, number>();
+  const dailyLoad = new Map<string, number>();
   if (loadMetric) {
     for (const session of sessions) {
-      const raw = loadMetric === "tss" ? session.tss : session.durationSeconds != null ? session.durationSeconds / 60 : null;
-      if (raw == null) continue;
+      const load = sessionLoad(session, loadMetric);
+      if (load == null) continue;
       const week = isoWeekStart(session.dateIso);
-      weeklyMap.set(week, (weeklyMap.get(week) ?? 0) + raw);
+      weeklyMap.set(week, (weeklyMap.get(week) ?? 0) + load);
+      dailyLoad.set(session.dateIso, (dailyLoad.get(session.dateIso) ?? 0) + load);
     }
   }
   const weeklyLoad = [...weeklyMap.entries()]
     .map(([weekStartIso, value]) => ({ weekStartIso, value }))
     .sort((a, b) => a.weekStartIso.localeCompare(b.weekStartIso));
+
+  // ACWR: carga aguda (últimos 7 dias, incluindo hoje) dividida pela média
+  // semanal da carga crônica (últimos 28 dias / 4) — método padrão da
+  // literatura esportiva (Gabbett et al.) pra detectar salto perigoso de
+  // volume/intensidade. Dias sem treino contam como carga zero (normal —
+  // descanso é esperado, não "falta de dado").
+  let acwr: AcwrResult | null = null;
+  if (loadMetric) {
+    let acuteLoad = 0;
+    for (let i = 0; i < ACWR_ACUTE_DAYS; i++) acuteLoad += dailyLoad.get(isoDateDaysAgo(i)) ?? 0;
+
+    let chronicSum = 0;
+    for (let i = 0; i < ACWR_CHRONIC_DAYS; i++) chronicSum += dailyLoad.get(isoDateDaysAgo(i)) ?? 0;
+    const chronicWeeklyAvg = chronicSum / (ACWR_CHRONIC_DAYS / 7);
+
+    if (chronicWeeklyAvg > 0) {
+      acwr = { ratio: acuteLoad / chronicWeeklyAvg, acuteLoad, chronicWeeklyAvg, metric: loadMetric };
+    }
+  }
 
   return {
     sessions,
@@ -158,5 +209,6 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
     avgRpe,
     weeklyLoad,
     loadMetric,
+    acwr,
   };
 }

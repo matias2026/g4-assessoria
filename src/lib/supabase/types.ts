@@ -120,6 +120,10 @@ export interface UploadedActivity {
   avgPower: number | null;
   maxPower: number | null;
   calories: number | null;
+  // Relative Effort (suffer_score) da Strava — só existe quando source é
+  // "strava" e a atividade tem FC ou potência. Base do ACWR no Alerta de
+  // overtraining quando não há TSS calculado.
+  relativeEffort?: number | null;
   samples: {
     timestamp: number;
     distanceMeters: number;
@@ -503,6 +507,7 @@ export interface Database {
           moving_time_seconds: number | null;
           start_date: string;
           average_heartrate: number | null;
+          relative_effort: number | null;
           raw: Record<string, unknown> | null;
           created_at: string;
         };
@@ -517,6 +522,7 @@ export interface Database {
           moving_time_seconds?: number | null;
           start_date: string;
           average_heartrate?: number | null;
+          relative_effort?: number | null;
           raw?: Record<string, unknown> | null;
           created_at?: string;
         };

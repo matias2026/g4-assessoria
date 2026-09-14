@@ -9,6 +9,7 @@ import { getPrivateNotes, savePrivateNotes } from "@/app/(coach)/cockpit/notes-a
 import {
   getMonitoringSummary,
   type CompletedSessionSource,
+  type LoadMetric,
   type MonitoringSummary,
 } from "@/app/(coach)/cockpit/monitoring-actions";
 import { formatDistance, formatDuration } from "@/lib/workout-metrics";
@@ -27,6 +28,13 @@ function formatWeekLabel(weekStartIso: string): string {
   const [, month, day] = weekStartIso.split("-");
   return `${day}/${month}`;
 }
+
+const METRIC_UNIT: Record<LoadMetric, string> = { tss: "TSS", relative_effort: "RE", minutes: "min" };
+const METRIC_LABEL: Record<LoadMetric, string> = {
+  tss: "de carga (TSS)",
+  relative_effort: "de esforço (Relative Effort)",
+  minutes: "de volume (minutos treinados)",
+};
 
 interface MonitoringTabProps {
   students: MockStudent[];
@@ -250,7 +258,7 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
                     <div className="h-2 rounded-full bg-lime" style={{ width: `${widthPct}%` }} />
                   </div>
                   <span className="w-20 shrink-0 text-right text-g4-ink">
-                    {Math.round(week.value)} {summary.loadMetric === "tss" ? "TSS" : "min"}
+                    {Math.round(week.value)} {METRIC_UNIT[summary.loadMetric!]}
                   </span>
                 </div>
               );
@@ -265,33 +273,45 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
         )}
       </Card>
 
-      {/* 4. Alerta de overtraining (compara carga da semana atual x anterior) */}
+      {/* 4. Alerta de overtraining (ACWR — carga aguda de 7 dias / crônica de 28 dias) */}
       <Card>
         <CardTitle>Alerta de overtraining</CardTitle>
+        <p className="mt-1 text-xs text-g4-muted">
+          ACWR (Acute:Chronic Workload Ratio) — carga dos últimos 7 dias comparada à média semanal dos últimos 28.
+        </p>
         {summaryError ? (
           <p className="mt-2 text-sm text-status-missed">{summaryError}</p>
         ) : !summaryLoaded ? (
           <p className="mt-2 text-sm text-g4-muted">Carregando...</p>
-        ) : summary && summary.loadMetric && summary.weeklyLoad.length >= 2 ? (
+        ) : summary && summary.acwr ? (
           (() => {
-            const [previous, current] = summary.weeklyLoad.slice(-2);
-            const pctChange = previous.value > 0 ? ((current.value - previous.value) / previous.value) * 100 : 0;
-            const elevated = previous.value > 0 && pctChange >= 50;
-            const metricLabel = summary.loadMetric === "tss" ? "de carga (TSS)" : "de volume (minutos treinados)";
+            const { ratio, acuteLoad, chronicWeeklyAvg, metric } = summary.acwr;
+            const tone: "danger" | "warning" | "lime" = ratio > 1.5 ? "danger" : ratio > 1.3 ? "warning" : "lime";
+            const label = ratio > 1.5 ? "🔴 Risco de overtraining" : ratio > 1.3 ? "🟡 Atenção" : "🟢 Ideal";
+            const message =
+              ratio > 1.5
+                ? `Carga ${METRIC_LABEL[metric]} ${Math.round((ratio - 1) * 100)}% acima da média mensal — risco elevado de lesão/overtraining. Considere uma semana regenerativa.`
+                : ratio > 1.3
+                  ? `Carga ${METRIC_LABEL[metric]} subindo mais rápido que o normal — vale avaliar reduzir volume/intensidade nos próximos dias.`
+                  : ratio < 0.8
+                    ? `Carga ${METRIC_LABEL[metric]} abaixo do normal — semana leve ou de recuperação, sem sinal de risco.`
+                    : `Carga ${METRIC_LABEL[metric]} dentro da faixa segura (0.8–1.3) — o aluno está assimilando bem o volume atual.`;
             return (
-              <div className="mt-2 flex items-center justify-between gap-4">
-                <p className="text-sm text-g4-ink">
-                  {elevated
-                    ? `Salto ${metricLabel} em relação à semana anterior (${pctChange >= 0 ? "+" : ""}${Math.round(pctChange)}%) — considere avaliar volume/intensidade.`
-                    : `Variação ${metricLabel} estável em relação à semana anterior (${pctChange >= 0 ? "+" : ""}${Math.round(pctChange)}%).`}
+              <div className="mt-3">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm text-g4-ink">{message}</p>
+                  <Badge tone={tone}>{label}</Badge>
+                </div>
+                <p className="mt-2 text-xs text-g4-muted">
+                  ACWR {ratio.toFixed(2)} — aguda (7d): {Math.round(acuteLoad)} {METRIC_UNIT[metric]} · crônica
+                  (méd./semana): {Math.round(chronicWeeklyAvg)} {METRIC_UNIT[metric]}
                 </p>
-                <Badge tone={elevated ? "danger" : "lime"}>{elevated ? "Atenção" : "OK"}</Badge>
               </div>
             );
           })()
         ) : (
           <p className="mt-2 text-sm text-g4-muted">
-            Sem semanas suficientes com dado de carga/volume pra avaliar risco de overtraining ainda.
+            Sem carga suficiente nos últimos 28 dias pra calcular o ACWR ainda.
           </p>
         )}
       </Card>
