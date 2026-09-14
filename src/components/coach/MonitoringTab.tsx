@@ -459,6 +459,21 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
+                <div className="mt-4 flex flex-col gap-2 border-t border-g4-border pt-3">
+                  {points.map((point) => {
+                    const maxValue = Math.max(...points.map((p) => p.value));
+                    const widthPct = maxValue > 0 ? Math.round((point.value / maxValue) * 100) : 0;
+                    return (
+                      <div key={point.weekStartIso} className="flex items-center gap-4 text-sm">
+                        <span className="w-14 shrink-0 text-g4-muted">{formatWeekLabel(point.weekStartIso)}</span>
+                        <div className="h-2 flex-1 rounded-full bg-g4-surface-alt">
+                          <div className="h-2 rounded-full" style={{ width: `${widthPct}%`, backgroundColor: COLOR_HEART_RATE }} />
+                        </div>
+                        <span className="w-16 shrink-0 text-right text-g4-ink">{point.value.toFixed(2)} rpm/bpm</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })()
@@ -530,6 +545,28 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
                 intensa
               </span>
             </p>
+            <div className="flex flex-col gap-3 border-t border-g4-border pt-3">
+              {summary.zoneLoad.weeks.map((week) => {
+                const total = week.leve + week.moderado + week.intenso;
+                return (
+                  <div key={week.weekStartIso} className="text-sm">
+                    <div className="flex items-center justify-between text-g4-muted">
+                      <span>{formatWeekLabel(week.weekStartIso)}</span>
+                      <span>{Math.round(total)} min</span>
+                    </div>
+                    <div className="mt-1 flex h-2 overflow-hidden rounded-full bg-g4-surface-alt">
+                      {total > 0 && (
+                        <>
+                          <div className="h-2" style={{ width: `${(week.leve / total) * 100}%`, backgroundColor: COLOR_ZONE_LEVE }} />
+                          <div className="h-2" style={{ width: `${(week.moderado / total) * 100}%`, backgroundColor: COLOR_ZONE_MODERADO }} />
+                          <div className="h-2" style={{ width: `${(week.intenso / total) * 100}%`, backgroundColor: COLOR_ZONE_INTENSO }} />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <p className="mt-2 text-sm text-g4-muted">
