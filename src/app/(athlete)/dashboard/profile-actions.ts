@@ -22,6 +22,17 @@ async function requireOwnAlunoId(): Promise<string> {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado.");
 
+  // Checa suspensão aqui também, não só no proxy (src/proxy.ts): essas
+  // ações são chamadas por Server Actions de uma aba que já estava aberta
+  // antes da suspensão — o proxy só barra numa navegação nova, essa
+  // checagem cobre o caso de a aba continuar aberta chamando ações direto.
+  const { data: profileData } = await supabase.from("profiles").select("active").eq("id", user.id).single();
+  // O generic da tabela via @supabase/ssr não propaga aqui; o shape é
+  // conhecido (profiles.active) então a asserção é segura.
+  if (!(profileData as { active: boolean } | null)?.active) {
+    throw new Error("Esta conta está suspensa. Fale com seu treinador.");
+  }
+
   const admin = createAdminClient();
   const { data } = await admin.from("alunos").select("id").eq("user_id", user.id).single();
   if (!data) throw new Error("Nenhuma ficha de aluno encontrada pra esse login.");

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { homePathForRole } from "@/lib/supabase/roles";
 import type { ProfileRole } from "@/lib/supabase/types";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { verifyRecaptcha } from "@/lib/recaptcha";
 
 export interface LoginState {
   error: string | null;
@@ -23,6 +24,7 @@ export async function signIn(_prevState: LoginState, formData: FormData): Promis
   const password = String(formData.get("password") ?? "").trim();
   const next = String(formData.get("next") ?? "");
   const expectedRole = String(formData.get("expected_role") ?? "");
+  const recaptchaToken = String(formData.get("g-recaptcha-response") ?? "");
 
   if (!email || !password) {
     return { error: "Preencha e-mail e senha." };
@@ -32,6 +34,14 @@ export async function signIn(_prevState: LoginState, formData: FormData): Promis
   const { success } = await checkRateLimit("login", ip);
   if (!success) {
     return { error: "Muitas tentativas de login. Aguarde alguns minutos e tente de novo." };
+  }
+
+  // Mesma verificação do formulário de pedido de acesso — o login é o alvo
+  // mais óbvio de força bruta automatizada do site, e até agora só tinha o
+  // rate limit por IP (contornável trocando de IP).
+  const recaptchaOk = await verifyRecaptcha(recaptchaToken, ip);
+  if (!recaptchaOk) {
+    return { error: "Verificação de segurança falhou. Marque o reCAPTCHA e tente de novo." };
   }
 
   const supabase = await createClient();

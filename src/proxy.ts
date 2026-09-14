@@ -62,16 +62,30 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  const { data } = await supabase.from("profiles").select("role, active").eq("id", user.id).single();
   // Mesma ressalva do resto do código: o generic da tabela via @supabase/ssr
   // não propaga aqui, então a asserção é segura dado o shape conhecido.
-  const profile = data as { role: ProfileRole } | null;
+  const profile = data as { role: ProfileRole; active: boolean } | null;
 
-  if (!profile || !match.roles.includes(profile.role)) {
+  if (!profile || !profile.active || !match.roles.includes(profile.role)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+
+    // Conta suspensa (ou sem perfil válido) com uma sessão ainda ativa —
+    // desloga de verdade aqui, não só redireciona. Sem isso, a suspensão só
+    // pegava no próximo login (a checagem em login/actions.ts), nunca numa
+    // sessão que já estava aberta antes do treinador suspender a conta.
+    // signOut() escreve os cookies zerados no `response` do closure (via
+    // setAll acima) — copia pro response de redirect que é o que sai daqui,
+    // senão a sessão "deslogada" nunca chega no navegador.
+    if (profile && !profile.active) {
+      await supabase.auth.signOut();
+      response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+    }
+
+    return redirectResponse;
   }
 
   return response;

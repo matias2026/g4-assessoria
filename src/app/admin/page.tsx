@@ -7,6 +7,7 @@ import { CreateAccountForm } from "./CreateAccountForm";
 import { DeleteAccountButton } from "./DeleteAccountButton";
 import { ToggleActiveButton } from "./ToggleActiveButton";
 import { RequestActions } from "./RequestActions";
+import { requireAdmin } from "./actions";
 
 // Sempre busca dados frescos (lista de contas, contagem de atletas) — sem
 // isso o Next poderia pré-renderizar a página estaticamente no build e
@@ -22,6 +23,12 @@ const roleLabel: Record<string, string> = {
 };
 
 export default async function AdminPage() {
+  // Defesa em profundidade: o proxy (src/proxy.ts) já barra quem não é
+  // admin antes de chegar aqui, mas essa página busca com a service role
+  // (ignora RLS) — não pode depender só do middleware pra não virar um
+  // dump de todos os perfis se o matcher algum dia mudar.
+  await requireAdmin();
+
   const admin = createAdminClient();
   const { data: profiles } = await admin
     .from("profiles")

@@ -12,7 +12,7 @@ export interface CreateAccountState {
 
 const initialState: CreateAccountState = { error: null, success: null };
 
-async function requireAdmin(): Promise<string> {
+export async function requireAdmin(): Promise<string> {
   const supabase = await createClient();
   const {
     data: { user },

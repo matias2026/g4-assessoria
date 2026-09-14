@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { useActionState } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { cn } from "@/lib/utils";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { signIn, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null };
+
+const SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
 type LoginRole = "athlete" | "coach";
 
@@ -25,6 +28,8 @@ export function LoginForm({ next }: { next: string }) {
 
   return (
     <div className="mt-6">
+      {SITE_KEY && <Script src="https://www.google.com/recaptcha/api.js" strategy="afterInteractive" />}
+
       <p className="text-center text-sm text-gray-400">Acesso restrito a treinador e aluno cadastrado.</p>
 
       <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-white/5 p-1">
@@ -69,6 +74,8 @@ export function LoginForm({ next }: { next: string }) {
             toggleClassName={PASSWORD_TOGGLE_CLASSES}
           />
         </label>
+
+        {SITE_KEY && <div className="g-recaptcha" data-sitekey={SITE_KEY} data-theme="dark" />}
 
         {state.error && <p className="text-sm text-red-400">{state.error}</p>}
 

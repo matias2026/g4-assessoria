@@ -1,26 +1,40 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { exchangeStravaCode } from "@/lib/strava/client";
 
-// Recebe o retorno do Strava, troca o code por tokens e salva em strava_tokens.
-// `state` carrega o profile_id enviado em /api/strava/connect.
+// Recebe o retorno do Strava e troca o code por tokens. O `state` que o
+// Strava ecoa de volta é só um valor que /api/strava/connect gerou e nunca
+// foi assinado — não dá pra confiar nele como identidade (alguém que
+// descobre/adivinha o profile_id de outra pessoa poderia forjar esse
+// redirect e sequestrar a conexão Strava dela). A identidade de verdade
+// vem sempre da sessão autenticada de quem está navegando agora, a mesma
+// que iniciou o fluxo em /api/strava/connect.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  const profileId = searchParams.get("state");
   const oauthError = searchParams.get("error");
 
-  if (oauthError || !code || !profileId) {
+  if (oauthError || !code) {
     return NextResponse.redirect(new URL("/dashboard?strava=erro", request.url));
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   try {
     const tokens = await exchangeStravaCode(code);
-    const supabase = createAdminClient();
+    const admin = createAdminClient();
 
-    const { error } = await supabase.from("strava_tokens").upsert(
+    const { error } = await admin.from("strava_tokens").upsert(
       {
-        profile_id: profileId,
+        profile_id: user.id,
         strava_athlete_id: tokens.athlete?.id ?? 0,
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
