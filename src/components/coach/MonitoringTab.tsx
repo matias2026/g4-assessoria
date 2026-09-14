@@ -1,6 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceArea,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardTitle } from "@/components/ui/Card";
@@ -14,6 +26,27 @@ import {
 } from "@/app/(coach)/cockpit/monitoring-actions";
 import { formatDistance, formatDuration } from "@/lib/workout-metrics";
 import type { MockStudent } from "@/lib/mock-data";
+
+// Eixo/grade no tom claro do resto do site (não o tema escuro usado nos
+// gráficos de atividade individual) — esses cards de tendência convivem com
+// o restante da aba, sempre clara.
+const AXIS_TICK = { fontSize: 11, fill: "#68707b" };
+const GRID_STROKE = "#e2e5ea";
+
+// Cores padrão dos gráficos de métrica do app (mesmas usadas em
+// ActivitySyncedCharts, já no estilo Strava): FC = rosa/vermelho, cadência
+// tem sua própria cor lá mas as zonas de esforço aqui seguem o
+// semáforo verde/amarelo/vermelho já usado nos badges do Alerta de
+// overtraining.
+const COLOR_HEART_RATE = "#f43f5e";
+const COLOR_ZONE_LEVE = "#38bdf8";
+const COLOR_ZONE_MODERADO = "#22c55e";
+const COLOR_ZONE_INTENSO = "#f43f5e";
+const COLOR_ACWR_LINE = "#14161a";
+const COLOR_ACWR_BELOW = "#94a3b8";
+const COLOR_ACWR_IDEAL = "#4d7c0f";
+const COLOR_ACWR_ATENCAO = "#b45309";
+const COLOR_ACWR_RISCO = "#b91c1c";
 
 const SOURCE_LABELS: Record<CompletedSessionSource, string> = {
   fit: "arquivo .FIT",
@@ -299,9 +332,44 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
                     : `Carga ${METRIC_LABEL[metric]} dentro da faixa segura (0.8–1.3) — o aluno está assimilando bem o volume atual.`;
             const intensoSpike = summary.zoneLoad?.intensoSpike ?? false;
             const rpeTrend = summary.rpeTrend;
+            const history = summary.acwr.history;
+            // Arredondado pra 1 casa — soma direta de floats (ex.: 1.6 + 0.1)
+            // vira 1.7000000000000002 e aparece cortado no eixo Y.
+            const acwrMax = history.length > 0 ? Math.round((Math.max(1.6, ...history.map((h) => h.ratio)) + 0.1) * 10) / 10 : 1.6;
 
             return (
               <div className="mt-3">
+                {history.length >= 2 && (
+                  <div className="mb-4 h-40">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={history} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+                        <XAxis dataKey="dateIso" tickFormatter={formatWeekLabel} tick={AXIS_TICK} stroke={GRID_STROKE} minTickGap={24} />
+                        <YAxis tick={AXIS_TICK} stroke={GRID_STROKE} domain={[0, acwrMax]} width={40} />
+                        <Tooltip
+                          labelFormatter={(value) => formatWeekLabel(String(value))}
+                          formatter={(value) => [Number(value).toFixed(2), "ACWR"]}
+                          contentStyle={{ fontSize: 12 }}
+                        />
+                        {/* Faixas do semáforo (0.8-1.3 ideal, 1.3-1.5 atenção, acima
+                            de 1.5 risco) atrás da linha — mesma leitura do badge. */}
+                        <ReferenceArea y1={0} y2={0.8} fill={COLOR_ACWR_BELOW} fillOpacity={0.1} />
+                        <ReferenceArea y1={0.8} y2={1.3} fill={COLOR_ACWR_IDEAL} fillOpacity={0.12} />
+                        <ReferenceArea y1={1.3} y2={1.5} fill={COLOR_ACWR_ATENCAO} fillOpacity={0.12} />
+                        <ReferenceArea y1={1.5} y2={acwrMax} fill={COLOR_ACWR_RISCO} fillOpacity={0.12} />
+                        <Line
+                          type="monotone"
+                          dataKey="ratio"
+                          stroke={COLOR_ACWR_LINE}
+                          strokeWidth={2}
+                          dot={{ r: 2 }}
+                          activeDot={{ r: 4 }}
+                          isAnimationActive={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-4">
                   <p className="text-sm text-g4-ink">{message}</p>
                   <Badge tone={tone}>{label}</Badge>
@@ -362,20 +430,34 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
                   </p>
                   <Badge tone={declining ? "warning" : "lime"}>{declining ? "Atenção" : "OK"}</Badge>
                 </div>
-                <div className="mt-3 flex flex-col gap-2">
-                  {points.map((point) => {
-                    const maxValue = Math.max(...points.map((p) => p.value));
-                    const widthPct = maxValue > 0 ? Math.round((point.value / maxValue) * 100) : 0;
-                    return (
-                      <div key={point.weekStartIso} className="flex items-center gap-4 text-sm">
-                        <span className="w-14 shrink-0 text-g4-muted">{formatWeekLabel(point.weekStartIso)}</span>
-                        <div className="h-2 flex-1 rounded-full bg-g4-surface-alt">
-                          <div className="h-2 rounded-full bg-lime" style={{ width: `${widthPct}%` }} />
-                        </div>
-                        <span className="w-16 shrink-0 text-right text-g4-ink">{point.value.toFixed(2)} rpm/bpm</span>
-                      </div>
-                    );
-                  })}
+                <div className="mt-3 h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={points} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+                      <XAxis dataKey="weekStartIso" tickFormatter={formatWeekLabel} tick={AXIS_TICK} stroke={GRID_STROKE} minTickGap={24} />
+                      <YAxis
+                        tick={AXIS_TICK}
+                        stroke={GRID_STROKE}
+                        width={40}
+                        domain={["dataMin - 0.02", "dataMax + 0.02"]}
+                        tickFormatter={(v: number) => v.toFixed(2)}
+                      />
+                      <Tooltip
+                        labelFormatter={(value) => formatWeekLabel(String(value))}
+                        formatter={(value) => [`${Number(value).toFixed(2)} rpm/bpm`, "Eficiência"]}
+                        contentStyle={{ fontSize: 12 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke={COLOR_HEART_RATE}
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                        activeDot={{ r: 5 }}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             );
@@ -410,30 +492,43 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
                 em relação à semana anterior.
               </p>
             )}
-            {summary.zoneLoad.weeks.map((week) => {
-              const total = week.leve + week.moderado + week.intenso;
-              return (
-                <div key={week.weekStartIso} className="text-sm">
-                  <div className="flex items-center justify-between text-g4-muted">
-                    <span>{formatWeekLabel(week.weekStartIso)}</span>
-                    <span>{Math.round(total)} min</span>
-                  </div>
-                  <div className="mt-1 flex h-2 overflow-hidden rounded-full bg-g4-surface-alt">
-                    {total > 0 && (
-                      <>
-                        <div className="h-2 bg-status-done" style={{ width: `${(week.leve / total) * 100}%` }} />
-                        <div className="h-2 bg-status-pending" style={{ width: `${(week.moderado / total) * 100}%` }} />
-                        <div className="h-2 bg-status-missed" style={{ width: `${(week.intenso / total) * 100}%` }} />
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={summary.zoneLoad.weeks} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+                  <XAxis dataKey="weekStartIso" tickFormatter={formatWeekLabel} tick={AXIS_TICK} stroke={GRID_STROKE} minTickGap={24} />
+                  <YAxis tick={AXIS_TICK} stroke={GRID_STROKE} width={40} />
+                  <Tooltip
+                    labelFormatter={(value) => formatWeekLabel(String(value))}
+                    formatter={(value, name) => [`${Math.round(Number(value))} min`, name]}
+                    contentStyle={{ fontSize: 12 }}
+                  />
+                  <Bar dataKey="leve" name="Leve" stackId="zona" fill={COLOR_ZONE_LEVE} isAnimationActive={false} />
+                  <Bar dataKey="moderado" name="Moderada" stackId="zona" fill={COLOR_ZONE_MODERADO} isAnimationActive={false} />
+                  <Bar
+                    dataKey="intenso"
+                    name="Intensa"
+                    stackId="zona"
+                    fill={COLOR_ZONE_INTENSO}
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive={false}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
             <p className="text-xs text-g4-muted">
-              <span className="mr-3">🟢 leve</span>
-              <span className="mr-3">🟡 moderada</span>
-              <span>🔴 intensa</span>
+              <span className="mr-3 inline-flex items-center gap-4">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: COLOR_ZONE_LEVE }} aria-hidden />
+                leve
+              </span>
+              <span className="mr-3 inline-flex items-center gap-4">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: COLOR_ZONE_MODERADO }} aria-hidden />
+                moderada
+              </span>
+              <span className="inline-flex items-center gap-4">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: COLOR_ZONE_INTENSO }} aria-hidden />
+                intensa
+              </span>
             </p>
           </div>
         ) : (

@@ -10,6 +10,11 @@ import { requireCoachOrAdmin } from "./actions";
 const WINDOW_DAYS = 42;
 const ACWR_ACUTE_DAYS = 7;
 const ACWR_CHRONIC_DAYS = 28;
+// Quantos dias de histórico do ACWR dá pra reconstruir sem aumentar
+// WINDOW_DAYS: o dia mais antigo (offset ACWR_HISTORY_DAYS - 1) ainda
+// precisa enxergar 28 dias de crônica pra trás dentro da janela de 42 dias
+// (offset + ACWR_CHRONIC_DAYS - 1 <= WINDOW_DAYS - 1).
+const ACWR_HISTORY_DAYS = WINDOW_DAYS - ACWR_CHRONIC_DAYS + 1;
 
 export type CompletedSessionSource = "fit" | "strava" | "rpe";
 
@@ -45,11 +50,21 @@ export interface WeeklyLoad {
   value: number; // soma na métrica escolhida — ver `loadMetric`
 }
 
+export interface AcwrHistoryPoint {
+  dateIso: string;
+  ratio: number;
+}
+
 export interface AcwrResult {
   ratio: number; // carga aguda / carga crônica (média semanal)
   acuteLoad: number; // soma dos últimos 7 dias
   chronicWeeklyAvg: number; // média semanal dos últimos 28 dias (soma/4)
   metric: LoadMetric;
+  // Série diária do ACWR (mais antigo → mais recente) — só os dias em que
+  // já dava pra calcular uma crônica de 28 dias dentro da janela de dados
+  // (ver ACWR_HISTORY_DAYS). Alimenta o gráfico de tendência do card de
+  // overtraining.
+  history: AcwrHistoryPoint[];
 }
 
 export interface CardiacEfficiencyPoint {
@@ -312,17 +327,28 @@ export async function getMonitoringSummary(studentId: string, userId: string | n
   // literatura esportiva (Gabbett et al.) pra detectar salto perigoso de
   // volume/intensidade. Dias sem treino contam como carga zero (normal —
   // descanso é esperado, não "falta de dado").
-  let acwr: AcwrResult | null = null;
-  if (loadMetric) {
+  function acwrAtOffset(offsetDays: number): { ratio: number; acuteLoad: number; chronicWeeklyAvg: number } | null {
     let acuteLoad = 0;
-    for (let i = 0; i < ACWR_ACUTE_DAYS; i++) acuteLoad += dailyLoad.get(isoDateDaysAgo(i)) ?? 0;
+    for (let i = offsetDays; i < offsetDays + ACWR_ACUTE_DAYS; i++) acuteLoad += dailyLoad.get(isoDateDaysAgo(i)) ?? 0;
 
     let chronicSum = 0;
-    for (let i = 0; i < ACWR_CHRONIC_DAYS; i++) chronicSum += dailyLoad.get(isoDateDaysAgo(i)) ?? 0;
+    for (let i = offsetDays; i < offsetDays + ACWR_CHRONIC_DAYS; i++) chronicSum += dailyLoad.get(isoDateDaysAgo(i)) ?? 0;
     const chronicWeeklyAvg = chronicSum / (ACWR_CHRONIC_DAYS / 7);
 
-    if (chronicWeeklyAvg > 0) {
-      acwr = { ratio: acuteLoad / chronicWeeklyAvg, acuteLoad, chronicWeeklyAvg, metric: loadMetric };
+    if (chronicWeeklyAvg <= 0) return null;
+    return { ratio: acuteLoad / chronicWeeklyAvg, acuteLoad, chronicWeeklyAvg };
+  }
+
+  let acwr: AcwrResult | null = null;
+  if (loadMetric) {
+    const todayAcwr = acwrAtOffset(0);
+    if (todayAcwr) {
+      const history: AcwrHistoryPoint[] = [];
+      for (let offset = ACWR_HISTORY_DAYS - 1; offset >= 0; offset--) {
+        const point = acwrAtOffset(offset);
+        if (point) history.push({ dateIso: isoDateDaysAgo(offset), ratio: point.ratio });
+      }
+      acwr = { ...todayAcwr, metric: loadMetric, history };
     }
   }
 
