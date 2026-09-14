@@ -8,7 +8,6 @@ import { LinkButton } from "@/components/ui/LinkButton";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { AthleteTrainingSessions } from "@/components/workout/AthleteTrainingSessions";
 import { CoachFeedbackCard } from "@/components/workout/CoachFeedbackCard";
-import { DeviceTutorial } from "@/components/workout/DeviceTutorial";
 import { RpeFeedbackModal, type RpeFeedback } from "@/components/workout/RpeFeedbackModal";
 import { UploadFitButton } from "@/components/workout/UploadFitButton";
 import { VideoEmbed } from "@/components/workout/VideoEmbed";
@@ -33,9 +32,8 @@ interface AthleteWorkoutViewProps {
 }
 
 /**
- * Visão do atleta: Treino do Dia + Ações (exportar, concluir, tutorial de
- * dispositivo) + Feedback do Professor, tudo em um fluxo único — sem cards
- * soltos e desconectados.
+ * Visão do atleta: Treino do Dia + Ações (concluir, subir .FIT) + Feedback
+ * do Professor, tudo em um fluxo único — sem cards soltos e desconectados.
  */
 export function AthleteWorkoutView({ workout, isPreview = false, stravaConnected = false }: AthleteWorkoutViewProps) {
   const [status, setStatus] = useState(workout.status);
@@ -182,8 +180,6 @@ export function AthleteWorkoutView({ workout, isPreview = false, stravaConnected
             💬 Falar com {workout.coachName} no WhatsApp
           </LinkButton>
         </div>
-
-        <DeviceTutorial />
       </Card>
 
       {/* Feedback do professor (híbrido: treinador + apoio de IA) + RPE */}
