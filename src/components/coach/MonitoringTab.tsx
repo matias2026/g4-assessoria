@@ -64,6 +64,7 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
   // padrão de cache em memória por id das notas acima.
   const [summaryById, setSummaryById] = useState<Record<string, MonitoringSummary>>({});
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [refreshingSummary, setRefreshingSummary] = useState(false);
 
   const studentId = student?.id;
   const studentUserId = student?.userId ?? null;
@@ -85,6 +86,24 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
       cancelled = true;
     };
   }, [studentId, studentUserId, summaryLoaded]);
+
+  // Busca de novo por baixo do pano — o cache acima só busca na primeira
+  // vez que o aluno é selecionado, então uma sincronização da Strava feita
+  // com essa aba já aberta nunca aparecia sem trocar de aluno ou recarregar
+  // a página inteira.
+  async function refreshSummary() {
+    if (!studentId) return;
+    setSummaryError(null);
+    setRefreshingSummary(true);
+    try {
+      const value = await getMonitoringSummary(studentId, studentUserId);
+      setSummaryById((prev) => ({ ...prev, [studentId]: value }));
+    } catch (e) {
+      setSummaryError(e instanceof Error ? e.message : "Não foi possível atualizar o resumo de treinos.");
+    } finally {
+      setRefreshingSummary(false);
+    }
+  }
 
   const notesLoaded = studentId !== undefined && Object.prototype.hasOwnProperty.call(notesById, studentId);
   const notes = studentId !== undefined ? (notesById[studentId] ?? "") : "";
@@ -152,7 +171,17 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
 
       {/* 2. Resumo de treinos concluídos */}
       <Card>
-        <CardTitle>Resumo de treinos concluídos</CardTitle>
+        <div className="flex items-center justify-between gap-4">
+          <CardTitle>Resumo de treinos concluídos</CardTitle>
+          <button
+            type="button"
+            onClick={refreshSummary}
+            disabled={refreshingSummary || !summaryLoaded}
+            className="shrink-0 text-xs font-semibold text-lime-deep underline underline-offset-2 focus-ring disabled:opacity-60"
+          >
+            {refreshingSummary ? "Atualizando..." : "Atualizar"}
+          </button>
+        </div>
         {summaryError ? (
           <p className="mt-2 text-sm text-status-missed">{summaryError}</p>
         ) : !summaryLoaded ? (
