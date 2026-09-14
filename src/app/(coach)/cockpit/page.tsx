@@ -31,7 +31,7 @@ export default async function CoachCockpitPage() {
           <Logo className="h-9" />
           <h1 className="text-lg font-bold text-g4-ink sm:text-xl">Cockpit do treinador</h1>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-3">
           <ThemeToggle />
           <LogoutButton />
         </div>

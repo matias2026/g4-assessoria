@@ -56,7 +56,7 @@ export default async function AdminPage() {
             Aprove pedidos de /solicitar-acesso ou crie contas direto — sem outro jeito de entrar no site.
           </p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-3">
           <ThemeToggle />
           <LogoutButton />
         </div>
