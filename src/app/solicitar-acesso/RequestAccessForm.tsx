@@ -268,7 +268,7 @@ export function RequestAccessForm({ embedded = false }: RequestAccessFormProps) 
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
                 max={new Date().toISOString().slice(0, 10)}
-                className={fieldClass}
+                className={cn(fieldClass, "block w-full min-w-0 max-w-full appearance-none", embedded && "[color-scheme:dark]")}
               />
               {estimatedHrMax && (
                 <span className={mutedTextClass}>
