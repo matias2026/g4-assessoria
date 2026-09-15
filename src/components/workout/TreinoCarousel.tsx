@@ -79,7 +79,7 @@ export default function TreinoCarousel({ treinos, onToggleComplete }: TreinoCaro
   return (
     <div className="w-full max-w-xl mx-auto bg-[#141A1B] border border-zinc-800 rounded-2xl p-6 text-zinc-100 shadow-xl">
       {/* Navegação de Dias da Semana (Visão geral de todos os cards na mesma tela) */}
-      <div className="flex items-center justify-between mb-6 gap-1 overflow-x-auto pb-2">
+      <div className="flex items-center justify-between mb-6 gap-4 overflow-x-auto pb-2">
         {treinos.map((t, idx) => {
           const isSelected = idx === currentIndex;
           const done = t.concluido;
@@ -89,14 +89,14 @@ export default function TreinoCarousel({ treinos, onToggleComplete }: TreinoCaro
             <button
               key={t.id}
               onClick={() => setCurrentIndex(idx)}
-              className={`flex-1 min-w-[65px] py-2 px-1 rounded-xl text-xs font-medium transition-all flex flex-col items-center gap-1 border ${
+              className={`flex-1 min-w-[65px] py-2 px-1 rounded-xl text-xs font-medium transition-all flex flex-col items-center gap-4 border ${
                 isSelected
                   ? "bg-[#84CC16] text-black border-[#84CC16] font-bold"
                   : "bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
               }`}
             >
               <span>{t.dia}</span>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-4">
                 <span className="text-[10px] opacity-75">{t.data}</span>
                 {done && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
                 {!unlocked && !done && <Lock className="w-3 h-3 text-zinc-600" />}
@@ -157,7 +157,7 @@ export default function TreinoCarousel({ treinos, onToggleComplete }: TreinoCaro
                   <button
                     onClick={() => toggleConcluido(currentIndex)}
                     disabled={pending}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition disabled:opacity-50 ${
+                    className={`flex items-center gap-4 px-4 py-2 rounded-lg text-xs font-semibold transition disabled:opacity-50 ${
                       isConcluido
                         ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
                         : "bg-[#84CC16] text-black hover:bg-[#73b512]"
@@ -167,7 +167,7 @@ export default function TreinoCarousel({ treinos, onToggleComplete }: TreinoCaro
                     {isConcluido ? "Treino Concluído" : "Marcar como Concluído"}
                   </button>
                 ) : (
-                  <div className="flex items-center gap-2 text-xs text-zinc-500 bg-zinc-900/80 px-3 py-2 rounded-lg border border-zinc-800">
+                  <div className="flex items-center gap-4 text-xs text-zinc-500 bg-zinc-900/80 px-3 py-2 rounded-lg border border-zinc-800">
                     <Lock className="w-4 h-4 text-zinc-500" />
                     <span>Conclua o treino anterior para liberar este dia</span>
                   </div>

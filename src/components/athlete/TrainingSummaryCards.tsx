@@ -130,7 +130,7 @@ export function TrainingSummaryCards({ isPreview = false }: TrainingSummaryCards
         ) : !loaded ? (
           <p className="mt-2 text-sm text-g4-muted">Carregando...</p>
         ) : summary && summary.loadMetric && summary.weeklyLoad.length >= 2 ? (
-          <div className="mt-3 flex flex-col gap-2">
+          <div className="mt-3 flex flex-col gap-4">
             {summary.weeklyLoad.map((week) => {
               const maxValue = Math.max(...summary.weeklyLoad.map((w) => w.value));
               const widthPct = maxValue > 0 ? Math.round((week.value / maxValue) * 100) : 0;

@@ -281,7 +281,7 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
         ) : !summaryLoaded ? (
           <p className="mt-2 text-sm text-g4-muted">Carregando...</p>
         ) : summary && summary.loadMetric && summary.weeklyLoad.length >= 2 ? (
-          <div className="mt-3 flex flex-col gap-2">
+          <div className="mt-3 flex flex-col gap-4">
             {summary.weeklyLoad.map((week) => {
               const maxValue = Math.max(...summary.weeklyLoad.map((w) => w.value));
               const widthPct = maxValue > 0 ? Math.round((week.value / maxValue) * 100) : 0;
@@ -379,7 +379,7 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
                   (méd./semana): {Math.round(chronicWeeklyAvg)} {METRIC_UNIT[metric]}
                 </p>
                 {(intensoSpike || rpeTrend) && (
-                  <div className="mt-3 flex flex-col gap-1.5 border-t border-g4-border pt-3">
+                  <div className="mt-3 flex flex-col gap-4 border-t border-g4-border pt-3">
                     {intensoSpike && (
                       <p className="text-xs text-g4-ink">
                         ⚠️ Tempo em zona intensa (Z4+Z5) deu um salto em relação à semana anterior — gatilho comum de
@@ -459,7 +459,7 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-4 flex flex-col gap-2 border-t border-g4-border pt-3">
+                <div className="mt-4 flex flex-col gap-4 border-t border-g4-border pt-3">
                   {points.map((point) => {
                     const maxValue = Math.max(...points.map((p) => p.value));
                     const widthPct = maxValue > 0 ? Math.round((point.value / maxValue) * 100) : 0;
@@ -497,7 +497,7 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
         ) : !summaryLoaded ? (
           <p className="mt-2 text-sm text-g4-muted">Carregando...</p>
         ) : summary && summary.zoneLoad ? (
-          <div className="mt-3 flex flex-col gap-3">
+          <div className="mt-3 flex flex-col gap-4">
             {summary.zoneLoad.intensoSpike && (
               <p className="text-sm text-status-pending">
                 ⚠️ Zona intensa saltou
@@ -545,7 +545,7 @@ export function MonitoringTab({ students, selectedStudentId, onSelectStudent }: 
                 intensa
               </span>
             </p>
-            <div className="flex flex-col gap-3 border-t border-g4-border pt-3">
+            <div className="flex flex-col gap-4 border-t border-g4-border pt-3">
               {summary.zoneLoad.weeks.map((week) => {
                 const total = week.leve + week.moderado + week.intenso;
                 return (

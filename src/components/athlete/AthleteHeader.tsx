@@ -30,7 +30,7 @@ export function AthleteHeader({ athleteName, talkToCoachLink, currentPath, previ
             <h1 className="truncate text-2xl font-bold text-g4-ink">{athleteName}</h1>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-4">
           <ThemeToggle />
           <AthleteMenu talkToCoachLink={talkToCoachLink} previewDiscipline={previewDiscipline} />
         </div>

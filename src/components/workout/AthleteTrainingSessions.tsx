@@ -28,7 +28,7 @@ export function AthleteTrainingSessions({ sessions }: AthleteTrainingSessionsPro
               {session.exercises.map((exercise, exerciseIndex) => (
                 <div key={exerciseIndex} className="rounded-xl border border-g4-border bg-g4-surface p-3">
                   <p className="text-sm font-semibold text-g4-ink">{exercise.name}</p>
-                  <ul className="mt-2 flex flex-col gap-1 text-sm text-g4-muted">
+                  <ul className="mt-2 flex flex-col gap-4 text-sm text-g4-muted">
                     {exercise.sets.map((set, setIndex) => (
                       <li key={setIndex}>
                         {set.reps} · carga {set.load} · intervalo {set.restSeconds}s
