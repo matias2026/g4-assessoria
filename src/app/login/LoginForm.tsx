@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useActionState } from "react";
-import Link from "next/link";
 import Script from "next/script";
 import { cn } from "@/lib/utils";
 import { PasswordInput } from "@/components/ui/PasswordInput";
@@ -91,14 +90,6 @@ export function LoginForm({ next }: { next: string }) {
           {pending ? "Entrando..." : role === "athlete" ? "Entrar como aluno" : "Entrar como treinador"}
         </button>
       </form>
-
-      <p className="mt-5 text-center text-xs leading-relaxed text-gray-500">
-        Ainda não tem conta?{" "}
-        <Link href="/solicitar-acesso" className="font-medium text-lime-400 underline underline-offset-2 hover:text-lime-300">
-          Criar conta
-        </Link>
-        . O treinador revisa antes de liberar o login.
-      </p>
     </div>
   );
 }

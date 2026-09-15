@@ -4,13 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ProfileRole } from "@/lib/supabase/types";
-
-export interface CreateAccountState {
-  error: string | null;
-  success: string | null;
-}
-
-const initialState: CreateAccountState = { error: null, success: null };
+import { calculateAge } from "@/lib/workout-metrics";
 
 export async function requireAdmin(): Promise<string> {
   const supabase = await createClient();
@@ -26,8 +20,6 @@ export async function requireAdmin(): Promise<string> {
   if (profile?.role !== "admin" || !profile.active) throw new Error("Acesso restrito ao administrador.");
   return user.id;
 }
-
-const roleLabel: Record<ProfileRole, string> = { coach: "treinador", athlete: "aluno", admin: "administrador" };
 
 // Mapa dos códigos de erro estáveis do Supabase Auth (não o texto da
 // mensagem, que vem em inglês e pode mudar) — ver
@@ -53,6 +45,12 @@ interface CreateAccountInput {
   fullName: string;
   role: ProfileRole;
   phone?: string | null;
+  age?: number | null;
+  weightKg?: number | null;
+  heightCm?: number | null;
+  medicalNotes?: string;
+  modalidade?: string | null;
+  coachNotes?: string;
 }
 
 // Lógica compartilhada por "Criar conta" (formulário direto) e "Aprovar"
@@ -60,7 +58,19 @@ interface CreateAccountInput {
 // (pré-checagem, pra não criar um usuário órfão no Auth à toa) e no banco
 // (trigger enforce_athlete_cap, que vale de verdade mesmo se alguém pular
 // esta função e inserir direto via SQL/service role).
-async function createAccountCore({ email, password: rawPassword, fullName, role, phone }: CreateAccountInput): Promise<string | null> {
+async function createAccountCore({
+  email,
+  password: rawPassword,
+  fullName,
+  role,
+  phone,
+  age,
+  weightKg,
+  heightCm,
+  medicalNotes,
+  modalidade,
+  coachNotes,
+}: CreateAccountInput): Promise<string | null> {
   // Trim aqui também (não só em quem chama) — cobre "Criar conta",
   // "Aprovar pedido" e o cadastro de aluno pelo Cockpit de uma vez só,
   // pra um espaço colado do WhatsApp nunca virar "dados inválidos" sem
@@ -104,9 +114,17 @@ async function createAccountCore({ email, password: rawPassword, fullName, role,
   // alunos). O perfil completo (modalidade, medidas etc.) continua sendo
   // preenchido depois pelo treinador — isso só garante que a ficha exista.
   if (role === "athlete") {
-    const { error: alunoError } = await admin
-      .from("alunos")
-      .insert({ user_id: created.user.id, nome: fullName, whatsapp: phone ?? null });
+    const { error: alunoError } = await admin.from("alunos").insert({
+      user_id: created.user.id,
+      nome: fullName,
+      whatsapp: phone ?? null,
+      age: age ?? null,
+      peso: weightKg ?? null,
+      altura: heightCm ?? null,
+      medical_notes: medicalNotes?.trim() ?? "",
+      modalidade: modalidade ?? null,
+      coach_notes: coachNotes?.trim() ?? "",
+    });
 
     if (alunoError) {
       await admin.from("profiles").delete().eq("id", created.user.id);
@@ -117,27 +135,6 @@ async function createAccountCore({ email, password: rawPassword, fullName, role,
   }
 
   return null;
-}
-
-// Cria login de treinador ou aluno diretamente. Não existe autocadastro no
-// site — esta é uma das duas portas de entrada pra conta nova (a outra é
-// aprovar um pedido em /solicitar-acesso), ambas atrás do login do admin.
-export async function createAccount(
-  _prevState: CreateAccountState,
-  formData: FormData
-): Promise<CreateAccountState> {
-  await requireAdmin();
-
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const fullName = String(formData.get("full_name") ?? "").trim();
-  const role = String(formData.get("role") ?? "") as ProfileRole;
-
-  const error = await createAccountCore({ email, password, fullName, role, phone: null });
-  if (error) return { ...initialState, error };
-
-  revalidatePath("/admin");
-  return { error: null, success: `Conta de ${roleLabel[role]} criada.` };
 }
 
 // Suspende/reativa uma conta. Suspensa: login passa a ser recusado (checagem
@@ -186,18 +183,19 @@ export interface ApproveRequestResult {
   error: string | null;
 }
 
-// Aprova um pedido de /solicitar-acesso: cria a conta de verdade (mesma
-// lógica do "Criar conta") com a senha que a própria pessoa escolheu ao
-// pedir acesso (ver password em access_requests). Some do banco logo em
-// seguida — não precisa mais ficar guardada depois de virar a senha real
-// no Supabase Auth.
+// Aprova um pedido de /solicitar-acesso: cria a conta de verdade com a
+// senha que a própria pessoa escolheu ao pedir acesso (ver password em
+// access_requests). Some do banco logo em seguida — não precisa mais
+// ficar guardada depois de virar a senha real no Supabase Auth.
 export async function approveRequest(requestId: string): Promise<ApproveRequestResult> {
   const adminId = await requireAdmin();
   const admin = createAdminClient();
 
   const { data: reqRow } = await admin
     .from("access_requests")
-    .select("id, full_name, email, phone, password, role_requested, status")
+    .select(
+      "id, full_name, email, phone, password, role_requested, status, birth_date, weight_kg, height_cm, medical_notes, modalidade, training_experience"
+    )
     .eq("id", requestId)
     .single();
 
@@ -209,12 +207,28 @@ export async function approveRequest(requestId: string): Promise<ApproveRequestR
     return { error: "Este pedido não tem senha definida (feito antes de uma atualização). Peça pra pessoa enviar o pedido de novo." };
   }
 
+  // Sem experiência registrada ainda = FC estimada por idade é só ponto de
+  // partida; já experiente vale a pena o treinador pedir um valor medido —
+  // essa nota fica registrada direto na ficha do aluno.
+  const experienceNote =
+    reqRow.training_experience === "iniciante"
+      ? "Informou no cadastro que é novato(a) — sem dado de treino real ainda, FC máxima é estimativa por idade."
+      : reqRow.training_experience === "experiente"
+        ? "Informou no cadastro que já tem experiência com treino/assessoria — vale pedir valores medidos (FC, FTP etc.) em vez de só estimar."
+        : "";
+
   const error = await createAccountCore({
     email: reqRow.email,
     password: reqRow.password,
     fullName: reqRow.full_name,
     role: reqRow.role_requested,
     phone: reqRow.phone,
+    age: reqRow.birth_date ? calculateAge(reqRow.birth_date) : null,
+    weightKg: reqRow.weight_kg,
+    heightCm: reqRow.height_cm,
+    medicalNotes: reqRow.medical_notes ?? undefined,
+    modalidade: reqRow.modalidade,
+    coachNotes: experienceNote,
   });
 
   if (error) return { error };

@@ -1,4 +1,5 @@
 import type { StrengthGoal, StudentSex } from "@/lib/supabase/types";
+import { estimateMaxHeartRate } from "@/lib/workout-metrics";
 import {
   DISCIPLINES,
   SEX_OPTIONS,
@@ -58,6 +59,9 @@ export function StudentProfileFields({
   const ftpNum = Number(cycling.ftpWatts);
   const weightNum = Number(general.weightKg);
   const wattsPerKg = ftpNum > 0 && weightNum > 0 ? (ftpNum / weightNum).toFixed(2) : null;
+
+  const ageNum = Number(general.age);
+  const estimatedHrMax = ageNum > 0 ? estimateMaxHeartRate(ageNum) : null;
 
   return (
     <>
@@ -255,7 +259,18 @@ export function StudentProfileFields({
             </label>
             <div />
             <label className="block">
-              <span className={labelClass}>FC máxima</span>
+              <span className={labelClass}>
+                FC máxima
+                {estimatedHrMax && !cycling.hrMax && (
+                  <button
+                    type="button"
+                    onClick={() => onPatchCycling({ hrMax: String(estimatedHrMax) })}
+                    className="ml-2 text-lime-deep underline-offset-2 hover:underline"
+                  >
+                    usar estimativa pela idade ({estimatedHrMax})
+                  </button>
+                )}
+              </span>
               <input
                 type="number"
                 min={0}
@@ -362,7 +377,18 @@ export function StudentProfileFields({
               />
             </label>
             <label className="block">
-              <span className={labelClass}>FC máxima</span>
+              <span className={labelClass}>
+                FC máxima
+                {estimatedHrMax && !running.hrMax && (
+                  <button
+                    type="button"
+                    onClick={() => onPatchRunning({ hrMax: String(estimatedHrMax) })}
+                    className="ml-2 text-lime-deep underline-offset-2 hover:underline"
+                  >
+                    usar estimativa pela idade ({estimatedHrMax})
+                  </button>
+                )}
+              </span>
               <input
                 type="number"
                 min={0}

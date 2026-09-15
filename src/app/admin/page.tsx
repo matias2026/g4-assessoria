@@ -4,11 +4,11 @@ import { Card } from "@/components/ui/Card";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { RoleNav } from "@/components/auth/RoleNav";
-import { CreateAccountForm } from "./CreateAccountForm";
 import { DeleteAccountButton } from "./DeleteAccountButton";
 import { ToggleActiveButton } from "./ToggleActiveButton";
 import { RequestActions } from "./RequestActions";
 import { requireAdmin } from "./actions";
+import { calculateAge } from "@/lib/workout-metrics";
 
 // Sempre busca dados frescos (lista de contas, contagem de atletas) — sem
 // isso o Next poderia pré-renderizar a página estaticamente no build e
@@ -41,7 +41,7 @@ export default async function AdminPage() {
 
   const { data: pendingRequests } = await admin
     .from("access_requests")
-    .select("id, full_name, email, phone, role_requested, message, created_at")
+    .select("id, full_name, email, phone, role_requested, message, created_at, birth_date, modalidade, training_experience")
     .eq("status", "pending")
     .order("created_at", { ascending: true });
 
@@ -53,7 +53,7 @@ export default async function AdminPage() {
         <div>
           <h1 className="text-xl font-bold text-g4-ink">Painel administrador</h1>
           <p className="text-sm text-g4-muted">
-            Aprove pedidos de /solicitar-acesso ou crie contas direto — sem outro jeito de entrar no site.
+            Aprove ou negue pedidos de acesso — é o único jeito de entrar no site.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -97,6 +97,10 @@ export default async function AdminPage() {
                   <p className="text-xs text-g4-muted">
                     {r.role_requested === "coach" ? "Quer entrar como treinador" : "Quer entrar como aluno"}
                     {r.phone ? ` · ${r.phone}` : ""}
+                    {r.birth_date ? ` · ${calculateAge(r.birth_date)} anos` : ""}
+                    {r.modalidade ? ` · ${r.modalidade}` : ""}
+                    {r.training_experience === "iniciante" ? " · novato(a)" : ""}
+                    {r.training_experience === "experiente" ? " · já tem experiência" : ""}
                   </p>
                   {r.message && <p className="mt-1 text-sm text-g4-ink">&ldquo;{r.message}&rdquo;</p>}
                 </div>
@@ -105,11 +109,6 @@ export default async function AdminPage() {
             ))}
           </div>
         )}
-      </Card>
-
-      <Card className="p-5">
-        <h2 className="text-sm font-bold text-g4-ink">Criar conta direto</h2>
-        <CreateAccountForm />
       </Card>
 
       {/* Celular: cards empilhados — nunca tabela rolando na horizontal.

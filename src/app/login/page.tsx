@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { LoginForm } from "./LoginForm";
+import { AccountAccessTabs } from "./AccountAccessTabs";
 
 export default async function LoginPage({
   searchParams,
@@ -26,7 +26,7 @@ export default async function LoginPage({
           </p>
         </div>
 
-        <LoginForm next={next ?? ""} />
+        <AccountAccessTabs next={next ?? ""} />
       </div>
     </main>
   );

@@ -393,6 +393,12 @@ export interface Database {
           reviewed_by: string | null;
           reviewed_at: string | null;
           created_at: string;
+          birth_date: string | null;
+          weight_kg: number | null;
+          height_cm: number | null;
+          medical_notes: string | null;
+          modalidade: string | null;
+          training_experience: "iniciante" | "experiente" | null;
         };
         Insert: {
           id?: string;
@@ -406,6 +412,12 @@ export interface Database {
           reviewed_by?: string | null;
           reviewed_at?: string | null;
           created_at?: string;
+          birth_date?: string | null;
+          weight_kg?: number | null;
+          height_cm?: number | null;
+          medical_notes?: string | null;
+          modalidade?: string | null;
+          training_experience?: "iniciante" | "experiente" | null;
         };
         Update: Partial<Database["public"]["Tables"]["access_requests"]["Insert"]>;
         Relationships: [];
