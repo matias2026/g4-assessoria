@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useActionState } from "react";
-import Script from "next/script";
 import { cn } from "@/lib/utils";
 import { PasswordInput } from "@/components/ui/PasswordInput";
+import { useRecaptchaWidget } from "@/lib/useRecaptchaWidget";
 import { signIn, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null };
@@ -24,11 +24,10 @@ const FIELD_CLASSES =
 export function LoginForm({ next }: { next: string }) {
   const [state, formAction, pending] = useActionState(signIn, initialState);
   const [role, setRole] = useState<LoginRole>("athlete");
+  const recaptchaRef = useRecaptchaWidget(SITE_KEY, "dark");
 
   return (
     <div className="mt-6">
-      {SITE_KEY && <Script src="https://www.google.com/recaptcha/api.js" strategy="afterInteractive" />}
-
       <p className="text-center text-sm text-gray-400">Acesso restrito a treinador e aluno cadastrado.</p>
 
       <div className="mt-5 grid grid-cols-2 gap-4 rounded-xl bg-white/5 p-1">
@@ -78,7 +77,7 @@ export function LoginForm({ next }: { next: string }) {
           />
         </label>
 
-        {SITE_KEY && <div className="g-recaptcha" data-sitekey={SITE_KEY} data-theme="dark" />}
+        {SITE_KEY && <div ref={recaptchaRef} />}
 
         {state.error && <p className="text-sm text-red-400">{state.error}</p>}
 

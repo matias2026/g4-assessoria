@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useActionState } from "react";
-import Script from "next/script";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { DISCIPLINES } from "@/lib/student-profile-form";
 import { calculateAge, estimateMaxHeartRate } from "@/lib/workout-metrics";
+import { useRecaptchaWidget } from "@/lib/useRecaptchaWidget";
 import { submitAccessRequest, type RequestAccessState } from "./actions";
 
 const initialState: RequestAccessState = { error: null, success: false };
@@ -109,6 +109,7 @@ export function RequestAccessForm({ embedded = false }: RequestAccessFormProps) 
   const [experience, setExperience] = useState<Experience>("iniciante");
   const [parqAnswers, setParqAnswers] = useState<Record<string, boolean>>({});
   const [boneJointLocation, setBoneJointLocation] = useState("");
+  const recaptchaRef = useRecaptchaWidget(SITE_KEY, embedded ? "dark" : "light");
 
   const birthDateIso = birthDateTextToIso(birthDateText);
   const birthDateInvalid = birthDateText.length === 10 && !birthDateIso;
@@ -157,8 +158,6 @@ export function RequestAccessForm({ embedded = false }: RequestAccessFormProps) 
 
   const formBody = (
     <>
-      {SITE_KEY && <Script src="https://www.google.com/recaptcha/api.js" strategy="afterInteractive" />}
-
       {!embedded && (
         <>
           <h1 className="text-lg font-bold text-g4-ink">Pedir acesso</h1>
@@ -365,7 +364,7 @@ export function RequestAccessForm({ embedded = false }: RequestAccessFormProps) 
           <textarea name="message" rows={3} className={fieldClass} />
         </label>
 
-        {SITE_KEY && <div className="g-recaptcha" data-sitekey={SITE_KEY} data-theme={embedded ? "dark" : undefined} />}
+        {SITE_KEY && <div ref={recaptchaRef} />}
 
         {state.error && <p className={errorTextClass}>{state.error}</p>}
 
