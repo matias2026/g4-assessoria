@@ -61,6 +61,33 @@ const PARQ_QUESTIONS = [
   },
 ] as const;
 
+// Digitado (DD/MM/AAAA) em vez de <input type="date"> — no iPhone, o
+// calendário nativo do Safari abre como um balão grudado no campo e
+// estoura o card pros lados (não dá pra restylar, é UI do sistema, não
+// HTML). Digitando direto, sem nenhum seletor abrindo, o problema nem
+// existe.
+function maskBirthDateInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean).join("/");
+}
+
+function birthDateTextToIso(text: string): string | null {
+  const match = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const [, dd, mm, yyyy] = match;
+  const day = Number(dd);
+  const month = Number(mm);
+  const iso = `${yyyy}-${mm}-${dd}`;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return null;
+  // new Date() normaliza dia/mês fora do intervalo (ex.: 31/02 vira
+  // 03/03) — comparar de volta com o que foi digitado pega essa
+  // "data inválida disfarçada de válida".
+  if (parsed.getUTCDate() !== day || parsed.getUTCMonth() + 1 !== month) return null;
+  if (parsed > new Date()) return null;
+  return iso;
+}
+
 interface RequestAccessFormProps {
   // Quando embutido na tela de login (AccountAccessTabs), este form não
   // desenha seu próprio card claro (senão fica card-dentro-de-card, um
@@ -77,14 +104,15 @@ export function RequestAccessForm({ embedded = false }: RequestAccessFormProps) 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword;
-  const [birthDate, setBirthDate] = useState("");
+  const [birthDateText, setBirthDateText] = useState("");
   const [modalidade, setModalidade] = useState(DISCIPLINES[0]);
   const [experience, setExperience] = useState<Experience>("iniciante");
   const [parqAnswers, setParqAnswers] = useState<Record<string, boolean>>({});
   const [boneJointLocation, setBoneJointLocation] = useState("");
 
-  const estimatedHrMax =
-    birthDate && !Number.isNaN(Date.parse(birthDate)) ? estimateMaxHeartRate(calculateAge(birthDate)) : null;
+  const birthDateIso = birthDateTextToIso(birthDateText);
+  const birthDateInvalid = birthDateText.length === 10 && !birthDateIso;
+  const estimatedHrMax = birthDateIso ? estimateMaxHeartRate(calculateAge(birthDateIso)) : null;
   const anyParqYes = Object.values(parqAnswers).some(Boolean);
   const medicalNotes = PARQ_QUESTIONS.filter((q) => parqAnswers[q.id])
     .map((q) => (q.id === "bone_joint" && boneJointLocation.trim() ? `${q.text} (${boneJointLocation.trim()})` : q.text))
@@ -262,14 +290,18 @@ export function RequestAccessForm({ embedded = false }: RequestAccessFormProps) 
 
             <label className="flex flex-col gap-4 text-sm">
               <span className={labelTextClass}>Data de nascimento</span>
+              <input type="hidden" name="birth_date" value={birthDateIso ?? ""} />
               <input
-                type="date"
-                name="birth_date"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                max={new Date().toISOString().slice(0, 10)}
-                className={cn(fieldClass, "block w-full min-w-0 max-w-full appearance-none", embedded && "[color-scheme:dark]")}
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="DD/MM/AAAA"
+                value={birthDateText}
+                onChange={(e) => setBirthDateText(maskBirthDateInput(e.target.value))}
+                maxLength={10}
+                className={fieldClass}
               />
+              {birthDateInvalid && <span className={cn(mutedTextClass, "text-red-400")}>Data inválida.</span>}
               {estimatedHrMax && (
                 <span className={mutedTextClass}>
                   FC máxima estimada:{" "}
