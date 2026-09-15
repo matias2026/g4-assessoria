@@ -43,7 +43,7 @@ export function AccountAccessTabs({ next }: { next: string }) {
         </button>
       </div>
 
-      <div className="mt-5">{tab === "login" ? <LoginForm next={next} /> : <RequestAccessForm />}</div>
+      <div className="mt-5">{tab === "login" ? <LoginForm next={next} /> : <RequestAccessForm embedded />}</div>
     </div>
   );
 }

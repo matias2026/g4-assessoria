@@ -61,7 +61,17 @@ const PARQ_QUESTIONS = [
   },
 ] as const;
 
-export function RequestAccessForm() {
+interface RequestAccessFormProps {
+  // Quando embutido na tela de login (AccountAccessTabs), este form não
+  // desenha seu próprio card claro (senão fica card-dentro-de-card, um
+  // formulário espremido dentro de outro) — os mesmos campos, só
+  // estilizados escuro igual ao resto da tela e sem o cabeçalho "Pedir
+  // acesso" (o card em volta já tem o cabeçalho do site). Em
+  // /solicitar-acesso (rota avulsa) continua com o card próprio de sempre.
+  embedded?: boolean;
+}
+
+export function RequestAccessForm({ embedded = false }: RequestAccessFormProps) {
   const [state, formAction, pending] = useActionState(submitAccessRequest, initialState);
   const [role, setRole] = useState<RequestRole>("athlete");
   const [password, setPassword] = useState("");
@@ -80,34 +90,61 @@ export function RequestAccessForm() {
     .map((q) => (q.id === "bone_joint" && boneJointLocation.trim() ? `${q.text} (${boneJointLocation.trim()})` : q.text))
     .join("; ");
 
+  // Dois jogos de classes — claro (card próprio, rota avulsa) e escuro
+  // (embutido no card único da tela de login), pra nunca acabar com um
+  // painel claro aninhado dentro do card escuro do login.
+  const fieldClass = embedded
+    ? "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-gray-500 outline-none transition-colors focus:border-lime-400/70 focus:bg-white/[0.07]"
+    : "rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring";
+  const passwordToggleClass = embedded
+    ? "text-gray-500 hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400/50 rounded-lg"
+    : undefined;
+  const labelTextClass = embedded ? "font-medium text-gray-300" : "font-medium text-g4-ink";
+  const mutedTextClass = embedded ? "text-xs text-gray-500" : "text-xs text-g4-muted";
+  const toggleWrapClass = embedded ? "rounded-xl bg-white/5 p-1" : "rounded-xl bg-g4-surface-alt p-1";
+  const toggleActiveClass = embedded ? "bg-lime-400 text-[#0f1115] shadow-sm" : "bg-lime text-ink-on-lime";
+  const toggleInactiveClass = embedded ? "text-gray-400 hover:text-gray-200" : "text-g4-muted hover:text-g4-ink";
+  const parqBoxClass = embedded
+    ? "flex flex-col divide-y divide-white/10 rounded-xl border border-white/10 bg-white/5"
+    : "flex flex-col divide-y divide-g4-border rounded-xl border border-g4-border bg-g4-surface";
+  const parqItemTextClass = embedded ? "text-sm text-gray-200" : "text-sm text-g4-ink";
+  const errorTextClass = embedded ? "text-sm text-red-400" : "text-sm text-status-missed";
+
   if (state.success) {
-    return (
-      <Card className="w-full max-w-sm p-6 text-center">
-        <h1 className="text-lg font-bold text-g4-ink">Pedido enviado!</h1>
-        <p className="mt-2 text-sm text-g4-muted">
+    const successContent = (
+      <>
+        <h1 className={cn("text-lg font-bold", embedded ? "text-white" : "text-g4-ink")}>Pedido enviado!</h1>
+        <p className={cn("mt-2 text-sm", embedded ? "text-gray-400" : "text-g4-muted")}>
           O treinador vai revisar seu pedido e te avisar por fora (WhatsApp/e-mail) quando sua conta estiver pronta.
           Guarde a senha que você definiu — vai usar ela pra entrar.
         </p>
-      </Card>
+      </>
+    );
+    return embedded ? (
+      <div className="text-center">{successContent}</div>
+    ) : (
+      <Card className="w-full max-w-sm p-6 text-center">{successContent}</Card>
     );
   }
 
-  return (
-    <Card className="w-full max-w-sm p-6">
+  const formBody = (
+    <>
       {SITE_KEY && <Script src="https://www.google.com/recaptcha/api.js" strategy="afterInteractive" />}
 
-      <h1 className="text-lg font-bold text-g4-ink">Pedir acesso</h1>
-      <p className="mt-1 text-sm text-g4-muted">
-        Preencha seus dados — o treinador revisa e libera seu login.
-      </p>
+      {!embedded && (
+        <>
+          <h1 className="text-lg font-bold text-g4-ink">Pedir acesso</h1>
+          <p className="mt-1 text-sm text-g4-muted">Preencha seus dados — o treinador revisa e libera seu login.</p>
+        </>
+      )}
 
-      <div className="mt-4 grid grid-cols-2 gap-4 rounded-xl bg-g4-surface-alt p-1">
+      <div className={cn("grid grid-cols-2 gap-1", toggleWrapClass, !embedded && "mt-4")}>
         <button
           type="button"
           onClick={() => setRole("athlete")}
           className={cn(
             "rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus-ring",
-            role === "athlete" ? "bg-lime text-ink-on-lime" : "text-g4-muted hover:text-g4-ink"
+            role === "athlete" ? toggleActiveClass : toggleInactiveClass
           )}
         >
           Sou aluno
@@ -117,7 +154,7 @@ export function RequestAccessForm() {
           onClick={() => setRole("coach")}
           className={cn(
             "rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus-ring",
-            role === "coach" ? "bg-lime text-ink-on-lime" : "text-g4-muted hover:text-g4-ink"
+            role === "coach" ? toggleActiveClass : toggleInactiveClass
           )}
         >
           Sou treinador
@@ -134,26 +171,17 @@ export function RequestAccessForm() {
         <input type="hidden" name="role_requested" value={role} />
 
         <label className="flex flex-col gap-4 text-sm">
-          <span className="font-medium text-g4-ink">Nome completo</span>
-          <input
-            name="full_name"
-            required
-            className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
-          />
+          <span className={labelTextClass}>Nome completo</span>
+          <input name="full_name" required className={fieldClass} />
         </label>
 
         <label className="flex flex-col gap-4 text-sm">
-          <span className="font-medium text-g4-ink">E-mail</span>
-          <input
-            type="email"
-            name="email"
-            required
-            className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
-          />
+          <span className={labelTextClass}>E-mail</span>
+          <input type="email" name="email" required className={fieldClass} />
         </label>
 
         <label className="flex flex-col gap-4 text-sm">
-          <span className="font-medium text-g4-ink">Senha</span>
+          <span className={labelTextClass}>Senha</span>
           <PasswordInput
             name="password"
             required
@@ -161,36 +189,35 @@ export function RequestAccessForm() {
             placeholder="mín. 8 caracteres"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className={fieldClass}
+            toggleClassName={passwordToggleClass}
           />
         </label>
 
         <label className="flex flex-col gap-4 text-sm">
-          <span className="font-medium text-g4-ink">Confirmar senha</span>
+          <span className={labelTextClass}>Confirmar senha</span>
           <PasswordInput
             required
             minLength={8}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
+            className={fieldClass}
+            toggleClassName={passwordToggleClass}
           />
-          {passwordMismatch && <span className="text-xs text-status-missed">As senhas não coincidem.</span>}
+          {passwordMismatch && <span className={cn(mutedTextClass, "text-red-400")}>As senhas não coincidem.</span>}
         </label>
 
         <label className="flex flex-col gap-4 text-sm">
-          <span className="font-medium text-g4-ink">WhatsApp (opcional)</span>
-          <input
-            name="phone"
-            className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
-          />
+          <span className={labelTextClass}>WhatsApp (opcional)</span>
+          <input name="phone" className={fieldClass} />
         </label>
 
         {role === "athlete" && (
           <>
             <div className="flex flex-col gap-4 text-sm">
-              <span className="font-medium text-g4-ink">Modalidade</span>
+              <span className={labelTextClass}>Modalidade</span>
               <input type="hidden" name="modalidade" value={modalidade} />
-              <div className="grid grid-cols-3 gap-4 rounded-xl bg-g4-surface-alt p-1">
+              <div className={cn("grid grid-cols-3 gap-1", toggleWrapClass)}>
                 {DISCIPLINES.map((d) => (
                   <button
                     key={d}
@@ -198,7 +225,7 @@ export function RequestAccessForm() {
                     onClick={() => setModalidade(d)}
                     className={cn(
                       "rounded-lg px-2 py-2 text-xs font-semibold transition-colors focus-ring",
-                      modalidade === d ? "bg-lime text-ink-on-lime" : "text-g4-muted hover:text-g4-ink"
+                      modalidade === d ? toggleActiveClass : toggleInactiveClass
                     )}
                   >
                     {d}
@@ -208,9 +235,9 @@ export function RequestAccessForm() {
             </div>
 
             <div className="flex flex-col gap-4 text-sm">
-              <span className="font-medium text-g4-ink">Experiência com treino</span>
+              <span className={labelTextClass}>Experiência com treino</span>
               <input type="hidden" name="training_experience" value={experience} />
-              <div className="grid grid-cols-2 gap-4 rounded-xl bg-g4-surface-alt p-1">
+              <div className={cn("grid grid-cols-2 gap-1", toggleWrapClass)}>
                 {EXPERIENCE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -218,7 +245,7 @@ export function RequestAccessForm() {
                     onClick={() => setExperience(opt.value)}
                     className={cn(
                       "rounded-lg px-2 py-2 text-xs font-semibold transition-colors focus-ring",
-                      experience === opt.value ? "bg-lime text-ink-on-lime" : "text-g4-muted hover:text-g4-ink"
+                      experience === opt.value ? toggleActiveClass : toggleInactiveClass
                     )}
                   >
                     {opt.label}
@@ -226,7 +253,7 @@ export function RequestAccessForm() {
                 ))}
               </div>
               {experience === "iniciante" && (
-                <span className="text-xs text-g4-muted">
+                <span className={mutedTextClass}>
                   Sem treino registrado ainda — a FC máxima abaixo é só uma estimativa pela idade, até você ter um
                   valor medido de verdade.
                 </span>
@@ -234,52 +261,44 @@ export function RequestAccessForm() {
             </div>
 
             <label className="flex flex-col gap-4 text-sm">
-              <span className="font-medium text-g4-ink">Data de nascimento</span>
+              <span className={labelTextClass}>Data de nascimento</span>
               <input
                 type="date"
                 name="birth_date"
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
                 max={new Date().toISOString().slice(0, 10)}
-                className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
+                className={fieldClass}
               />
               {estimatedHrMax && (
-                <span className="text-xs text-g4-muted">
-                  FC máxima estimada: <span className="font-medium text-g4-ink">{estimatedHrMax} bpm</span> (o
-                  treinador pode ajustar depois com um valor medido)
+                <span className={mutedTextClass}>
+                  FC máxima estimada:{" "}
+                  <span className={cn("font-medium", embedded ? "text-white" : "text-g4-ink")}>
+                    {estimatedHrMax} bpm
+                  </span>{" "}
+                  (o treinador pode ajustar depois com um valor medido)
                 </span>
               )}
             </label>
 
             <div className="grid grid-cols-2 gap-4">
               <label className="flex flex-col gap-4 text-sm">
-                <span className="font-medium text-g4-ink">Peso (kg)</span>
-                <input
-                  type="number"
-                  name="weight_kg"
-                  min={0}
-                  step={0.1}
-                  className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
-                />
+                <span className={labelTextClass}>Peso (kg)</span>
+                <input type="number" name="weight_kg" min={0} step={0.1} className={fieldClass} />
               </label>
               <label className="flex flex-col gap-4 text-sm">
-                <span className="font-medium text-g4-ink">Altura (cm)</span>
-                <input
-                  type="number"
-                  name="height_cm"
-                  min={0}
-                  className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
-                />
+                <span className={labelTextClass}>Altura (cm)</span>
+                <input type="number" name="height_cm" min={0} className={fieldClass} />
               </label>
             </div>
 
             <div className="flex flex-col gap-4 text-sm">
-              <span className="font-medium text-g4-ink">Anamnese (PAR-Q) — marque o que for &ldquo;sim&rdquo;</span>
+              <span className={labelTextClass}>Anamnese (PAR-Q) — marque o que for &ldquo;sim&rdquo;</span>
               <input type="hidden" name="medical_notes" value={medicalNotes} />
-              <div className="flex flex-col divide-y divide-g4-border rounded-xl border border-g4-border bg-g4-surface">
+              <div className={parqBoxClass}>
                 {PARQ_QUESTIONS.map((q) => (
                   <div key={q.id} className="p-3">
-                    <label className="flex items-start gap-4 text-sm text-g4-ink">
+                    <label className={cn("flex items-start gap-4", parqItemTextClass)}>
                       <input
                         type="checkbox"
                         className="mt-0.5"
@@ -293,14 +312,14 @@ export function RequestAccessForm() {
                         value={boneJointLocation}
                         onChange={(e) => setBoneJointLocation(e.target.value)}
                         placeholder="Onde? Ex.: joelho direito"
-                        className="mt-2 ml-8 w-[calc(100%-2rem)] rounded-xl border border-g4-border bg-g4-surface px-3 py-2 text-sm text-g4-ink focus-ring"
+                        className={cn("mt-2 ml-8 w-[calc(100%-2rem)]", fieldClass)}
                       />
                     )}
                   </div>
                 ))}
               </div>
               {anyParqYes && (
-                <p className="text-xs text-g4-muted">
+                <p className={mutedTextClass}>
                   Marcar &ldquo;sim&rdquo; em qualquer pergunta não te impede de criar a conta — é só uma indicação
                   pro treinador conversar com você antes de aumentar a intensidade dos treinos.
                 </p>
@@ -310,22 +329,20 @@ export function RequestAccessForm() {
         )}
 
         <label className="flex flex-col gap-4 text-sm">
-          <span className="font-medium text-g4-ink">Mensagem (opcional)</span>
-          <textarea
-            name="message"
-            rows={3}
-            className="rounded-xl border border-g4-border bg-g4-surface px-3 py-2.5 text-sm text-g4-ink focus-ring"
-          />
+          <span className={labelTextClass}>Mensagem (opcional)</span>
+          <textarea name="message" rows={3} className={fieldClass} />
         </label>
 
-        {SITE_KEY && <div className="g-recaptcha" data-sitekey={SITE_KEY} />}
+        {SITE_KEY && <div className="g-recaptcha" data-sitekey={SITE_KEY} data-theme={embedded ? "dark" : undefined} />}
 
-        {state.error && <p className="text-sm text-status-missed">{state.error}</p>}
+        {state.error && <p className={errorTextClass}>{state.error}</p>}
 
         <Button type="submit" variant="primary" className="mt-1 w-full" disabled={pending || passwordMismatch}>
           {pending ? "Enviando..." : "Enviar pedido"}
         </Button>
       </form>
-    </Card>
+    </>
   );
+
+  return embedded ? formBody : <Card className="w-full max-w-sm p-6">{formBody}</Card>;
 }
