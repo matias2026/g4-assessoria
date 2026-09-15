@@ -20,7 +20,7 @@ export function AccountAccessTabs({ next }: { next: string }) {
 
   return (
     <div className="mt-6">
-      <div className="grid grid-cols-2 gap-1 rounded-xl bg-white/5 p-1">
+      <div className="grid grid-cols-2 gap-4 rounded-xl bg-white/5 p-1">
         <button
           type="button"
           onClick={() => setTab("login")}

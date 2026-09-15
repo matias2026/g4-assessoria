@@ -31,7 +31,7 @@ export function LoginForm({ next }: { next: string }) {
 
       <p className="text-center text-sm text-gray-400">Acesso restrito a treinador e aluno cadastrado.</p>
 
-      <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-white/5 p-1">
+      <div className="mt-5 grid grid-cols-2 gap-4 rounded-xl bg-white/5 p-1">
         <button
           type="button"
           onClick={() => setRole("athlete")}
@@ -62,12 +62,12 @@ export function LoginForm({ next }: { next: string }) {
         <input type="hidden" name="next" value={next} />
         <input type="hidden" name="expected_role" value={role} />
 
-        <label className="flex flex-col gap-2 text-sm">
+        <label className="flex flex-col gap-4 text-sm">
           <span className="font-medium text-gray-300">E-mail</span>
           <input type="email" name="email" required autoComplete="off" className={FIELD_CLASSES} />
         </label>
 
-        <label className="flex flex-col gap-2 text-sm">
+        <label className="flex flex-col gap-4 text-sm">
           <span className="font-medium text-gray-300">Senha</span>
           <PasswordInput
             name="password"

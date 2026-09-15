@@ -138,7 +138,7 @@ export function RequestAccessForm({ embedded = false }: RequestAccessFormProps) 
         </>
       )}
 
-      <div className={cn("grid grid-cols-2 gap-1", toggleWrapClass, !embedded && "mt-4")}>
+      <div className={cn("grid grid-cols-2 gap-4", toggleWrapClass, !embedded && "mt-4")}>
         <button
           type="button"
           onClick={() => setRole("athlete")}
@@ -217,7 +217,7 @@ export function RequestAccessForm({ embedded = false }: RequestAccessFormProps) 
             <div className="flex flex-col gap-4 text-sm">
               <span className={labelTextClass}>Modalidade</span>
               <input type="hidden" name="modalidade" value={modalidade} />
-              <div className={cn("grid grid-cols-3 gap-1", toggleWrapClass)}>
+              <div className={cn("grid grid-cols-3 gap-4", toggleWrapClass)}>
                 {DISCIPLINES.map((d) => (
                   <button
                     key={d}
@@ -237,7 +237,7 @@ export function RequestAccessForm({ embedded = false }: RequestAccessFormProps) 
             <div className="flex flex-col gap-4 text-sm">
               <span className={labelTextClass}>Experiência com treino</span>
               <input type="hidden" name="training_experience" value={experience} />
-              <div className={cn("grid grid-cols-2 gap-1", toggleWrapClass)}>
+              <div className={cn("grid grid-cols-2 gap-4", toggleWrapClass)}>
                 {EXPERIENCE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
