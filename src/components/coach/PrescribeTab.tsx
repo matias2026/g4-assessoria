@@ -21,6 +21,11 @@ interface PrescribeTabProps {
   onSaveWorkout: (studentId: string, dateIso: string, workout: MockWorkoutDetail) => Promise<void>;
   onSendWorkout: (studentId: string, dateIso: string, workout: MockWorkoutDetail) => Promise<void>;
   initialExerciseLibrary: ExerciseLibraryItem[];
+  // Treino escolhido na aba "Treinos cadastrados" via "Usar para outro
+  // aluno" — só o conteúdo (título/descrição/blocos) é reaproveitado, as
+  // métricas do aluno (FC, id, nome) vêm sempre do aluno selecionado aqui.
+  template?: MockWorkoutDetail | null;
+  onClearTemplate?: () => void;
 }
 
 const DISCIPLINES = ["Ciclismo", "Corrida", "Academia"];
@@ -60,6 +65,20 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Só o conteúdo do treino (não a identidade do aluno original) sobrevive
+// ao virar modelo para outro aluno — status/completed/powerZones etc. vêm
+// sempre de buildWorkoutDraft do aluno atual.
+function pickTemplateContent(template: MockWorkoutDetail) {
+  return {
+    title: template.title,
+    description: template.description,
+    prescription: template.prescription,
+    planned: template.planned,
+    structuredIntervals: template.structuredIntervals,
+    trainingSessions: template.trainingSessions,
+  };
+}
+
 function formatDateLabel(iso: string): string {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
@@ -81,6 +100,8 @@ export function PrescribeTab({
   onSaveWorkout,
   onSendWorkout,
   initialExerciseLibrary,
+  template = null,
+  onClearTemplate,
 }: PrescribeTabProps) {
   const student = students.find((s) => s.id === selectedStudentId) ?? students[0];
 
@@ -128,10 +149,31 @@ export function PrescribeTab({
         </label>
       </Card>
 
+      {template && (
+        <Card className="border-lime-deep/40 bg-lime-400/10">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-sm text-g4-ink">
+              Usando <span className="font-semibold">&quot;{template.title}&quot;</span> como modelo — escolha o
+              aluno acima, edite o que for necessário e envie.
+            </p>
+            {onClearTemplate && (
+              <button
+                type="button"
+                onClick={onClearTemplate}
+                className="shrink-0 text-xs font-semibold text-lime-deep hover:underline"
+              >
+                Sair do modelo
+              </button>
+            )}
+          </div>
+        </Card>
+      )}
+
       <PrescriptionForm
-        key={student.id}
+        key={`${student.id}:${template ? `template-${template.id}-${template.title}` : "own"}`}
         student={student}
         existingWorkout={workouts[student.id]}
+        template={template}
         onSaveWorkout={onSaveWorkout}
         onSendWorkout={onSendWorkout}
         presets={presets}
@@ -146,6 +188,7 @@ export function PrescribeTab({
 interface PrescriptionFormProps {
   student: MockStudent;
   existingWorkout: MockWorkoutDetail | undefined;
+  template: MockWorkoutDetail | null;
   onSaveWorkout: (studentId: string, dateIso: string, workout: MockWorkoutDetail) => Promise<void>;
   onSendWorkout: (studentId: string, dateIso: string, workout: MockWorkoutDetail) => Promise<void>;
   presets: SetPreset[];
@@ -157,6 +200,7 @@ interface PrescriptionFormProps {
 function PrescriptionForm({
   student,
   existingWorkout,
+  template,
   onSaveWorkout,
   onSendWorkout,
   presets,
@@ -164,8 +208,12 @@ function PrescriptionForm({
   library,
   onSaveToLibrary,
 }: PrescriptionFormProps) {
-  const initial =
-    existingWorkout ?? buildWorkoutDraft(student, student.discipline, formatDateLabel(todayIso()));
+  // Identidade (id/nome/telefone do treinador etc.) sempre vem do aluno
+  // selecionado, nunca do treino de origem — só o conteúdo (título,
+  // descrição, blocos, métricas planejadas) é reaproveitado do modelo.
+  const initial = template
+    ? { ...buildWorkoutDraft(student, template.discipline, formatDateLabel(todayIso())), ...pickTemplateContent(template) }
+    : existingWorkout ?? buildWorkoutDraft(student, student.discipline, formatDateLabel(todayIso()));
 
   const [scheduledDate, setScheduledDate] = useState(todayIso());
   const [discipline, setDiscipline] = useState(initial.discipline);
@@ -257,7 +305,10 @@ function PrescriptionForm({
     status: "pending",
   };
 
-  const whatsappLink = buildWhatsAppLink(student.phone, buildWorkoutWhatsAppMessage(draftWorkout));
+  const hrRest = student.cycling?.hrRest ?? student.running?.hrRest ?? null;
+  const hrMax = student.cycling?.hrMax ?? student.running?.hrMax ?? null;
+
+  const whatsappLink = buildWhatsAppLink(student.phone, buildWorkoutWhatsAppMessage(draftWorkout, hrRest, hrMax));
 
   async function handleSave() {
     setSaveError(null);
@@ -403,6 +454,8 @@ function PrescriptionForm({
         saved={saved}
         submitting={submitting}
         error={saveError}
+        hrRest={hrRest}
+        hrMax={hrMax}
       />
 
       {(isCycling || isRunning) && (
@@ -419,8 +472,8 @@ function PrescriptionForm({
               markDirty();
             }}
             showPower={isCycling}
-            hrMax={student.cycling?.hrMax ?? student.running?.hrMax ?? null}
-            hrRest={student.cycling?.hrRest ?? student.running?.hrRest ?? null}
+            hrMax={hrMax}
+            hrRest={hrRest}
           />
         </Card>
       )}

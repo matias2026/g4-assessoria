@@ -114,6 +114,11 @@ interface ResolvedWorkout {
   // Treinos da semana atual já enviados — só pro aluno real com ficha
   // vinculada; prévia do admin e demo legado ficam sempre em [].
   weekTreinos: Treino[];
+  // FC máx/repouso do aluno (ciclismo ou corrida, o que tiver) — pra
+  // mostrar a tabela de zonas de batimento calculada, igual à que sai na
+  // mensagem de WhatsApp. null quando a ficha não tem isso cadastrado.
+  hrRest: number | null;
+  hrMax: number | null;
 }
 
 // Resolve o treino de hoje pelo usuário logado de verdade — se ele tiver
@@ -140,6 +145,8 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       discipline: workout.discipline,
       stravaConnected: false,
       weekTreinos: [],
+      hrRest: null,
+      hrMax: null,
     };
   }
 
@@ -164,20 +171,31 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       discipline: workout.discipline,
       stravaConnected: false,
       weekTreinos: [],
+      hrRest: null,
+      hrMax: null,
     };
   }
 
   const { data } = await supabase
     .from("alunos")
-    .select("id, nome, whatsapp, modalidade")
+    .select("id, nome, whatsapp, modalidade, cycling_profile, running_profile")
     .eq("user_id", user.id)
     .single();
-  const aluno = data as { id: string; nome: string; whatsapp: string | null; modalidade: string | null } | null;
+  const aluno = data as {
+    id: string;
+    nome: string;
+    whatsapp: string | null;
+    modalidade: string | null;
+    cycling_profile: { hrMax: number | null; hrRest: number | null } | null;
+    running_profile: { hrMax: number | null; hrRest: number | null } | null;
+  } | null;
 
   if (aluno) {
     const athlete = { id: aluno.id, name: aluno.nome, phone: aluno.whatsapp ?? "" };
     const todayIso = new Date().toISOString().slice(0, 10);
     const discipline = aluno.modalidade ?? "Ciclismo";
+    const hrRest = aluno.cycling_profile?.hrRest ?? aluno.running_profile?.hrRest ?? null;
+    const hrMax = aluno.cycling_profile?.hrMax ?? aluno.running_profile?.hrMax ?? null;
 
     // strava_tokens é sensível (guarda access/refresh token), então lê com a
     // service role em vez do client de sessão — mesmo padrão do lado do
@@ -227,6 +245,8 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
         discipline: workout.discipline,
         stravaConnected,
         weekTreinos,
+        hrRest,
+        hrMax,
       };
     }
 
@@ -241,6 +261,8 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       discipline,
       stravaConnected,
       weekTreinos,
+      hrRest,
+      hrMax,
     };
   }
 
@@ -259,6 +281,8 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
       discipline: workout.discipline,
       stravaConnected: false,
       weekTreinos: [],
+      hrRest: null,
+      hrMax: null,
     };
   }
 
@@ -272,6 +296,8 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
     stravaConnected: false,
     discipline: workout.discipline,
     weekTreinos: [],
+    hrRest: null,
+    hrMax: null,
   };
 }
 
@@ -290,7 +316,7 @@ export default async function AthleteDashboardPage({
   searchParams: Promise<{ preview?: string }>;
 }) {
   const { preview } = await searchParams;
-  const { workout, isAdmin, athleteName, coachName, coachPhone, discipline, stravaConnected, weekTreinos } =
+  const { workout, isAdmin, athleteName, coachName, coachPhone, discipline, stravaConnected, weekTreinos, hrRest, hrMax } =
     await resolveWorkout(preview);
   const talkToCoachLink = buildWhatsAppLink(coachPhone, `Oi ${coachName}!`);
 
@@ -306,7 +332,13 @@ export default async function AthleteDashboardPage({
       {isAdmin && <AdminPreviewSwitcher basePath="/dashboard" activeDiscipline={discipline} />}
 
       {workout ? (
-        <AthleteWorkoutView workout={workout} isPreview={isAdmin} stravaConnected={stravaConnected} />
+        <AthleteWorkoutView
+          workout={workout}
+          isPreview={isAdmin}
+          stravaConnected={stravaConnected}
+          hrRest={hrRest}
+          hrMax={hrMax}
+        />
       ) : (
         <NoWorkoutCard talkToCoachLink={talkToCoachLink} coachName={coachName} />
       )}

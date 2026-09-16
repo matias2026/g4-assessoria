@@ -48,6 +48,33 @@ export function hrZoneRange(zone: HrZone, hrRest: number | null, hrMax: number |
   };
 }
 
+const ZONE_LABELS: Record<HrZone, string> = {
+  1: "Zona 1 (recuperação)",
+  2: "Zona 2 (leve)",
+  3: "Zona 3 (moderado)",
+  4: "Zona 4 (intenso)",
+  5: "Zona 5 (máximo)",
+};
+
+/**
+ * Tabela de zonas de FC (1-5) já em bpm, calculada pela FC máx/repouso do
+ * aluno — usada no lugar do treinador digitar essa tabela à mão na
+ * descrição do treino (fonte de erro de digitação e de valores
+ * desatualizados). null quando a ficha do aluno não tem FC máx/repouso
+ * cadastrada.
+ */
+export function buildHrZoneTableLines(hrRest: number | null, hrMax: number | null): string[] | null {
+  if (hrRest == null || hrMax == null || hrMax <= hrRest) return null;
+  const zones: HrZone[] = [1, 2, 3, 4, 5];
+  return zones.map((zone) => {
+    const range = hrZoneRange(zone, hrRest, hrMax);
+    if (!range) return `${ZONE_LABELS[zone]}: —`;
+    return zone === 5
+      ? `${ZONE_LABELS[zone]}: acima de ${range.low} bpm`
+      : `${ZONE_LABELS[zone]}: ${range.low}–${range.high} bpm`;
+  });
+}
+
 export interface ZoneSeconds {
   z1: number;
   z2: number;

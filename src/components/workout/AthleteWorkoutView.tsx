@@ -11,6 +11,7 @@ import { CoachFeedbackCard } from "@/components/workout/CoachFeedbackCard";
 import { RpeFeedbackModal, type RpeFeedback } from "@/components/workout/RpeFeedbackModal";
 import { UploadFitButton } from "@/components/workout/UploadFitButton";
 import { VideoEmbed } from "@/components/workout/VideoEmbed";
+import { buildHrZoneTableLines } from "@/lib/hr-zones";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { formatDistance, formatDuration } from "@/lib/workout-metrics";
 import type { MockWorkoutDetail } from "@/lib/mock-data";
@@ -29,13 +30,25 @@ interface AthleteWorkoutViewProps {
   // Real (lido de strava_tokens em dashboard/page.tsx) — sem isso o badge
   // ficava sempre em "Strava não conectado", mesmo pra quem já conectou.
   stravaConnected?: boolean;
+  // FC máx/repouso do próprio aluno — mostra a tabela de zonas de
+  // batimento calculada, a mesma que sai na mensagem de WhatsApp, sem
+  // depender do treinador digitar isso na descrição do treino.
+  hrRest?: number | null;
+  hrMax?: number | null;
 }
 
 /**
  * Visão do atleta: Treino do Dia + Ações (concluir, subir .FIT) + Feedback
  * do Professor, tudo em um fluxo único — sem cards soltos e desconectados.
  */
-export function AthleteWorkoutView({ workout, isPreview = false, stravaConnected = false }: AthleteWorkoutViewProps) {
+export function AthleteWorkoutView({
+  workout,
+  isPreview = false,
+  stravaConnected = false,
+  hrRest = null,
+  hrMax = null,
+}: AthleteWorkoutViewProps) {
+  const zoneLines = buildHrZoneTableLines(hrRest, hrMax);
   const [status, setStatus] = useState(workout.status);
   const [completed, setCompleted] = useState(workout.completed);
   const [modalOpen, setModalOpen] = useState(false);
@@ -147,6 +160,17 @@ export function AthleteWorkoutView({ workout, isPreview = false, stravaConnected
         </div>
         {syncMessage && <p className="mt-2 text-right text-xs text-g4-muted">{syncMessage}</p>}
       </Card>
+
+      {zoneLines && (
+        <Card>
+          <CardTitle>Zona de batimentos</CardTitle>
+          <ul className="mt-3 flex flex-col flex-wrap gap-4 text-sm text-g4-ink sm:flex-row">
+            {zoneLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {/* Aquecimento/parte principal/desaquecimento em blocos separados — antes só
           "mainSet" aparecia (resumido, sem quebra de linha) e o resto do

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/Button";
 import { Card, CardTitle } from "@/components/ui/Card";
+import { buildHrZoneTableLines } from "@/lib/hr-zones";
 import type { MockWorkoutDetail } from "@/lib/mock-data";
 
 export interface PlannedMetrics {
@@ -23,6 +24,11 @@ interface WorkoutPrescriptionEditorProps {
   saved: boolean;
   submitting: boolean;
   error: string | null;
+  // FC máx/repouso do aluno selecionado — mostra a tabela de zonas já
+  // calculada (a mesma que vai pro WhatsApp), pra ninguém mais precisar
+  // digitar isso à mão na descrição.
+  hrRest?: number | null;
+  hrMax?: number | null;
 }
 
 const fieldClass =
@@ -55,7 +61,11 @@ export function WorkoutPrescriptionEditor({
   saved,
   submitting,
   error,
+  hrRest = null,
+  hrMax = null,
 }: WorkoutPrescriptionEditorProps) {
+  const zoneLines = buildHrZoneTableLines(hrRest, hrMax);
+
   return (
     <Card>
       <div className="flex items-center justify-between gap-4">
@@ -76,6 +86,22 @@ export function WorkoutPrescriptionEditor({
           placeholder="Resumo curto do objetivo do treino"
         />
       </label>
+
+      <div className="mt-3 rounded-xl border border-g4-border bg-g4-surface-alt p-3">
+        <p className={labelClass}>Zona de batimentos deste aluno</p>
+        {zoneLines ? (
+          <ul className="mt-1 flex flex-col flex-wrap gap-4 text-sm text-g4-ink sm:flex-row">
+            {zoneLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1 text-sm text-g4-muted">
+            Cadastre a FC máxima e de repouso na ficha do aluno pra essa tabela sair calculada — sem
+            precisar digitar zona por zona aqui ou na mensagem de WhatsApp.
+          </p>
+        )}
+      </div>
 
       <div className="mt-3 grid gap-4 sm:grid-cols-3">
         <label className="block">

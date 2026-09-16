@@ -50,6 +50,10 @@ export function CockpitTabs({
   const [workouts, setWorkouts] = useState<Record<string, MockWorkoutDetail>>(initialWorkouts);
   const [activeTab, setActiveTab] = useState<TabKey>("roster");
   const [selectedStudentId, setSelectedStudentId] = useState<string>(initialStudents[0]?.id ?? "");
+  // Treino usado como modelo pra prescrever pra outro aluno (aba "Treinos
+  // cadastrados" → "Usar para outro aluno") — só o conteúdo é reaproveitado,
+  // ver pickTemplateContent em PrescribeTab.tsx.
+  const [prescribeTemplate, setPrescribeTemplate] = useState<MockWorkoutDetail | null>(null);
 
   async function addStudent(input: CreateStudentInput) {
     const created = await createStudentAccount(input);
@@ -83,6 +87,27 @@ export function CockpitTabs({
   async function sendWorkout(studentId: string, dateIso: string, workout: MockWorkoutDetail) {
     await sendPrescription(studentId, dateIso, workout);
     applyWorkoutLocally(studentId, workout);
+  }
+
+  // "Treinos cadastrados" → opção 1: reaproveitar o conteúdo desse treino
+  // pra outro aluno (o treinador escolhe quem, edita o que precisar e
+  // envia). Mantém o aluno atualmente selecionado — o treinador troca pelo
+  // dropdown da aba Prescrever se quiser outro.
+  function useWorkoutAsTemplate(workout: MockWorkoutDetail) {
+    setPrescribeTemplate(workout);
+    setActiveTab("prescribe");
+  }
+
+  function clearPrescribeTemplate() {
+    setPrescribeTemplate(null);
+  }
+
+  // "Treinos cadastrados" → opção 2: abrir o treino já cadastrado desse
+  // aluno direto na aba Prescrever, pra editar/reenviar.
+  function openWorkoutInPrescribe(studentId: string) {
+    setPrescribeTemplate(null);
+    setSelectedStudentId(studentId);
+    setActiveTab("prescribe");
   }
 
   return (
@@ -121,6 +146,8 @@ export function CockpitTabs({
           onSaveWorkout={saveWorkout}
           onSendWorkout={sendWorkout}
           initialExerciseLibrary={initialExerciseLibrary}
+          template={prescribeTemplate}
+          onClearTemplate={clearPrescribeTemplate}
         />
       )}
 
@@ -128,7 +155,9 @@ export function CockpitTabs({
         <PrescribedWorkoutsTab
           students={students}
           workouts={workouts}
-          onViewWorkout={(studentId) => {
+          onOpenInPrescribe={openWorkoutInPrescribe}
+          onUseAsTemplate={useWorkoutAsTemplate}
+          onViewAnalysis={(studentId) => {
             setSelectedStudentId(studentId);
             setActiveTab("analyze");
           }}
