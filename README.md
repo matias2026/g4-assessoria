@@ -66,12 +66,17 @@ diferentes na mesma instância**, com isolamento total de dados entre elas:
   (via a função `current_profile()`, `supabase/migrations/0022_*.sql`)
   é a segunda camada, útil sobretudo pro que roda com o client autenticado
   comum (não a service role).
-- Hoje existe uma única organização em produção ("G4 Assessoria
-  Esportiva"), atribuída automaticamente a toda conta nova (ver
-  `src/app/solicitar-acesso/actions.ts`) — ainda não existe uma tela de
-  onboarding pra cadastrar uma nova assessoria nem um link de pedido de
-  acesso por organização; isso é o próximo passo pra vender o sistema pra
-  um segundo cliente (ver `## Assinaturas e pagamento`).
+- **Onboarding de organização nova** (`/criar-assessoria`) — tela pública
+  (rate limit + reCAPTCHA, mesmo padrão de `/solicitar-acesso`) que cria a
+  organização, a assinatura inicial (`trialing`) e o primeiro admin dela
+  de uma vez. Cada organização ganha um `slug` único
+  (`supabase/migrations/0025_organizations_slug.sql`); o admin vê o
+  próprio link de cadastro (`/login?org=<slug>`) no painel `/admin` e
+  repassa pro time dele. Pedidos enviados por `/login?org=<slug>` (aba
+  "Criar conta") ou `/solicitar-acesso?org=<slug>` caem na organização
+  daquele slug; sem o parâmetro `org` (link antigo, sem ele), cai na
+  organização mais antiga — comportamento de sempre, mantido pra não
+  quebrar link já em uso pela G4.
 
 ## Assinaturas e pagamento
 
@@ -126,11 +131,17 @@ Supabase que você já configurou acima (ver seção Segurança).
 
 ## Segurança
 
-Site fechado: **ninguém entra sem conta**, e nenhuma conta se cria sozinha.
-Existem só duas portas de entrada pra uma conta nova, ambas atrás do login
-do admin: o admin cria direto em `/admin`, ou aprova um pedido enviado por
-`/solicitar-acesso` (tela pública, sem login — é só um formulário de
-interesse, não dá acesso a nada até o admin aprovar).
+Site fechado: **ninguém entra sem conta**, e nenhuma conta de aluno/
+treinador se cria sozinha. Existem duas portas de entrada pra uma conta
+nova desses papéis, ambas atrás do login do admin: o admin cria direto em
+`/admin`, ou aprova um pedido enviado por `/solicitar-acesso` (tela
+pública, sem login — é só um formulário de interesse, não dá acesso a
+nada até o admin aprovar). Uma terceira porta, `/criar-assessoria`, é
+diferente por natureza: é pública e cria a conta de admin **na hora**,
+sem aprovação de ninguém — mas o que ela cria é sempre uma organização
+nova, isolada de todas as outras (ver "Multi-tenant (SaaS)"), nunca acesso
+a dados de uma organização existente. Rate limit + reCAPTCHA (mesmo
+padrão de `/solicitar-acesso`) protegem contra abuso.
 
 - **Autenticação real (Supabase Auth), login único** — `/login` serve
   treinador, aluno e admin (o toggle "Sou aluno/Sou treinador" é só uma

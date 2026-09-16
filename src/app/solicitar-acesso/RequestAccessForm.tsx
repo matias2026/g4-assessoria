@@ -96,9 +96,14 @@ interface RequestAccessFormProps {
   // acesso" (o card em volta já tem o cabeçalho do site). Em
   // /solicitar-acesso (rota avulsa) continua com o card próprio de sempre.
   embedded?: boolean;
+  // Slug da organização (?org=<slug> em /login ou /solicitar-acesso) — o
+  // link que cada assessoria compartilha com o próprio time (ver
+  // /criar-assessoria). Sem isso, o pedido cai na organização mais antiga
+  // (comportamento de sempre, mantido pra não quebrar links já em uso).
+  orgSlug?: string;
 }
 
-export function RequestAccessForm({ embedded = false }: RequestAccessFormProps) {
+export function RequestAccessForm({ embedded = false, orgSlug }: RequestAccessFormProps) {
   const [state, formAction, pending] = useActionState(submitAccessRequest, initialState);
   const [role, setRole] = useState<RequestRole>("athlete");
   const [password, setPassword] = useState("");
@@ -196,6 +201,7 @@ export function RequestAccessForm({ embedded = false }: RequestAccessFormProps) 
         className="mt-4 flex flex-col gap-4"
       >
         <input type="hidden" name="role_requested" value={role} />
+        {orgSlug && <input type="hidden" name="org_slug" value={orgSlug} />}
 
         <label className="flex flex-col gap-4 text-sm">
           <span className={labelTextClass}>Nome completo</span>

@@ -31,6 +31,9 @@ export default async function AdminPage() {
   const { organizationId } = await requireAdmin();
 
   const admin = createAdminClient();
+
+  const { data: organization } = await admin.from("organizations").select("name, slug").eq("id", organizationId).single();
+
   // organization_id no filtro é o que garante que esse painel só mostra
   // contas/pedidos da própria assessoria — sem isso, virava um dump de
   // todas as organizações da plataforma pra qualquer admin.
@@ -68,6 +71,18 @@ export default async function AdminPage() {
       </div>
 
       <RoleNav currentPath="/admin" />
+
+      {organization && (
+        <Card className="p-5">
+          <p className="text-sm font-medium text-g4-ink">Link de cadastro da {organization.name}</p>
+          <p className="mt-1 text-xs text-g4-muted">
+            Compartilhe com alunos e treinadores — pedidos enviados por ele caem direto nesta assessoria.
+          </p>
+          <p className="mt-2 break-all rounded-xl border border-g4-border bg-g4-surface-alt px-3 py-2 text-sm text-g4-ink">
+            {`/login?org=${organization.slug}`}
+          </p>
+        </Card>
+      )}
 
       <Card className="p-5">
         <div className="flex items-center justify-between">

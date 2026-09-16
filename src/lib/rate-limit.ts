@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // — nenhum serviço externo novo, roda no mesmo banco que o app já usa. Um
 // Map em memória não serve porque a Vercel roda cada requisição numa
 // instância serverless separada; o banco é o único estado compartilhado.
-type LimiterName = "login" | "api" | "access_request";
+type LimiterName = "login" | "api" | "access_request" | "create_organization";
 
 const WINDOWS: Record<LimiterName, { windowSeconds: number; max: number }> = {
   // Login: 5 tentativas a cada 5 minutos por IP — protege contra força
@@ -16,6 +16,10 @@ const WINDOWS: Record<LimiterName, { windowSeconds: number; max: number }> = {
   // Pedido de acesso (tela pública, sem login): 3 por hora por IP — é o
   // formulário mais exposto a spam/bot do site.
   access_request: { windowSeconds: 3600, max: 3 },
+  // Criar assessoria nova (tela pública, sem login, cria uma organização +
+  // primeiro admin de uma vez): mesmo limite do pedido de acesso, mais
+  // restritivo faria sentido só se virasse alvo de abuso na prática.
+  create_organization: { windowSeconds: 3600, max: 3 },
 };
 
 export interface RateLimitResult {

@@ -15,7 +15,7 @@ type Tab = "login" | "signup";
  * RequestAccessForm (pedido revisado pelo treinador, senha definida pela
  * própria pessoa).
  */
-export function AccountAccessTabs({ next }: { next: string }) {
+export function AccountAccessTabs({ next, orgSlug }: { next: string; orgSlug?: string }) {
   const [tab, setTab] = useState<Tab>("login");
 
   return (
@@ -43,7 +43,9 @@ export function AccountAccessTabs({ next }: { next: string }) {
         </button>
       </div>
 
-      <div className="mt-5">{tab === "login" ? <LoginForm next={next} /> : <RequestAccessForm embedded />}</div>
+      <div className="mt-5">
+        {tab === "login" ? <LoginForm next={next} /> : <RequestAccessForm embedded orgSlug={orgSlug} />}
+      </div>
     </div>
   );
 }

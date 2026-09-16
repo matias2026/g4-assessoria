@@ -36,6 +36,7 @@ export async function submitAccessRequest(
   const medicalNotes = String(formData.get("medical_notes") ?? "").trim();
   const modalidade = String(formData.get("modalidade") ?? "").trim();
   const trainingExperienceRaw = String(formData.get("training_experience") ?? "").trim();
+  const orgSlug = String(formData.get("org_slug") ?? "").trim();
   const recaptchaToken = String(formData.get("g-recaptcha-response") ?? "");
 
   if (!fullName || !email) {
@@ -74,12 +75,21 @@ export async function submitAccessRequest(
 
   const admin = createAdminClient();
 
-  // Link público de pedido de acesso ainda não é por organização (isso é
-  // o onboarding de uma assessoria nova, feature maior) — resolve pra
-  // primeira organização cadastrada, que hoje é a única que existe.
-  // Quando existir um link por assessoria de verdade, troca isso pelo id
-  // resolvido a partir da própria URL/subdomínio.
-  const { data: org } = await admin.from("organizations").select("id").order("created_at").limit(1).maybeSingle();
+  // Resolve a organização pelo slug do link (/login?org=<slug> ou
+  // /solicitar-acesso?org=<slug>, ver /criar-assessoria) — cada assessoria
+  // compartilha o próprio link com o time dela. Sem slug na URL (link
+  // antigo, sem esse parâmetro, ou slug que não existe mais), cai na
+  // organização mais antiga — comportamento de sempre, mantido pra não
+  // quebrar quem já tem o link salvo.
+  let org: { id: string } | null = null;
+  if (orgSlug) {
+    const { data } = await admin.from("organizations").select("id").eq("slug", orgSlug).maybeSingle();
+    org = data;
+  }
+  if (!org) {
+    const { data } = await admin.from("organizations").select("id").order("created_at").limit(1).maybeSingle();
+    org = data;
+  }
 
   const { error } = await admin.from("access_requests").insert({
     organization_id: org?.id ?? null,

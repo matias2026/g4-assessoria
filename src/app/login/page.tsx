@@ -4,9 +4,9 @@ import { AccountAccessTabs } from "./AccountAccessTabs";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; org?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, org } = await searchParams;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#0f1115] px-6 py-12">
@@ -26,7 +26,7 @@ export default async function LoginPage({
           </p>
         </div>
 
-        <AccountAccessTabs next={next ?? ""} />
+        <AccountAccessTabs next={next ?? ""} orgSlug={org} />
       </div>
     </main>
   );
