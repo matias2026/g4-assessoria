@@ -32,14 +32,58 @@ As visões de atleta e treinador são deliberadamente diferentes:
      (Duração, Distância, TSS, IF, FC e ritmo/velocidade), gráfico de blocos,
      zonas de potência/FC e o composer de feedback com IA.
 
-  Roda com um único aluno de exemplo (Carlos Silva) para validar as 4 abas
-  sem o ruído de uma lista fictícia grande — novos alunos cadastrados na
-  primeira aba entram em memória (useState) até a persistência real via
-  Supabase.
+  Alunos cadastrados na primeira aba já persistem de verdade no Supabase
+  (nada em memória) — hoje só existe uma organização/assessoria usando o
+  sistema, mas o modelo de dados já é multi-tenant (ver "Multi-tenant" logo
+  abaixo).
 
 Construído para rodar 100% em planos gratuitos: **Vercel** (hospedagem),
 **Supabase** (banco de dados e autenticação), **Strava API** (atividades) e
 a camada gratuita do **Gemini** (rascunho de feedback).
+
+## Multi-tenant (SaaS)
+
+O sistema foi desenhado pra hospedar **várias assessorias/academias
+diferentes na mesma instância**, com isolamento total de dados entre elas:
+
+- **`organizations`** — uma linha por assessoria contratante. Toda tabela de
+  dado operacional (`profiles`, `alunos`, `treinos` via `alunos`,
+  `exercise_library`, `access_requests`) carrega um `organization_id`.
+- **Papéis** — `profiles.role` é `athlete`, `coach` ou `admin`; além disso,
+  `profiles.is_platform_admin` marca quem administra a plataforma como um
+  todo (todas as organizações), separado do admin comum de uma organização
+  (só a própria).
+- **`plans`** / **`subscriptions`** — plano contratado por organização
+  (nome, preço, limite de atletas) e o registro da assinatura em si
+  (`status`: `active`/`trialing`/`canceled`/etc.). Ainda não há gateway de
+  pagamento real conectado — ver "Assinaturas e pagamento" abaixo.
+- **Isolamento na prática**: a maioria das Server Actions usa o client
+  `service role` do Supabase (`createAdminClient()`), que **ignora RLS**.
+  Por isso o isolamento entre organizações não depende só das policies de
+  RLS — cada Server Action que lê/escreve um recurso por id (`alunoId`,
+  `studentId` etc.) faz uma checagem explícita
+  `.eq("organization_id", organizationId)` antes de continuar. RLS
+  (via a função `current_profile()`, `supabase/migrations/0022_*.sql`)
+  é a segunda camada, útil sobretudo pro que roda com o client autenticado
+  comum (não a service role).
+- Hoje existe uma única organização em produção ("G4 Assessoria
+  Esportiva"), atribuída automaticamente a toda conta nova (ver
+  `src/app/solicitar-acesso/actions.ts`) — ainda não existe uma tela de
+  onboarding pra cadastrar uma nova assessoria nem um link de pedido de
+  acesso por organização; isso é o próximo passo pra vender o sistema pra
+  um segundo cliente (ver `## Assinaturas e pagamento`).
+
+## Assinaturas e pagamento
+
+`plans` e `subscriptions` (migração `0022_multi_tenant_foundation.sql`)
+guardam plano/assinatura por organização, mas **não há nenhum gateway de
+pagamento integrado** — cobrar de um cliente novo hoje é 100% manual
+(negociar fora do sistema, criar a linha em `subscriptions` direto no
+banco). Não existe nenhuma simulação de pagamento no código: propositalmente,
+para não passar a impressão de uma cobrança que não acontece de verdade.
+Antes de vender pra mais de uma assessoria de forma self-service, falta:
+um gateway real (Stripe, Mercado Pago ou similar), uma tela de checkout/
+upgrade de plano, e o onboarding de organização citado acima.
 
 ## Stack
 
@@ -60,9 +104,10 @@ npm run dev
 Abra `http://localhost:3000`.
 
 > As telas de Atleta (`/dashboard`, `/dashboard/treinos/[id]`) e o Cockpit do
-> Treinador (`/cockpit`) usam dados de exemplo (`src/lib/mock-data.ts`) até a
-> integração real com Supabase ser conectada — veja os `TODO` nas páginas
-> correspondentes.
+> Treinador (`/cockpit`) já leem/gravam no Supabase real — `src/lib/mock-data.ts`
+> hoje só fornece os *templates* de treino por modalidade e as funções que
+> montam o objeto de treino (`buildPrescribedWorkout` etc.) a partir de uma
+> linha real de `treinos`, não dado inventado.
 
 ## Variáveis de ambiente
 
@@ -175,40 +220,48 @@ opções:
 
 ## Banco de dados
 
-> **Nota**: o projeto Supabase real hoje só tem `alunos`, `treinos` e
-> `profiles` (usados pela autenticação/RLS, ver seção Segurança) — as
-> tabelas abaixo (`workouts`, `strava_tokens`, etc.) são o schema
-> desenhado em `supabase/migrations/` mas **ainda não aplicado**; a
-> integração com Strava está pausada até decidir se adota esse schema ou
-> adapta `alunos`/`treinos`. O Cockpit e a Home do atleta ainda rodam em
-> cima de dados mock (`src/lib/mock-data.ts`), não do banco real.
+O modelo oficial é **`alunos`/`treinos`** (não `workouts`/
+`workout_completions` — esses nomes apareceram numa versão inicial do
+schema e foram abandonados antes de qualquer código depender deles).
+Todas as migrações abaixo estão aplicadas no projeto Supabase real, em
+ordem, em `supabase/migrations/`:
 
-O schema está em `supabase/migrations/`:
+- **Núcleo** (`0001`–`0002`) — `profiles` (1:1 com `auth.users`,
+  `role`: `athlete`/`coach`/`admin`), `alunos` (ficha do atleta) e
+  `treinos` (um registro por aluno+data; guarda tanto o planejado quanto o
+  executado na mesma linha, em vez de duas tabelas separadas).
+- **Segurança e acesso** (`0004`–`0009`) — RLS em `alunos`/`treinos`,
+  papéis e policies de `profiles`, rate limiting via Postgres
+  (`rate_limit_buckets` + `check_rate_limit()`), flag `active`/suspensão,
+  fila de `access_requests` (pedido de acesso público).
+- **Ficha e prescrição completas** (`0010`–`0017`) — `exercise_library`
+  (biblioteca de exercícios de academia), perfil completo do aluno
+  (idade/sexo/composição corporal/zonas por modalidade), relatório do
+  treinador/anamnese, prescrição estruturada + rascunho (`treinos.rascunho`,
+  separado do que já foi enviado ao aluno), notas privadas do treinador
+  (`aluno_notes`, nunca visíveis ao aluno), feedback pós-treino (RPE/
+  sensação/comentário) e upload do arquivo `.FIT`.
+- **Strava** (`0018`–`0019`) — `strava_tokens` (OAuth por perfil) e
+  `strava_activities` (atividades importadas, com esforço relativo).
+- **Feedback do treinador** (`0020`–`0021`) — campos adicionais de
+  `access_requests` (anamnese/modalidade na hora do pedido) e
+  `treinos.coach_feedback` / `ai_feedback_draft`.
+- **Multi-tenant** (`0022`–`0024`) — `organizations`, `plans`,
+  `subscriptions`; `organization_id` (obrigatório) em `profiles`/`alunos`/
+  `exercise_library`, opcional em `access_requests`;
+  `profiles.is_platform_admin`; a função `current_profile()` (SECURITY
+  DEFINER, evita recursão de RLS numa policy que precisa consultar a
+  própria `profiles`); limite de 50 atletas e nome único de exercício
+  recalculados **por organização**, não mais globais. Ver a seção
+  "Multi-tenant (SaaS)" acima para o que isso muda na prática.
 
-- **`0001_init.sql`**
-  - **profiles** — usuários (`athlete` ou `coach`), 1:1 com `auth.users`.
-  - **strava_tokens** — tokens OAuth do Strava por atleta.
-  - **workouts** — treinos prescritos pelo treinador para cada atleta.
-  - **strava_activities** — atividades importadas do Strava, opcionalmente
-    vinculadas a um treino prescrito.
-- **`0002_workout_details.sql`** — módulo de treino no padrão TrainingPeaks:
-  - `workouts` ganha prescrição estruturada (`warmup_text`, `main_set_text`,
-    `cooldown_text`, `video_url`) e métricas planejadas (duração, distância,
-    TSS, IF, FC mín/média/máx).
-  - **workout_completions** — dados reais do treino (via Strava ou
-    lançamento manual do treinador), com as mesmas métricas do planejado
-    mais feedback subjetivo do atleta (`rpe` 1–10, `feeling` 1–5, comentário).
-    Ritmo/velocidade média não é armazenado: é calculado a partir de
-    distância + duração em `src/lib/workout-metrics.ts`.
-- **`0003_gps_whatsapp_ai_feedback.sql`**:
-  - `profiles.phone` — telefone (E.164) usado nos links `wa.me`.
-  - `workouts.structured_intervals` — segmentos (`warmup`/`interval`/
-    `recovery`/`cooldown`, duração, %FTP), base real para gerar o `.ZWO`.
-  - `workout_completions.ai_feedback_draft` / `coach_feedback` — rascunho
-    gerado por IA e a versão final do treinador (o que o atleta vê).
+Todas as tabelas têm Row Level Security habilitada — mas RLS sozinha
+**não** é a trava de isolamento entre organizações, porque a maior parte
+das Server Actions usa a service role (que ignora RLS); veja
+"Multi-tenant (SaaS)" acima.
 
-Todas as tabelas têm Row Level Security habilitada. Aplique o schema criando
-um projeto gratuito em [supabase.com](https://supabase.com) e rodando:
+Aplique o schema criando um projeto gratuito em
+[supabase.com](https://supabase.com) e rodando:
 
 ```bash
 supabase link --project-ref <seu-projeto>
@@ -262,10 +315,10 @@ um mini tutorial curto de importação específico para cada uma.
 
 Ao clicar em "Marcar como concluído" na visão do atleta, o
 `RpeFeedbackModal` pede a percepção de esforço (RPE 1–10), a sensação geral
-(emoji, 1–5) e observações livres — sem round-trip ao servidor ainda (TODO:
-persistir em `workout_completions` via Supabase). O resultado aparece
-imediatamente no `CoachFeedbackCard`, junto com o que o treinador ainda vai
-comentar.
+(emoji, 1–5) e observações livres, e grava direto em `treinos`
+(`rpe_esforco`/`sensacao`/`comentarios`, `supabase/migrations/0016_*.sql`).
+O resultado aparece imediatamente no `CoachFeedbackCard`, junto com o que o
+treinador ainda vai comentar.
 
 ## WhatsApp
 
@@ -335,9 +388,14 @@ src/
     mock-data.ts                  Aluno de exemplo, templates por modalidade e prescrições
 supabase/
   migrations/
-    0001_init.sql                        Schema inicial + RLS
-    0002_workout_details.sql             Prescrição, métricas planejadas e workout_completions
-    0003_gps_whatsapp_ai_feedback.sql    Telefone, intervalos estruturados, feedback híbrido
+    0001-0002   Schema inicial (profiles/alunos/treinos) + RLS
+    0004-0009   RLS completa, rate limit, active/suspensão, access_requests
+    0010-0017   Ficha completa, biblioteca de exercícios, prescrição/rascunho,
+                notas privadas, feedback pós-treino, upload .FIT
+    0018-0019   Strava (tokens + atividades)
+    0020-0021   Anamnese no pedido de acesso, coach_feedback/ai_feedback_draft
+    0022-0024   Multi-tenant (organizations/plans/subscriptions,
+                organization_id, current_profile())
 ```
 
 ## Identidade visual
