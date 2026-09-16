@@ -1,6 +1,4 @@
 import type { FocusEvent } from "react";
-import { Button } from "@/components/ui/Button";
-import { Card, CardTitle } from "@/components/ui/Card";
 import { buildHrZoneTableLines } from "@/lib/hr-zones";
 import type { MockWorkoutDetail } from "@/lib/mock-data";
 
@@ -12,24 +10,6 @@ export interface PlannedMetrics {
   hrMin: number | null;
   hrAvg: number | null;
   hrMax: number | null;
-}
-
-interface WorkoutPrescriptionEditorProps {
-  description: string;
-  prescription: MockWorkoutDetail["prescription"];
-  planned: PlannedMetrics;
-  onDescriptionChange: (value: string) => void;
-  onPrescriptionChange: (patch: Partial<MockWorkoutDetail["prescription"]>) => void;
-  onPlannedChange: (patch: Partial<PlannedMetrics>) => void;
-  onSave: () => void;
-  saved: boolean;
-  submitting: boolean;
-  error: string | null;
-  // FC máx/repouso do aluno selecionado — mostra a tabela de zonas já
-  // calculada (a mesma que vai pro WhatsApp), pra ninguém mais precisar
-  // digitar isso à mão na descrição.
-  hrRest?: number | null;
-  hrMax?: number | null;
 }
 
 const fieldClass =
@@ -51,40 +31,37 @@ function selectAllOnFocus(e: FocusEvent<HTMLInputElement>) {
   e.target.select();
 }
 
+interface WorkoutDescriptionFieldsProps {
+  description: string;
+  prescription: MockWorkoutDetail["prescription"];
+  onDescriptionChange: (value: string) => void;
+  onPrescriptionChange: (patch: Partial<MockWorkoutDetail["prescription"]>) => void;
+  // FC máx/repouso do aluno selecionado — mostra a tabela de zonas já
+  // calculada (a mesma que vai pro WhatsApp), pra ninguém mais precisar
+  // digitar isso à mão na descrição.
+  hrRest?: number | null;
+  hrMax?: number | null;
+}
+
 /**
- * Painel de prescrição e análise do treinador: descrição, blocos
- * estruturados (aquecimento/parte principal/desaquecimento), vídeo/preleção
- * e as métricas planejadas (Duração, Distância, TSS, IF, FC) que alimentam
- * a comparação com o Concluído logo abaixo. "Salvar prescrição" grava de
- * verdade em `treinos` (savePrescription) — chega no painel do aluno.
+ * Descrição + tabela de zonas de FC (calculada) + blocos de texto livre
+ * (aquecimento/parte principal/desaquecimento) + vídeo/preleção — um dos
+ * passos do assistente de prescrição em PrescribeTab.tsx. Sem `<Card>`
+ * próprio: quem chama já está dentro do card único do passo atual.
  */
-export function WorkoutPrescriptionEditor({
+export function WorkoutDescriptionFields({
   description,
   prescription,
-  planned,
   onDescriptionChange,
   onPrescriptionChange,
-  onPlannedChange,
-  onSave,
-  saved,
-  submitting,
-  error,
   hrRest = null,
   hrMax = null,
-}: WorkoutPrescriptionEditorProps) {
+}: WorkoutDescriptionFieldsProps) {
   const zoneLines = buildHrZoneTableLines(hrRest, hrMax);
 
   return (
-    <Card>
-      <div className="flex items-center justify-between gap-4">
-        <CardTitle>Prescrição do treino</CardTitle>
-        <Button variant="primary" className="px-4" onClick={onSave} disabled={submitting}>
-          {submitting ? "Salvando..." : saved ? "Salvo ✓" : "Salvar prescrição"}
-        </Button>
-      </div>
-      {error && <p className="mt-2 text-sm text-status-missed">{error}</p>}
-
-      <label className="mt-4 block">
+    <>
+      <label className="block">
         <span className={labelClass}>Descrição</span>
         <textarea
           value={description}
@@ -151,100 +128,113 @@ export function WorkoutPrescriptionEditor({
           className={fieldClass}
         />
       </label>
+    </>
+  );
+}
 
-      <div className="mt-4 border-t border-g4-border pt-4">
-        <p className={labelClass}>Métricas planejadas</p>
-        <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <label className="block">
-            <span className={labelClass}>Duração (min)</span>
-            <input
-              type="number"
-              min={0}
-              onFocus={selectAllOnFocus}
-              value={planned.durationSeconds == null ? "" : Math.round(planned.durationSeconds / 60)}
-              onChange={(e) => {
-                const minutes = parseNumberInput(e.target.value);
-                onPlannedChange({ durationSeconds: minutes == null ? null : minutes * 60 });
-              }}
-              className={fieldClass}
-            />
-          </label>
-          <label className="block">
-            <span className={labelClass}>Distância (km)</span>
-            <input
-              type="number"
-              min={0}
-              onFocus={selectAllOnFocus}
-              step={0.1}
-              value={planned.distanceMeters == null ? "" : planned.distanceMeters / 1000}
-              onChange={(e) => {
-                const km = parseNumberInput(e.target.value);
-                onPlannedChange({ distanceMeters: km == null ? null : km * 1000 });
-              }}
-              className={fieldClass}
-            />
-          </label>
-          <label className="block">
-            <span className={labelClass}>TSS</span>
-            <input
-              type="number"
-              min={0}
-              onFocus={selectAllOnFocus}
-              value={planned.tss ?? ""}
-              onChange={(e) => onPlannedChange({ tss: parseNumberInput(e.target.value) })}
-              className={fieldClass}
-            />
-          </label>
-          <label className="block">
-            <span className={labelClass}>IF</span>
-            <input
-              type="number"
-              min={0}
-              onFocus={selectAllOnFocus}
-              step={0.01}
-              value={planned.ifScore ?? ""}
-              onChange={(e) => onPlannedChange({ ifScore: parseNumberInput(e.target.value) })}
-              className={fieldClass}
-            />
-          </label>
-          <label className="block">
-            <span className={labelClass}>FC mínima</span>
-            <input
-              type="number"
-              min={0}
-              onFocus={selectAllOnFocus}
-              value={planned.hrMin ?? ""}
-              onChange={(e) => onPlannedChange({ hrMin: parseNumberInput(e.target.value) })}
-              className={fieldClass}
-            />
-          </label>
-          <label className="block">
-            <span className={labelClass}>FC média</span>
-            <input
-              type="number"
-              min={0}
-              onFocus={selectAllOnFocus}
-              value={planned.hrAvg ?? ""}
-              onChange={(e) => onPlannedChange({ hrAvg: parseNumberInput(e.target.value) })}
-              className={fieldClass}
-            />
-          </label>
-          <label className="block">
-            <span className={labelClass}>FC máxima</span>
-            <input
-              type="number"
-              min={0}
-              onFocus={selectAllOnFocus}
-              value={planned.hrMax ?? ""}
-              onChange={(e) => onPlannedChange({ hrMax: parseNumberInput(e.target.value) })}
-              className={fieldClass}
-            />
-          </label>
-        </div>
-        <p className="mt-2 text-xs text-g4-muted">
-          Ritmo/velocidade média é calculado automaticamente a partir da duração e da distância.
-        </p>
+interface PlannedMetricsFieldsProps {
+  planned: PlannedMetrics;
+  onPlannedChange: (patch: Partial<PlannedMetrics>) => void;
+}
+
+/**
+ * Métricas planejadas (Duração/Distância/TSS/IF/FC) — outro passo do
+ * assistente de prescrição. Alimentam a comparação com o Concluído na
+ * aba Analisar. Sem `<Card>` próprio, mesma razão do componente acima.
+ */
+export function PlannedMetricsFields({ planned, onPlannedChange }: PlannedMetricsFieldsProps) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <label className="block">
+          <span className={labelClass}>Duração (min)</span>
+          <input
+            type="number"
+            min={0}
+            onFocus={selectAllOnFocus}
+            value={planned.durationSeconds == null ? "" : Math.round(planned.durationSeconds / 60)}
+            onChange={(e) => {
+              const minutes = parseNumberInput(e.target.value);
+              onPlannedChange({ durationSeconds: minutes == null ? null : minutes * 60 });
+            }}
+            className={fieldClass}
+          />
+        </label>
+        <label className="block">
+          <span className={labelClass}>Distância (km)</span>
+          <input
+            type="number"
+            min={0}
+            onFocus={selectAllOnFocus}
+            step={0.1}
+            value={planned.distanceMeters == null ? "" : planned.distanceMeters / 1000}
+            onChange={(e) => {
+              const km = parseNumberInput(e.target.value);
+              onPlannedChange({ distanceMeters: km == null ? null : km * 1000 });
+            }}
+            className={fieldClass}
+          />
+        </label>
+        <label className="block">
+          <span className={labelClass}>TSS</span>
+          <input
+            type="number"
+            min={0}
+            onFocus={selectAllOnFocus}
+            value={planned.tss ?? ""}
+            onChange={(e) => onPlannedChange({ tss: parseNumberInput(e.target.value) })}
+            className={fieldClass}
+          />
+        </label>
+        <label className="block">
+          <span className={labelClass}>IF</span>
+          <input
+            type="number"
+            min={0}
+            onFocus={selectAllOnFocus}
+            step={0.01}
+            value={planned.ifScore ?? ""}
+            onChange={(e) => onPlannedChange({ ifScore: parseNumberInput(e.target.value) })}
+            className={fieldClass}
+          />
+        </label>
+        <label className="block">
+          <span className={labelClass}>FC mínima</span>
+          <input
+            type="number"
+            min={0}
+            onFocus={selectAllOnFocus}
+            value={planned.hrMin ?? ""}
+            onChange={(e) => onPlannedChange({ hrMin: parseNumberInput(e.target.value) })}
+            className={fieldClass}
+          />
+        </label>
+        <label className="block">
+          <span className={labelClass}>FC média</span>
+          <input
+            type="number"
+            min={0}
+            onFocus={selectAllOnFocus}
+            value={planned.hrAvg ?? ""}
+            onChange={(e) => onPlannedChange({ hrAvg: parseNumberInput(e.target.value) })}
+            className={fieldClass}
+          />
+        </label>
+        <label className="block">
+          <span className={labelClass}>FC máxima</span>
+          <input
+            type="number"
+            min={0}
+            onFocus={selectAllOnFocus}
+            value={planned.hrMax ?? ""}
+            onChange={(e) => onPlannedChange({ hrMax: parseNumberInput(e.target.value) })}
+            className={fieldClass}
+          />
+        </label>
       </div>
-    </Card>
+      <p className="mt-2 text-xs text-g4-muted">
+        Ritmo/velocidade média é calculado automaticamente a partir da duração e da distância.
+      </p>
+    </>
   );
 }

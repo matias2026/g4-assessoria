@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { Card, CardTitle } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/LinkButton";
+import { StepProgress } from "@/components/ui/StepProgress";
 import { IntervalEditor } from "@/components/workout/IntervalEditor";
 import { ExercisePrescriptionEditor } from "@/components/workout/ExercisePrescriptionEditor";
-import { WorkoutPrescriptionEditor, type PlannedMetrics } from "@/components/workout/WorkoutPrescriptionEditor";
+import { WorkoutDescriptionFields, PlannedMetricsFields, type PlannedMetrics } from "@/components/workout/WorkoutPrescriptionEditor";
 import { buildWhatsAppLink, buildWorkoutWhatsAppMessage } from "@/lib/whatsapp";
 import { blankPrescriptionFields, buildWorkoutDraft } from "@/lib/mock-data";
 import type { MockStudent, MockWorkoutDetail } from "@/lib/mock-data";
@@ -82,6 +83,13 @@ function pickTemplateContent(template: MockWorkoutDetail) {
 function formatDateLabel(iso: string): string {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
+}
+
+type StepKey = "info" | "descricao" | "metricas" | "blocos" | "testar" | "enviar";
+
+interface Step {
+  key: StepKey;
+  label: string;
 }
 
 /**
@@ -250,6 +258,33 @@ function PrescriptionForm({
   const isRunning = discipline === "Corrida";
   const isAcademia = discipline === "Academia";
 
+  // Assistente em passos (um card só, um passo por vez, com Voltar/Avançar)
+  // em vez de todas as seções empilhadas — os passos mudam com a
+  // modalidade (blocos por FC/potência pra Ciclismo/Corrida, exercícios
+  // pra Academia) e com ter ou não blocos pra testar no dispositivo.
+  const steps: Step[] = [
+    { key: "info", label: "Treino e modalidade" },
+    { key: "descricao", label: "Descrição do treino" },
+    { key: "metricas", label: "Métricas planejadas" },
+  ];
+  if (isCycling || isRunning) steps.push({ key: "blocos", label: "Definir treino por blocos" });
+  if (isAcademia) steps.push({ key: "blocos", label: "Treinos e exercícios" });
+  if ((isCycling || isRunning) && structuredIntervals.length > 0) {
+    steps.push({ key: "testar", label: "Testar no dispositivo" });
+  }
+  steps.push({ key: "enviar", label: "Enviar prescrição" });
+
+  const [rawStep, setStep] = useState(0);
+  const stepIndex = Math.min(rawStep, steps.length - 1);
+  const currentStep = steps[stepIndex];
+
+  function goNext() {
+    setStep((s) => Math.min(steps.length - 1, s + 1));
+  }
+  function goBack() {
+    setStep((s) => Math.max(0, s - 1));
+  }
+
   // Zera descrição/prescrição/métricas planejadas/blocos/exercícios — usado
   // tanto ao trocar de modalidade quanto ao voltar do título manual para a
   // lista. Nunca puxa o conteúdo de exemplo de TEMPLATE_CICLISMO/CORRIDA/
@@ -363,176 +398,202 @@ function PrescriptionForm({
   }
 
   return (
-    <>
-      <Card>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <label className="block">
-            <div className="flex items-center justify-between gap-4">
-              <span className={labelClass}>Título do treino</span>
-              <button
-                type="button"
-                onClick={manualTitle ? usePresetTitle : startManualTitle}
-                className="text-xs font-medium text-lime-deep hover:underline"
-              >
-                {manualTitle ? "Usar título da lista" : "Criar treino manual"}
-              </button>
-            </div>
-            {manualTitle ? (
+    <Card>
+      <StepProgress current={stepIndex + 1} total={steps.length} label={currentStep.label} />
+
+      <div className="mt-4 flex flex-col gap-4">
+        {currentStep.key === "info" && (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <label className="block">
+              <div className="flex items-center justify-between gap-4">
+                <span className={labelClass}>Título do treino</span>
+                <button
+                  type="button"
+                  onClick={manualTitle ? usePresetTitle : startManualTitle}
+                  className="text-xs font-medium text-lime-deep hover:underline"
+                >
+                  {manualTitle ? "Usar título da lista" : "Criar treino manual"}
+                </button>
+              </div>
+              {manualTitle ? (
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    markDirty();
+                  }}
+                  placeholder="Digite o título do treino"
+                  className={fieldClass}
+                />
+              ) : (
+                <select
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    // Trocar de título é trocar de prescrição — sem isso, a
+                    // tela ficava com a descrição/blocos do título anterior
+                    // ainda preenchidos, como se fossem do novo.
+                    applyBlankFields(discipline);
+                    markDirty();
+                  }}
+                  className={fieldClass}
+                >
+                  {WORKOUT_TITLES[discipline].map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </label>
+            <label className="block">
+              <span className={labelClass}>Data do treino</span>
               <input
-                type="text"
-                value={title}
+                type="date"
+                value={scheduledDate}
                 onChange={(e) => {
-                  setTitle(e.target.value);
+                  setScheduledDate(e.target.value);
                   markDirty();
                 }}
-                placeholder="Digite o título do treino"
                 className={fieldClass}
               />
-            ) : (
+            </label>
+            <label className="block">
+              <span className={labelClass}>Modalidade</span>
               <select
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  // Trocar de título é trocar de prescrição — sem isso, a
-                  // tela ficava com a descrição/blocos do título anterior
-                  // ainda preenchidos, como se fossem do novo.
-                  applyBlankFields(discipline);
-                  markDirty();
-                }}
+                value={discipline}
+                onChange={(e) => handleDisciplineChange(e.target.value)}
                 className={fieldClass}
               >
-                {WORKOUT_TITLES[discipline].map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+                {DISCIPLINES.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
                   </option>
                 ))}
               </select>
-            )}
-          </label>
-          <label className="block">
-            <span className={labelClass}>Data do treino</span>
-            <input
-              type="date"
-              value={scheduledDate}
-              onChange={(e) => {
-                setScheduledDate(e.target.value);
+            </label>
+          </div>
+        )}
+
+        {currentStep.key === "descricao" && (
+          <WorkoutDescriptionFields
+            description={description}
+            prescription={prescription}
+            onDescriptionChange={(value) => {
+              setDescription(value);
+              markDirty();
+            }}
+            onPrescriptionChange={(patch) => {
+              setPrescription((prev) => ({ ...prev, ...patch }));
+              markDirty();
+            }}
+            hrRest={hrRest}
+            hrMax={hrMax}
+          />
+        )}
+
+        {currentStep.key === "metricas" && (
+          <PlannedMetricsFields
+            planned={planned}
+            onPlannedChange={(patch) => {
+              setPlanned((prev) => ({ ...prev, ...patch }));
+              markDirty();
+            }}
+          />
+        )}
+
+        {currentStep.key === "blocos" && (isCycling || isRunning) && (
+          <>
+            <p className="text-xs text-g4-muted">
+              Aquecimento, tiros, recuperação e desaquecimento — cada bloco pode combinar Potência, Frequência
+              cardíaca e Cadência ao mesmo tempo (ex.: &quot;sprint a 180bpm com cadência a 100rpm&quot;).
+            </p>
+            <IntervalEditor
+              intervals={structuredIntervals}
+              onChange={(next) => {
+                setStructuredIntervals(next);
                 markDirty();
               }}
-              className={fieldClass}
+              showPower={isCycling}
+              hrMax={hrMax}
+              hrRest={hrRest}
             />
-          </label>
-          <label className="block">
-            <span className={labelClass}>Modalidade</span>
-            <select
-              value={discipline}
-              onChange={(e) => handleDisciplineChange(e.target.value)}
-              className={fieldClass}
-            >
-              {DISCIPLINES.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </Card>
+          </>
+        )}
 
-      <WorkoutPrescriptionEditor
-        description={description}
-        prescription={prescription}
-        planned={planned}
-        onDescriptionChange={(value) => {
-          setDescription(value);
-          markDirty();
-        }}
-        onPrescriptionChange={(patch) => {
-          setPrescription((prev) => ({ ...prev, ...patch }));
-          markDirty();
-        }}
-        onPlannedChange={(patch) => {
-          setPlanned((prev) => ({ ...prev, ...patch }));
-          markDirty();
-        }}
-        onSave={handleSave}
-        saved={saved}
-        submitting={submitting}
-        error={saveError}
-        hrRest={hrRest}
-        hrMax={hrMax}
-      />
+        {currentStep.key === "blocos" && isAcademia && (
+          <>
+            <p className="text-xs text-g4-muted">
+              Monte um ou mais treinos nomeados (ex.: &quot;Treino 1&quot;, &quot;Treino 2&quot;), cada um
+              com seus exercícios, vídeo demonstrativo e séries.
+            </p>
+            <ExercisePrescriptionEditor
+              sessions={trainingSessions}
+              onChange={(next) => {
+                setTrainingSessions(next);
+                markDirty();
+              }}
+              presets={presets}
+              onPresetsChange={onPresetsChange}
+              library={library}
+              onSaveToLibrary={onSaveToLibrary}
+            />
+          </>
+        )}
 
-      {(isCycling || isRunning) && (
-        <Card>
-          <CardTitle>Definir treino por blocos</CardTitle>
-          <p className="mt-1 text-xs text-g4-muted">
-            Aquecimento, tiros, recuperação e desaquecimento — cada bloco pode combinar Potência, Frequência
-            cardíaca e Cadência ao mesmo tempo (ex.: &quot;sprint a 180bpm com cadência a 100rpm&quot;).
-          </p>
-          <IntervalEditor
-            intervals={structuredIntervals}
-            onChange={(next) => {
-              setStructuredIntervals(next);
-              markDirty();
-            }}
-            showPower={isCycling}
-            hrMax={hrMax}
-            hrRest={hrRest}
-          />
-        </Card>
-      )}
+        {currentStep.key === "testar" && (
+          <>
+            <p className="text-xs text-g4-muted">
+              Baixa um .FIT com os blocos definidos, pra você mesmo carregar num relógio/ciclocomputador via
+              cabo USB e conferir se o treino ficou do jeito que foi montado — antes de enviar pro aluno.
+            </p>
+            <Button variant="secondary" className="self-start px-5" onClick={handleTestDownload} disabled={exporting}>
+              {exporting ? "Gerando..." : "Baixar .FIT de teste"}
+            </Button>
+            {exportError && <p className="text-sm text-status-missed">{exportError}</p>}
+          </>
+        )}
 
-      {(isCycling || isRunning) && structuredIntervals.length > 0 && (
-        <Card>
-          <CardTitle>Testar no dispositivo</CardTitle>
-          <p className="mt-1 text-xs text-g4-muted">
-            Baixa um .FIT com os blocos de cima, pra você mesmo carregar num relógio/ciclocomputador via
-            cabo USB e conferir se o treino ficou do jeito que foi montado — antes de enviar pro aluno.
-          </p>
-          <Button variant="secondary" className="mt-3 px-5" onClick={handleTestDownload} disabled={exporting}>
-            {exporting ? "Gerando..." : "Baixar .FIT de teste"}
+        {currentStep.key === "enviar" && (
+          <>
+            <p className="text-xs text-g4-muted">
+              &quot;Enviar treino&quot; publica pro painel de {student.name} — antes disso, o que está sendo
+              montado é só um rascunho que ninguém além de você vê. &quot;Salvar prescrição&quot; guarda o
+              rascunho sem publicar ainda.
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <Button variant="secondary" className="px-5" onClick={handleSave} disabled={submitting}>
+                {submitting ? "Salvando..." : saved ? "Salvo ✓" : "Salvar prescrição"}
+              </Button>
+              <Button variant="primary" className="px-5" onClick={handleSend} disabled={sending}>
+                {sending ? "Enviando..." : sent ? "Enviado ✓" : "Enviar treino"}
+              </Button>
+              <LinkButton href={whatsappLink} target="_blank" rel="noreferrer" variant="secondary" className="px-5">
+                Enviar via WhatsApp
+              </LinkButton>
+            </div>
+            {saveError && <p className="text-sm text-status-missed">{saveError}</p>}
+            {sendError && <p className="text-sm text-status-missed">{sendError}</p>}
+          </>
+        )}
+      </div>
+
+      <div className="mt-6 flex items-center justify-between gap-4 border-t border-g4-border pt-4">
+        <button
+          type="button"
+          onClick={goBack}
+          disabled={stepIndex === 0}
+          className="rounded-xl border border-g4-border px-4 py-2 text-sm font-semibold text-g4-ink focus-ring disabled:opacity-40"
+        >
+          ← Voltar
+        </button>
+        {stepIndex < steps.length - 1 && (
+          <Button variant="primary" className="px-5" onClick={goNext}>
+            Avançar →
           </Button>
-          {exportError && <p className="mt-2 text-sm text-status-missed">{exportError}</p>}
-        </Card>
-      )}
-
-      {isAcademia && (
-        <Card>
-          <CardTitle>Treinos e exercícios</CardTitle>
-          <p className="mt-1 text-xs text-g4-muted">
-            Monte um ou mais treinos nomeados (ex.: &quot;Treino 1&quot;, &quot;Treino 2&quot;), cada um
-            com seus exercícios, vídeo demonstrativo e séries.
-          </p>
-          <ExercisePrescriptionEditor
-            sessions={trainingSessions}
-            onChange={(next) => {
-              setTrainingSessions(next);
-              markDirty();
-            }}
-            presets={presets}
-            onPresetsChange={onPresetsChange}
-            library={library}
-            onSaveToLibrary={onSaveToLibrary}
-          />
-        </Card>
-      )}
-
-      <Card>
-        <CardTitle>Enviar prescrição</CardTitle>
-        <p className="mt-1 text-xs text-g4-muted">
-          &quot;Enviar treino&quot; publica pro painel de {student.name} — antes disso, o que está sendo
-          montado aqui é só um rascunho que ninguém além de você vê.
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-4">
-          <Button variant="primary" className="px-5" onClick={handleSend} disabled={sending}>
-            {sending ? "Enviando..." : sent ? "Enviado ✓" : "Enviar treino"}
-          </Button>
-          <LinkButton href={whatsappLink} target="_blank" rel="noreferrer" variant="secondary" className="px-5">
-            Enviar via WhatsApp
-          </LinkButton>
-        </div>
-        {sendError && <p className="mt-2 text-sm text-status-missed">{sendError}</p>}
-      </Card>
-    </>
+        )}
+      </div>
+    </Card>
   );
 }
