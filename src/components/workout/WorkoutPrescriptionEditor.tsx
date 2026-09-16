@@ -1,3 +1,4 @@
+import type { FocusEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { buildHrZoneTableLines } from "@/lib/hr-zones";
@@ -41,6 +42,13 @@ function parseNumberInput(value: string): number | null {
   if (value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+// Seleciona o texto inteiro ao focar um campo numérico — sem isso, editar
+// um valor já preenchido gruda o próximo dígito depois do que já estava
+// lá (ou depois do "0" que o campo volta a mostrar ao apagar tudo).
+function selectAllOnFocus(e: FocusEvent<HTMLInputElement>) {
+  e.target.select();
 }
 
 /**
@@ -152,6 +160,7 @@ export function WorkoutPrescriptionEditor({
             <input
               type="number"
               min={0}
+              onFocus={selectAllOnFocus}
               value={planned.durationSeconds == null ? "" : Math.round(planned.durationSeconds / 60)}
               onChange={(e) => {
                 const minutes = parseNumberInput(e.target.value);
@@ -165,6 +174,7 @@ export function WorkoutPrescriptionEditor({
             <input
               type="number"
               min={0}
+              onFocus={selectAllOnFocus}
               step={0.1}
               value={planned.distanceMeters == null ? "" : planned.distanceMeters / 1000}
               onChange={(e) => {
@@ -179,6 +189,7 @@ export function WorkoutPrescriptionEditor({
             <input
               type="number"
               min={0}
+              onFocus={selectAllOnFocus}
               value={planned.tss ?? ""}
               onChange={(e) => onPlannedChange({ tss: parseNumberInput(e.target.value) })}
               className={fieldClass}
@@ -189,6 +200,7 @@ export function WorkoutPrescriptionEditor({
             <input
               type="number"
               min={0}
+              onFocus={selectAllOnFocus}
               step={0.01}
               value={planned.ifScore ?? ""}
               onChange={(e) => onPlannedChange({ ifScore: parseNumberInput(e.target.value) })}
@@ -200,6 +212,7 @@ export function WorkoutPrescriptionEditor({
             <input
               type="number"
               min={0}
+              onFocus={selectAllOnFocus}
               value={planned.hrMin ?? ""}
               onChange={(e) => onPlannedChange({ hrMin: parseNumberInput(e.target.value) })}
               className={fieldClass}
@@ -210,6 +223,7 @@ export function WorkoutPrescriptionEditor({
             <input
               type="number"
               min={0}
+              onFocus={selectAllOnFocus}
               value={planned.hrAvg ?? ""}
               onChange={(e) => onPlannedChange({ hrAvg: parseNumberInput(e.target.value) })}
               className={fieldClass}
@@ -220,6 +234,7 @@ export function WorkoutPrescriptionEditor({
             <input
               type="number"
               min={0}
+              onFocus={selectAllOnFocus}
               value={planned.hrMax ?? ""}
               onChange={(e) => onPlannedChange({ hrMax: parseNumberInput(e.target.value) })}
               className={fieldClass}

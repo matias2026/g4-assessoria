@@ -21,15 +21,19 @@ export interface IntervalPowerTarget {
 }
 
 /**
- * Alvo de frequência cardíaca do bloco — zona (1-5, mesma classificação
- * Karvonen do Monitoramento, ver src/lib/hr-zones.ts), não bpm digitado à
- * mão. O bpm de cada zona é calculado na hora (tela e exportação .FIT) a
- * partir da FC máx/repouso cadastrada na ficha do aluno, nunca guardado
- * aqui — assim a mesma prescrição continua válida se a ficha for
- * atualizada depois.
+ * Alvo de frequência cardíaca do bloco — sempre uma faixa entre duas zonas
+ * (1-5, mesma classificação Karvonen do Monitoramento, ver
+ * src/lib/hr-zones.ts), não bpm digitado à mão. Um bloco constante (ex.:
+ * "parte principal em Z3") usa fromZone = toZone; um bloco que sobe/desce
+ * de intensidade (ex.: aquecimento de Z1 até Z3) usa zonas diferentes. O
+ * bpm de cada zona é calculado na hora (tela e exportação .FIT) a partir
+ * da FC máx/repouso cadastrada na ficha do aluno, nunca guardado aqui —
+ * assim a mesma prescrição continua válida se a ficha for atualizada
+ * depois.
  */
 export interface IntervalHrTarget {
-  zone: 1 | 2 | 3 | 4 | 5;
+  fromZone: 1 | 2 | 3 | 4 | 5;
+  toZone: 1 | 2 | 3 | 4 | 5;
 }
 
 /** Alvo de cadência do bloco, em rpm (ciclismo) ou passos/min (corrida). */

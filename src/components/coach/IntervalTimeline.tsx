@@ -17,8 +17,9 @@ function colorFor(interval: WorkoutInterval): string {
     return "bg-blue-500"; // Leve
   }
   if (interval.hr) {
-    if (interval.hr.zone >= 4) return "bg-red-600";
-    if (interval.hr.zone >= 3) return "bg-yellow-400";
+    const peakZone = Math.max(interval.hr.fromZone, interval.hr.toZone);
+    if (peakZone >= 4) return "bg-red-600";
+    if (peakZone >= 3) return "bg-yellow-400";
     return "bg-blue-500";
   }
   return "bg-g4-border";
@@ -30,7 +31,13 @@ function colorFor(interval: WorkoutInterval): string {
 function targetLabel(interval: WorkoutInterval): string {
   const parts: string[] = [];
   if (interval.power) parts.push(`${interval.power.lowPct}-${interval.power.highPct}% FTP`);
-  if (interval.hr) parts.push(`FC Z${interval.hr.zone}`);
+  if (interval.hr) {
+    parts.push(
+      interval.hr.fromZone === interval.hr.toZone
+        ? `FC Z${interval.hr.fromZone}`
+        : `FC Z${interval.hr.fromZone}→Z${interval.hr.toZone}`
+    );
+  }
   if (interval.cadence) parts.push(`cadência ${interval.cadence.low}-${interval.cadence.high}`);
   return parts.length > 0 ? parts.join(" · ") : "sem alvo definido";
 }

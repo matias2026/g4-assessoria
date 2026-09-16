@@ -81,13 +81,15 @@ function applyTarget(step: WorkoutStepMesg, kind: TargetKind, interval: WorkoutI
   } else if (kind === "hr") {
     // Zona de FC (1-5) direto no campo de zona — não precisa converter pra
     // bpm aqui; o bpm exibido na tela (hrZoneRange) é só uma referência
-    // pro treinador, a zona é o que o relógio do aluno realmente usa.
+    // pro treinador, a zona é o que o relógio do aluno realmente usa. O
+    // formato .FIT só aceita 1 zona por passo (sem noção de rampa entre
+    // duas zonas), então exporta toZone — a zona-alvo de chegada do bloco.
     if (slot === "primary") {
       step.targetType = TARGET_HEART_RATE;
-      step.targetHrZone = interval.hr!.zone;
+      step.targetHrZone = interval.hr!.toZone;
     } else {
       step.secondaryTargetType = TARGET_HEART_RATE;
-      step.secondaryTargetHrZone = interval.hr!.zone;
+      step.secondaryTargetHrZone = interval.hr!.toZone;
     }
   } else {
     if (slot === "primary") {

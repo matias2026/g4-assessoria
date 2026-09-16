@@ -1,3 +1,4 @@
+import { useState, type FocusEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { hrZoneRange, type HrZone } from "@/lib/hr-zones";
@@ -58,7 +59,7 @@ const HR_ZONES: { zone: HrZone; label: string }[] = [
 ];
 
 const DEFAULT_POWER: IntervalPowerTarget = { lowPct: 70, highPct: 70 };
-const DEFAULT_HR: IntervalHrTarget = { zone: 3 };
+const DEFAULT_HR: IntervalHrTarget = { fromZone: 3, toZone: 3 };
 const DEFAULT_CADENCE: IntervalCadenceTarget = { low: 85, high: 95 };
 
 const EMPTY_INTERVAL: WorkoutInterval = {
@@ -72,235 +73,331 @@ const EMPTY_INTERVAL: WorkoutInterval = {
 const fieldClass =
   "mt-1 w-full rounded-lg border border-g4-border bg-g4-surface p-2 text-sm text-g4-ink focus-ring";
 const miniLabelClass = "block text-[11px] font-semibold uppercase tracking-wide text-g4-muted";
-const chipClass =
-  "rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-ring";
+const chipClass = "rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-ring";
+
+// Seleciona o texto inteiro ao focar — sem isso, tocar num campo numérico
+// que já tem um valor (ex.: cadência padrão "85") deixa o cursor colado
+// depois do número existente, então o primeiro dígito digitado gruda nele
+// em vez de substituir (ex.: querer "50" e o campo virar "8550" ou, depois
+// de apagar tudo, o campo volta pra "0" sozinho e "50" digitado em cima
+// dá "050"). Selecionar tudo no foco faz o próximo dígito substituir.
+function selectAllOnFocus(e: FocusEvent<HTMLInputElement>) {
+  e.target.select();
+}
+
+// Duração digitada como cronômetro (dígitos da direita pra esquerda viram
+// minutos, o resto vira hora) — "130" → "1:30", "200" → "2:00" — em vez de
+// só minutos corridos, que obrigava digitar "120" pra dizer "2 horas".
+function maskDurationInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 5);
+  if (digits.length <= 2) return digits;
+  const minutes = digits.slice(-2);
+  const hours = digits.slice(0, -2).replace(/^0+(?=\d)/, "");
+  return `${hours}:${minutes}`;
+}
+
+function durationTextToSeconds(text: string): number {
+  const digits = text.replace(/\D/g, "");
+  if (digits.length === 0) return 0;
+  const minutesPart = digits.length <= 2 ? digits : digits.slice(-2);
+  const hoursPart = digits.length <= 2 ? "0" : digits.slice(0, -2);
+  return Number(hoursPart) * 3600 + Number(minutesPart) * 60;
+}
+
+function secondsToDurationText(totalSeconds: number): string {
+  const totalMinutes = Math.round(totalSeconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}` : String(minutes);
+}
 
 /**
  * Editor dos blocos estruturados de treino (aquecimento, tiros, recuperação,
- * desaquecimento) — ciclismo e corrida. Cada bloco combina um ou mais
- * alvos independentes (Potência, Frequência cardíaca, Cadência) via os
- * chips logo abaixo de Tipo/Duração; um bloco pode ter os três ao mesmo
- * tempo (ex.: "sprint a 180bpm com cadência a 100rpm"). A zona de FC não é
- * digitada em bpm — o app calcula o bpm da zona escolhida a partir da FC
- * máx/repouso cadastrada na ficha desse aluno (mesma fórmula do
- * Monitoramento), então a prescrição continua certa mesmo se a ficha for
- * atualizada depois.
+ * desaquecimento) — ciclismo e corrida. Mostra um bloco por vez (navegação
+ * ⬅️➡️) num único card, em vez de empilhar todos os blocos um dentro do
+ * outro — isso é o que deixava a área útil de cada campo estreita e o
+ * treinador tinha que rolar a tela pra achar o próximo bloco. Cada bloco
+ * combina um ou mais alvos independentes (Potência, Frequência cardíaca,
+ * Cadência) via os chips logo abaixo de Tipo/Duração; um bloco pode ter os
+ * três ao mesmo tempo (ex.: "sprint a 180bpm com cadência a 100rpm"). A
+ * zona de FC não é digitada em bpm — o app calcula o bpm da zona escolhida
+ * a partir da FC máx/repouso cadastrada na ficha desse aluno (mesma
+ * fórmula do Monitoramento), então a prescrição continua certa mesmo se a
+ * ficha for atualizada depois.
  */
 export function IntervalEditor({ intervals, onChange, showPower = true, hrMax = null, hrRest = null }: IntervalEditorProps) {
-  function updateRow(index: number, patch: Partial<WorkoutInterval>) {
-    onChange(intervals.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  const [rawActiveIndex, setActiveIndex] = useState(0);
+  const activeIndex = Math.min(rawActiveIndex, Math.max(intervals.length - 1, 0));
+  const row = intervals[activeIndex];
+
+  function updateRow(patch: Partial<WorkoutInterval>) {
+    onChange(intervals.map((r, i) => (i === activeIndex ? { ...r, ...patch } : r)));
   }
 
-  function removeRow(index: number) {
-    onChange(intervals.filter((_, i) => i !== index));
+  function removeActiveRow() {
+    onChange(intervals.filter((_, i) => i !== activeIndex));
+    setActiveIndex((i) => Math.max(0, i - 1));
   }
 
   function addRow() {
     onChange([...intervals, { ...EMPTY_INTERVAL, power: showPower ? { ...DEFAULT_POWER } : null }]);
+    setActiveIndex(intervals.length);
   }
 
-  function toggleTarget(index: number, row: WorkoutInterval, kind: "power" | "hr" | "cadence") {
+  function toggleTarget(kind: "power" | "hr" | "cadence") {
     if (kind === "power") {
-      updateRow(index, { power: row.power ? null : { ...DEFAULT_POWER } });
+      updateRow({ power: row.power ? null : { ...DEFAULT_POWER } });
     } else if (kind === "hr") {
-      updateRow(index, { hr: row.hr ? null : { ...DEFAULT_HR } });
+      updateRow({ hr: row.hr ? null : { ...DEFAULT_HR } });
     } else {
-      updateRow(index, { cadence: row.cadence ? null : { ...DEFAULT_CADENCE } });
+      updateRow({ cadence: row.cadence ? null : { ...DEFAULT_CADENCE } });
     }
   }
 
-  return (
-    <div className="mt-3">
-      <div className="flex flex-col gap-4">
-        {intervals.map((row, index) => (
-          <div key={index} className="rounded-2xl border border-g4-border bg-g4-surface-alt/60 p-4 shadow-sm">
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-[1.3fr_1fr_auto] lg:items-end">
-              <label className="block">
-                <span className={miniLabelClass}>Tipo</span>
-                <select
-                  value={row.type}
-                  onChange={(e) => updateRow(index, { type: e.target.value as WorkoutIntervalType })}
-                  className={fieldClass}
-                >
-                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className={miniLabelClass}>Duração (min)</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={Math.round(row.durationSeconds / 60)}
-                  onChange={(e) => updateRow(index, { durationSeconds: Math.max(0, Number(e.target.value)) * 60 })}
-                  className={fieldClass}
-                />
-              </label>
-
-              <button
-                type="button"
-                onClick={() => removeRow(index)}
-                aria-label="Remover bloco"
-                className="col-span-2 rounded-lg border border-status-missed/30 px-2 py-2 text-xs font-medium text-status-missed hover:bg-status-missed/10 lg:col-span-1 lg:border-0 lg:justify-self-center"
-              >
-                Remover
-              </button>
-            </div>
-
-            {/* Chips: um bloco pode combinar mais de um alvo ao mesmo tempo —
-                cada chip liga/desliga seu mini-formulário abaixo, sem afetar
-                os outros alvos já ativos. */}
-            <div className="mt-3 flex flex-wrap gap-4">
-              {showPower && (
-                <button
-                  type="button"
-                  onClick={() => toggleTarget(index, row, "power")}
-                  className={cn(chipClass, row.power ? "border-lime bg-lime/15 text-lime-deep" : "border-g4-border text-g4-muted hover:bg-g4-surface")}
-                >
-                  ⚡ Potência
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => toggleTarget(index, row, "hr")}
-                className={cn(chipClass, row.hr ? "border-lime bg-lime/15 text-lime-deep" : "border-g4-border text-g4-muted hover:bg-g4-surface")}
-              >
-                ♥ Frequência cardíaca
-              </button>
-              <button
-                type="button"
-                onClick={() => toggleTarget(index, row, "cadence")}
-                className={cn(chipClass, row.cadence ? "border-lime bg-lime/15 text-lime-deep" : "border-g4-border text-g4-muted hover:bg-g4-surface")}
-              >
-                🔄 Cadência
-              </button>
-            </div>
-
-            {/* Alvo: Potência */}
-            {row.power && (
-              <div className="mt-3 grid grid-cols-2 gap-4 border-t border-g4-border pt-3 lg:grid-cols-3">
-                <label className="block">
-                  <span className={miniLabelClass}>Zona (%FTP)</span>
-                  <select
-                    value={zoneForPct(row.power.highPct).key}
-                    onChange={(e) => {
-                      const next = ZONES.find((z) => z.key === e.target.value) ?? ZONES[0];
-                      updateRow(index, { power: { lowPct: next.low, highPct: next.high } });
-                    }}
-                    className={fieldClass}
-                  >
-                    {ZONES.map((z) => (
-                      <option key={z.key} value={z.key}>
-                        {z.key} · {z.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className={miniLabelClass}>% FTP mín.</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={200}
-                    value={row.power.lowPct}
-                    onChange={(e) => updateRow(index, { power: { ...row.power!, lowPct: Number(e.target.value) } })}
-                    className={fieldClass}
-                  />
-                </label>
-                <label className="block">
-                  <span className={miniLabelClass}>% FTP máx.</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={200}
-                    value={row.power.highPct}
-                    onChange={(e) => updateRow(index, { power: { ...row.power!, highPct: Number(e.target.value) } })}
-                    className={fieldClass}
-                  />
-                </label>
-              </div>
-            )}
-
-            {/* Alvo: Frequência cardíaca — zona, não bpm digitado à mão. */}
-            {row.hr && (
-              <div className="mt-3 border-t border-g4-border pt-3">
-                <label className="block max-w-xs">
-                  <span className={miniLabelClass}>Zona de FC</span>
-                  <select
-                    value={row.hr.zone}
-                    onChange={(e) => updateRow(index, { hr: { zone: Number(e.target.value) as HrZone } })}
-                    className={fieldClass}
-                  >
-                    {HR_ZONES.map((z) => (
-                      <option key={z.zone} value={z.zone}>
-                        {z.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {(() => {
-                  const range = hrZoneRange(row.hr.zone, hrRest, hrMax);
-                  return range ? (
-                    <p className="mt-1.5 text-xs text-g4-muted">
-                      ≈ {range.low}–{range.high} bpm pra esse aluno (calculado da ficha).
-                    </p>
-                  ) : (
-                    <p className="mt-1.5 text-xs text-g4-muted">
-                      Cadastre FC máxima e de repouso na ficha do aluno pra ver o bpm dessa zona.
-                    </p>
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* Alvo: Cadência */}
-            {row.cadence && (
-              <div className="mt-3 grid grid-cols-2 gap-4 border-t border-g4-border pt-3 sm:max-w-xs">
-                <label className="block">
-                  <span className={miniLabelClass}>Cadência mín.</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={row.cadence.low}
-                    onChange={(e) => updateRow(index, { cadence: { ...row.cadence!, low: Number(e.target.value) } })}
-                    className={fieldClass}
-                  />
-                </label>
-                <label className="block">
-                  <span className={miniLabelClass}>Cadência máx.</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={row.cadence.high}
-                    onChange={(e) => updateRow(index, { cadence: { ...row.cadence!, high: Number(e.target.value) } })}
-                    className={fieldClass}
-                  />
-                </label>
-              </div>
-            )}
-
-            {!row.power && !row.hr && !row.cadence && (
-              <p className="mt-3 border-t border-g4-border pt-3 text-xs text-g4-muted">
-                Sem alvo definido pra esse bloco — escolha pelo menos um acima.
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <Button variant="secondary" className="mt-3 px-4 text-sm" onClick={addRow}>
-        + Adicionar bloco
-      </Button>
-
-      {intervals.length === 0 && (
-        <p className="mt-2 text-xs text-g4-muted">
+  if (!row) {
+    return (
+      <div className="mt-3">
+        <p className="text-xs text-g4-muted">
           Nenhum bloco cadastrado — adicione ao menos um pra liberar o teste no dispositivo (.FIT).
         </p>
+        <Button variant="secondary" className="mt-3 px-4 text-sm" onClick={addRow}>
+          + Adicionar bloco
+        </Button>
+      </div>
+    );
+  }
+
+  const fromRange = row.hr ? hrZoneRange(row.hr.fromZone, hrRest, hrMax) : null;
+  const toRange = row.hr ? hrZoneRange(row.hr.toZone, hrRest, hrMax) : null;
+
+  return (
+    <div className="mt-3">
+      {/* Navegação entre blocos — em vez de rolar a tela pra achar o
+          próximo, o treinador troca de bloco aqui e edita um de cada vez. */}
+      <div className="flex items-center justify-between gap-4">
+        <button
+          type="button"
+          onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
+          disabled={activeIndex === 0}
+          className="rounded-lg border border-g4-border px-3 py-1.5 text-sm font-semibold text-g4-ink focus-ring disabled:opacity-40"
+        >
+          ⬅️ Anterior
+        </button>
+        <p className="text-sm font-semibold text-g4-ink">
+          Bloco {activeIndex + 1} de {intervals.length}
+        </p>
+        <button
+          type="button"
+          onClick={() => setActiveIndex((i) => Math.min(intervals.length - 1, i + 1))}
+          disabled={activeIndex === intervals.length - 1}
+          className="rounded-lg border border-g4-border px-3 py-1.5 text-sm font-semibold text-g4-ink focus-ring disabled:opacity-40"
+        >
+          Próximo ➡️
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-[1.3fr_1fr]">
+        <label className="block">
+          <span className={miniLabelClass}>Tipo</span>
+          <select
+            value={row.type}
+            onChange={(e) => updateRow({ type: e.target.value as WorkoutIntervalType })}
+            className={fieldClass}
+          >
+            {Object.entries(TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className={miniLabelClass}>Duração (h:min)</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="0:00"
+            value={secondsToDurationText(row.durationSeconds)}
+            onFocus={selectAllOnFocus}
+            onChange={(e) => updateRow({ durationSeconds: durationTextToSeconds(maskDurationInput(e.target.value)) })}
+            className={fieldClass}
+          />
+        </label>
+      </div>
+
+      {/* Chips: um bloco pode combinar mais de um alvo ao mesmo tempo —
+          cada chip liga/desliga seu mini-formulário abaixo, sem afetar
+          os outros alvos já ativos. Ordem fixa: Potência, Frequência
+          cardíaca, Cadência. */}
+      <div className="mt-3 flex flex-wrap gap-4">
+        {showPower && (
+          <button
+            type="button"
+            onClick={() => toggleTarget("power")}
+            className={cn(chipClass, row.power ? "border-lime bg-lime/15 text-lime-deep" : "border-g4-border text-g4-muted hover:bg-g4-surface")}
+          >
+            ⚡ Potência
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => toggleTarget("hr")}
+          className={cn(chipClass, row.hr ? "border-lime bg-lime/15 text-lime-deep" : "border-g4-border text-g4-muted hover:bg-g4-surface")}
+        >
+          ♥ Frequência cardíaca
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleTarget("cadence")}
+          className={cn(chipClass, row.cadence ? "border-lime bg-lime/15 text-lime-deep" : "border-g4-border text-g4-muted hover:bg-g4-surface")}
+        >
+          🔄 Cadência
+        </button>
+      </div>
+
+      {/* Alvo: Potência */}
+      {row.power && (
+        <div className="mt-3 grid grid-cols-2 gap-4 border-t border-g4-border pt-3 lg:grid-cols-3">
+          <label className="block">
+            <span className={miniLabelClass}>Zona (%FTP)</span>
+            <select
+              value={zoneForPct(row.power.highPct).key}
+              onChange={(e) => {
+                const next = ZONES.find((z) => z.key === e.target.value) ?? ZONES[0];
+                updateRow({ power: { lowPct: next.low, highPct: next.high } });
+              }}
+              className={fieldClass}
+            >
+              {ZONES.map((z) => (
+                <option key={z.key} value={z.key}>
+                  {z.key} · {z.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className={miniLabelClass}>% FTP mín.</span>
+            <input
+              type="number"
+              min={0}
+              max={200}
+              value={row.power.lowPct}
+              onFocus={selectAllOnFocus}
+              onChange={(e) => updateRow({ power: { ...row.power!, lowPct: Number(e.target.value) } })}
+              className={fieldClass}
+            />
+          </label>
+          <label className="block">
+            <span className={miniLabelClass}>% FTP máx.</span>
+            <input
+              type="number"
+              min={0}
+              max={200}
+              value={row.power.highPct}
+              onFocus={selectAllOnFocus}
+              onChange={(e) => updateRow({ power: { ...row.power!, highPct: Number(e.target.value) } })}
+              className={fieldClass}
+            />
+          </label>
+        </div>
       )}
+
+      {/* Alvo: Frequência cardíaca — sempre uma faixa (zona de início até
+          zona de chegada), não bpm digitado à mão. Um bloco de intensidade
+          constante usa a mesma zona nas duas caixas. */}
+      {row.hr && (
+        <div className="mt-3 border-t border-g4-border pt-3">
+          <div className="grid grid-cols-2 gap-4 sm:max-w-md">
+            <label className="block">
+              <span className={miniLabelClass}>Zona inicial</span>
+              <select
+                value={row.hr.fromZone}
+                onChange={(e) => updateRow({ hr: { ...row.hr!, fromZone: Number(e.target.value) as HrZone } })}
+                className={fieldClass}
+              >
+                {HR_ZONES.map((z) => (
+                  <option key={z.zone} value={z.zone}>
+                    {z.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className={miniLabelClass}>Zona final</span>
+              <select
+                value={row.hr.toZone}
+                onChange={(e) => updateRow({ hr: { ...row.hr!, toZone: Number(e.target.value) as HrZone } })}
+                className={fieldClass}
+              >
+                {HR_ZONES.map((z) => (
+                  <option key={z.zone} value={z.zone}>
+                    {z.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {fromRange && toRange ? (
+            <p className="mt-1.5 text-xs text-g4-muted">
+              {row.hr.fromZone === row.hr.toZone
+                ? `≈ ${fromRange.low}–${fromRange.high} bpm pra esse aluno (calculado da ficha).`
+                : `≈ ${fromRange.low} bpm até ${toRange.high} bpm pra esse aluno (calculado da ficha).`}
+            </p>
+          ) : (
+            <p className="mt-1.5 text-xs text-g4-muted">
+              Cadastre FC máxima e de repouso na ficha do aluno pra ver o bpm dessas zonas.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Alvo: Cadência */}
+      {row.cadence && (
+        <div className="mt-3 grid grid-cols-2 gap-4 border-t border-g4-border pt-3 sm:max-w-xs">
+          <label className="block">
+            <span className={miniLabelClass}>Cadência mín.</span>
+            <input
+              type="number"
+              min={0}
+              value={row.cadence.low}
+              onFocus={selectAllOnFocus}
+              onChange={(e) => updateRow({ cadence: { ...row.cadence!, low: Number(e.target.value) } })}
+              className={fieldClass}
+            />
+          </label>
+          <label className="block">
+            <span className={miniLabelClass}>Cadência máx.</span>
+            <input
+              type="number"
+              min={0}
+              value={row.cadence.high}
+              onFocus={selectAllOnFocus}
+              onChange={(e) => updateRow({ cadence: { ...row.cadence!, high: Number(e.target.value) } })}
+              className={fieldClass}
+            />
+          </label>
+        </div>
+      )}
+
+      {!row.power && !row.hr && !row.cadence && (
+        <p className="mt-3 border-t border-g4-border pt-3 text-xs text-g4-muted">
+          Sem alvo definido pra esse bloco — escolha pelo menos um acima.
+        </p>
+      )}
+
+      <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-g4-border pt-4">
+        <Button variant="secondary" className="px-4 text-sm" onClick={addRow}>
+          + Adicionar bloco
+        </Button>
+        <button
+          type="button"
+          onClick={removeActiveRow}
+          className="rounded-lg px-2 py-2 text-xs font-medium text-status-missed hover:bg-status-missed/10"
+        >
+          Remover este bloco
+        </button>
+      </div>
     </div>
   );
 }

@@ -393,6 +393,10 @@ function PrescriptionForm({
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
+                  // Trocar de título é trocar de prescrição — sem isso, a
+                  // tela ficava com a descrição/blocos do título anterior
+                  // ainda preenchidos, como se fossem do novo.
+                  applyBlankFields(discipline);
                   markDirty();
                 }}
                 className={fieldClass}
