@@ -41,6 +41,18 @@ export async function exchangeStravaCode(code: string): Promise<StravaTokenRespo
   return response.json();
 }
 
+/**
+ * Revoga a autorização do app na conta Strava do usuário — sem isso,
+ * "desconectar" no nosso banco só apaga o token local, mas a Strava
+ * continua achando que o app está autorizado (e reconectar reabriria já
+ * pré-aprovado pra essa mesma conta, sem dar chance de escolher outra).
+ */
+export async function revokeStravaToken(accessToken: string): Promise<void> {
+  const url = new URL("https://www.strava.com/oauth/deauthorize");
+  url.searchParams.set("access_token", accessToken);
+  await fetch(url.toString(), { method: "POST" });
+}
+
 export async function refreshStravaToken(refreshToken: string): Promise<StravaTokenResponse> {
   const response = await fetch(STRAVA_TOKEN_URL, {
     method: "POST",

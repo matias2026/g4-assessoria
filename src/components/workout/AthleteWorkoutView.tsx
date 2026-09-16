@@ -16,7 +16,7 @@ import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { formatDistance, formatDuration } from "@/lib/workout-metrics";
 import type { MockWorkoutDetail } from "@/lib/mock-data";
 import { completeOwnWorkout } from "@/app/(athlete)/dashboard/profile-actions";
-import { syncStravaNow } from "@/app/(athlete)/dashboard/strava-actions";
+import { disconnectStrava, syncStravaNow } from "@/app/(athlete)/dashboard/strava-actions";
 
 const GARMIN_CONNECT_URL = "https://connect.garmin.com/modern/";
 
@@ -56,6 +56,12 @@ export function AthleteWorkoutView({
   const [completeError, setCompleteError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  // Espelha a prop em estado local pra atualizar o badge na hora ao
+  // desconectar, sem depender de recarregar a página inteira.
+  const [connected, setConnected] = useState(stravaConnected);
+  const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [disconnectError, setDisconnectError] = useState<string | null>(null);
 
   const talkToCoachLink = buildWhatsAppLink(
     workout.coachPhone,
@@ -109,6 +115,23 @@ export function AthleteWorkoutView({
     }
   }
 
+  // Desfaz a conexão com o Strava — pra quem conectou a conta errada e
+  // ficava sem jeito nenhum de trocar, já que só existia o botão "Conectar".
+  async function handleDisconnect() {
+    setDisconnectError(null);
+    setDisconnecting(true);
+    try {
+      await disconnectStrava();
+      setConnected(false);
+      setConfirmingDisconnect(false);
+      setSyncMessage(null);
+    } catch (e) {
+      setDisconnectError(e instanceof Error ? e.message : "Não foi possível desconectar agora.");
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Treino do dia */}
@@ -135,22 +158,51 @@ export function AthleteWorkoutView({
         <div className="mt-3 flex flex-wrap items-center justify-between gap-4 border-t border-g4-border pt-3">
           <StatusDot status={status} />
           <div className="flex items-center gap-4 text-xs">
-            <Badge tone={stravaConnected ? "lime" : "neutral"}>
-              {stravaConnected
+            <Badge tone={connected ? "lime" : "neutral"}>
+              {connected
                 ? status === "done"
                   ? "Sincronizado via Strava"
                   : "Strava conectado"
                 : "Strava não conectado"}
             </Badge>
-            {stravaConnected ? (
-              <button
-                type="button"
-                onClick={handleSync}
-                disabled={syncing}
-                className="text-xs font-semibold text-lime-deep underline underline-offset-2 focus-ring disabled:opacity-60"
-              >
-                {syncing ? "Sincronizando..." : "Sincronizar agora"}
-              </button>
+            {connected ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="text-xs font-semibold text-lime-deep underline underline-offset-2 focus-ring disabled:opacity-60"
+                >
+                  {syncing ? "Sincronizando..." : "Sincronizar agora"}
+                </button>
+                {confirmingDisconnect ? (
+                  <span className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={handleDisconnect}
+                      disabled={disconnecting}
+                      className="font-semibold text-status-missed underline underline-offset-2 focus-ring disabled:opacity-60"
+                    >
+                      {disconnecting ? "Desconectando..." : "Confirmar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingDisconnect(false)}
+                      className="text-g4-muted underline underline-offset-2 focus-ring"
+                    >
+                      Cancelar
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDisconnect(true)}
+                    className="text-g4-muted underline underline-offset-2 focus-ring"
+                  >
+                    Desconectar
+                  </button>
+                )}
+              </>
             ) : (
               <LinkButton href="/api/strava/connect" variant="ghost" className="px-2 py-1 text-xs">
                 Conectar
@@ -159,6 +211,7 @@ export function AthleteWorkoutView({
           </div>
         </div>
         {syncMessage && <p className="mt-2 text-right text-xs text-g4-muted">{syncMessage}</p>}
+        {disconnectError && <p className="mt-2 text-right text-xs text-status-missed">{disconnectError}</p>}
       </Card>
 
       {zoneLines && (

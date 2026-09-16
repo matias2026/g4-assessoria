@@ -8,6 +8,7 @@ import {
   fetchActivityStreams,
   fetchAthleteActivities,
   refreshStravaToken,
+  revokeStravaToken,
 } from "@/lib/strava/client";
 import { buildUploadedActivityFromStrava } from "@/lib/strava/activity-import";
 import { formatDurationLabel } from "@/lib/fit-import";
@@ -35,6 +36,41 @@ const SYNC_WINDOW_DAYS = 30;
  * só o resumo. Nunca sobrescreve um treino já concluído (RPE ou .FIT
  * anterior tem prioridade sobre o que a Strava sincronizou depois).
  */
+/**
+ * "Desconectar" — apaga o vínculo do Strava dessa conta. Sem isso, quem
+ * conectasse a conta errada do Strava ficava preso nela pra sempre: o
+ * botão só existia pra conectar, nunca pra trocar. Revoga a autorização
+ * do lado da Strava também (melhor esforço — se falhar, não impede
+ * desconectar aqui, só quer dizer que a Strava ainda vai lembrar do app
+ * autorizado até a pessoa revogar por lá também), e sempre apaga o
+ * registro local, que é o que realmente prende a conta errada.
+ */
+export async function disconnectStrava(): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Não autenticado.");
+
+  const admin = createAdminClient();
+  const { data: tokenRow } = await admin
+    .from("strava_tokens")
+    .select("access_token")
+    .eq("profile_id", user.id)
+    .maybeSingle();
+
+  if (tokenRow) {
+    try {
+      await revokeStravaToken(tokenRow.access_token);
+    } catch (e) {
+      console.error("[strava] falha ao revogar autorização (desconectando localmente mesmo assim):", e);
+    }
+  }
+
+  await admin.from("strava_tokens").delete().eq("profile_id", user.id);
+  revalidatePath("/dashboard");
+}
+
 export async function syncStravaNow(): Promise<{ synced: number }> {
   const supabase = await createClient();
   const {
