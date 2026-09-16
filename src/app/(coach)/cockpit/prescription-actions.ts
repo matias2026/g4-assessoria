@@ -4,6 +4,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { MockWorkoutDetail } from "@/lib/mock-data";
 import { requireCoachOrAdmin } from "./actions";
 
+// Confirma que o aluno é da própria organização antes de escrever em
+// `treinos` — saveDraft/sendPrescription usam upsert, que criaria uma
+// linha nova pra qualquer aluno_id passado; sem essa checagem, um id de
+// aluno de outra organização seria aceito de boa (service role ignora RLS).
+async function assertStudentInOrg(
+  admin: ReturnType<typeof createAdminClient>,
+  alunoId: string,
+  organizationId: string
+) {
+  const { data } = await admin.from("alunos").select("id").eq("id", alunoId).eq("organization_id", organizationId).maybeSingle();
+  if (!data) throw new Error("Aluno não encontrado.");
+}
+
 function draftSnapshot(workout: MockWorkoutDetail) {
   return {
     title: workout.title,
@@ -25,8 +38,9 @@ function draftSnapshot(workout: MockWorkoutDetail) {
  * rascunho por aluno por dia.
  */
 export async function saveDraft(alunoId: string, dateIso: string, workout: MockWorkoutDetail): Promise<void> {
-  await requireCoachOrAdmin();
+  const { organizationId } = await requireCoachOrAdmin();
   const admin = createAdminClient();
+  await assertStudentInOrg(admin, alunoId, organizationId);
 
   const { error } = await admin
     .from("treinos")
@@ -51,8 +65,9 @@ export async function saveDraft(alunoId: string, dateIso: string, workout: MockW
  * já nascer "Concluído" com os dados (e o arquivo .FIT) do treino anterior.
  */
 export async function sendPrescription(alunoId: string, dateIso: string, workout: MockWorkoutDetail): Promise<void> {
-  await requireCoachOrAdmin();
+  const { organizationId } = await requireCoachOrAdmin();
   const admin = createAdminClient();
+  await assertStudentInOrg(admin, alunoId, organizationId);
 
   const { error } = await admin.from("treinos").upsert(
     {

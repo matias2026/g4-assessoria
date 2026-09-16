@@ -28,12 +28,16 @@ export default async function AdminPage() {
   // admin antes de chegar aqui, mas essa página busca com a service role
   // (ignora RLS) — não pode depender só do middleware pra não virar um
   // dump de todos os perfis se o matcher algum dia mudar.
-  await requireAdmin();
+  const { organizationId } = await requireAdmin();
 
   const admin = createAdminClient();
+  // organization_id no filtro é o que garante que esse painel só mostra
+  // contas/pedidos da própria assessoria — sem isso, virava um dump de
+  // todas as organizações da plataforma pra qualquer admin.
   const { data: profiles } = await admin
     .from("profiles")
     .select("id, role, full_name, active, created_at")
+    .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
 
   const list = profiles ?? [];
@@ -43,6 +47,7 @@ export default async function AdminPage() {
     .from("access_requests")
     .select("id, full_name, email, phone, role_requested, message, created_at, birth_date, modalidade, training_experience")
     .eq("status", "pending")
+    .eq("organization_id", organizationId)
     .order("created_at", { ascending: true });
 
   const requests = pendingRequests ?? [];

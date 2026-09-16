@@ -6,19 +6,36 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { ProfileRole } from "@/lib/supabase/types";
 import { calculateAge } from "@/lib/workout-metrics";
 
-export async function requireAdmin(): Promise<string> {
+export interface AdminIdentity {
+  userId: string;
+  organizationId: string;
+  isPlatformAdmin: boolean;
+}
+
+// Devolve também organization_id: quase toda escrita deste arquivo usa o
+// client de service role (bypassa RLS), então o isolamento entre
+// organizações depende de filtrar explicitamente por isso aqui — RLS
+// sozinha não cobre esse caminho.
+export async function requireAdmin(): Promise<AdminIdentity> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado.");
 
-  const { data } = await supabase.from("profiles").select("role, active").eq("id", user.id).single();
+  const { data } = await supabase
+    .from("profiles")
+    .select("role, active, organization_id, is_platform_admin")
+    .eq("id", user.id)
+    .single();
   // O generic da tabela via @supabase/ssr não propaga o tipo da coluna aqui;
-  // o shape é conhecido (profiles.role/active) então a asserção é segura.
-  const profile = data as { role: ProfileRole; active: boolean } | null;
+  // o shape é conhecido (profiles.role/active/organization_id) então a
+  // asserção é segura.
+  const profile = data as
+    | { role: ProfileRole; active: boolean; organization_id: string; is_platform_admin: boolean }
+    | null;
   if (profile?.role !== "admin" || !profile.active) throw new Error("Acesso restrito ao administrador.");
-  return user.id;
+  return { userId: user.id, organizationId: profile.organization_id, isPlatformAdmin: profile.is_platform_admin };
 }
 
 // Mapa dos códigos de erro estáveis do Supabase Auth (não o texto da
@@ -70,7 +87,8 @@ async function createAccountCore({
   medicalNotes,
   modalidade,
   coachNotes,
-}: CreateAccountInput): Promise<string | null> {
+  organizationId,
+}: CreateAccountInput & { organizationId: string }): Promise<string | null> {
   // Trim aqui também (não só em quem chama) — cobre "Criar conta",
   // "Aprovar pedido" e o cadastro de aluno pelo Cockpit de uma vez só,
   // pra um espaço colado do WhatsApp nunca virar "dados inválidos" sem
@@ -83,7 +101,14 @@ async function createAccountCore({
   const admin = createAdminClient();
 
   if (role === "athlete") {
-    const { count } = await admin.from("profiles").select("id", { count: "exact", head: true }).eq("role", "athlete");
+    // Limite de 50 é por organização, não da plataforma inteira — sem o
+    // filtro de organization_id aqui, uma assessoria travaria o cadastro
+    // por causa do volume de alunos de outra assessoria.
+    const { count } = await admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "athlete")
+      .eq("organization_id", organizationId);
     if (count != null && count >= 50) return "Limite de 50 atletas cadastrados atingido.";
   }
 
@@ -98,7 +123,7 @@ async function createAccountCore({
 
   const { error: profileError } = await admin
     .from("profiles")
-    .insert({ id: created.user.id, role, full_name: fullName });
+    .insert({ id: created.user.id, role, full_name: fullName, organization_id: organizationId });
 
   if (profileError) {
     // Reverte o usuário do Auth pra não deixar login órfão sem perfil.
@@ -115,6 +140,7 @@ async function createAccountCore({
   // preenchido depois pelo treinador — isso só garante que a ficha exista.
   if (role === "athlete") {
     const { error: alunoError } = await admin.from("alunos").insert({
+      organization_id: organizationId,
       user_id: created.user.id,
       nome: fullName,
       whatsapp: phone ?? null,
@@ -142,14 +168,19 @@ async function createAccountCore({
 // tinha sessão aberta. Um admin não pode suspender a própria conta (evita
 // se trancar pra fora do painel).
 export async function toggleActive(profileId: string, active: boolean): Promise<void> {
-  const adminId = await requireAdmin();
+  const { userId: adminId, organizationId, isPlatformAdmin } = await requireAdmin();
 
   if (profileId === adminId) {
     throw new Error("Você não pode suspender a própria conta.");
   }
 
   const admin = createAdminClient();
-  const { error } = await admin.from("profiles").update({ active }).eq("id", profileId);
+  // organization_id no filtro impede um admin de uma organização suspender/
+  // reativar conta de outra organização só sabendo (ou adivinhando) o id do
+  // perfil — a query simplesmente não acha a linha se for de outro tenant.
+  let query = admin.from("profiles").update({ active }).eq("id", profileId);
+  if (!isPlatformAdmin) query = query.eq("organization_id", organizationId);
+  const { error } = await query;
   if (error) throw new Error(error.message);
 
   revalidatePath("/admin");
@@ -163,13 +194,25 @@ export async function toggleActive(profileId: string, active: boolean): Promise<
 // senha que funcione. Igual ao suspender: admin não pode excluir a
 // própria conta.
 export async function deleteAccount(profileId: string): Promise<void> {
-  const adminId = await requireAdmin();
+  const { userId: adminId, organizationId, isPlatformAdmin } = await requireAdmin();
 
   if (profileId === adminId) {
     throw new Error("Você não pode excluir a própria conta.");
   }
 
   const admin = createAdminClient();
+
+  // auth.admin.deleteUser não aceita filtro de organization_id (não é uma
+  // query builder) — confirma antes que o perfil é da mesma organização,
+  // senão um admin conseguiria excluir conta de outra assessoria só
+  // sabendo o id.
+  if (!isPlatformAdmin) {
+    const { data: target } = await admin.from("profiles").select("organization_id").eq("id", profileId).single();
+    if (!target || (target as { organization_id: string }).organization_id !== organizationId) {
+      throw new Error("Conta não encontrada.");
+    }
+  }
+
   const { error } = await admin.auth.admin.deleteUser(profileId);
   if (error) {
     console.error("[admin] erro ao excluir conta:", error.code, error.message);
@@ -188,18 +231,24 @@ export interface ApproveRequestResult {
 // access_requests). Some do banco logo em seguida — não precisa mais
 // ficar guardada depois de virar a senha real no Supabase Auth.
 export async function approveRequest(requestId: string): Promise<ApproveRequestResult> {
-  const adminId = await requireAdmin();
+  const { userId: adminId, organizationId, isPlatformAdmin } = await requireAdmin();
   const admin = createAdminClient();
 
   const { data: reqRow } = await admin
     .from("access_requests")
     .select(
-      "id, full_name, email, phone, password, role_requested, status, birth_date, weight_kg, height_cm, medical_notes, modalidade, training_experience"
+      "id, full_name, email, phone, password, role_requested, status, birth_date, weight_kg, height_cm, medical_notes, modalidade, training_experience, organization_id"
     )
     .eq("id", requestId)
     .single();
 
   if (!reqRow || reqRow.status !== "pending") {
+    return { error: "Pedido não encontrado ou já processado." };
+  }
+
+  // Impede um admin aprovar (e assim criar uma conta dentro da própria
+  // organização) um pedido feito pra outra assessoria.
+  if (!isPlatformAdmin && reqRow.organization_id !== organizationId) {
     return { error: "Pedido não encontrado ou já processado." };
   }
 
@@ -229,6 +278,10 @@ export async function approveRequest(requestId: string): Promise<ApproveRequestR
     medicalNotes: reqRow.medical_notes ?? undefined,
     modalidade: reqRow.modalidade,
     coachNotes: experienceNote,
+    // A conta nasce na organização do pedido, não necessariamente na do
+    // admin que aprovou (hoje sempre a mesma — só existe 1 organização —
+    // mas fica correto pra quando existir mais de uma).
+    organizationId: reqRow.organization_id ?? organizationId,
   });
 
   if (error) return { error };
@@ -245,14 +298,16 @@ export async function approveRequest(requestId: string): Promise<ApproveRequestR
 // Nega um pedido — só marca como negado, não cria nada. Ninguém é avisado
 // automaticamente (sem e-mail no app); é o admin quem decide se responde.
 export async function denyRequest(requestId: string): Promise<{ error: string | null }> {
-  const adminId = await requireAdmin();
+  const { userId: adminId, organizationId, isPlatformAdmin } = await requireAdmin();
   const admin = createAdminClient();
 
-  const { error } = await admin
+  let query = admin
     .from("access_requests")
     .update({ status: "denied", reviewed_by: adminId, reviewed_at: new Date().toISOString(), password: null })
     .eq("id", requestId)
     .eq("status", "pending");
+  if (!isPlatformAdmin) query = query.eq("organization_id", organizationId);
+  const { error } = await query;
 
   if (error) return { error: error.message };
 

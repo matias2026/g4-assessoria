@@ -4,46 +4,67 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ExerciseLibraryItem, ProfileRole } from "@/lib/supabase/types";
 
+export interface CoachIdentity {
+  userId: string;
+  organizationId: string;
+}
+
 // Autentica/autoriza com o client de sessão (RLS); a leitura/escrita em si
 // roda com a service role, mesmo padrão de src/app/admin/actions.ts — o
 // generic de tabela do @supabase/ssr não propaga bem pra insert/upsert.
-export async function requireCoachOrAdmin(): Promise<void> {
+// Devolve organization_id: quase todo o Cockpit usa service role (bypassa
+// RLS), então o isolamento entre organizações depende de filtrar
+// explicitamente por isso em cada consulta/escrita.
+export async function requireCoachOrAdmin(): Promise<CoachIdentity> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado.");
 
-  const { data } = await supabase.from("profiles").select("role, active").eq("id", user.id).single();
+  const { data } = await supabase
+    .from("profiles")
+    .select("role, active, organization_id")
+    .eq("id", user.id)
+    .single();
   // O generic da tabela via @supabase/ssr não propaga o tipo da coluna aqui;
-  // o shape é conhecido (profiles.role/active) então a asserção é segura.
-  const profile = data as { role: ProfileRole; active: boolean } | null;
+  // o shape é conhecido (profiles.role/active/organization_id) então a
+  // asserção é segura.
+  const profile = data as { role: ProfileRole; active: boolean; organization_id: string } | null;
   if (!profile?.active || !["coach", "admin"].includes(profile.role)) {
     throw new Error("Acesso restrito a treinadores.");
   }
+  return { userId: user.id, organizationId: profile.organization_id };
 }
 
-/** Lista os exercícios salvos na biblioteca, em ordem alfabética. */
+/** Lista os exercícios salvos na biblioteca da própria organização, em ordem alfabética. */
 export async function listExerciseLibrary(): Promise<ExerciseLibraryItem[]> {
-  await requireCoachOrAdmin();
+  const { organizationId } = await requireCoachOrAdmin();
   const admin = createAdminClient();
-  const { data, error } = await admin.from("exercise_library").select("id, name, video_url").order("name");
+  const { data, error } = await admin
+    .from("exercise_library")
+    .select("id, name, video_url")
+    .eq("organization_id", organizationId)
+    .order("name");
 
   if (error) throw new Error("Falha ao carregar a biblioteca de exercícios.");
 
   return (data ?? []).map((row) => ({ id: row.id, name: row.name, videoUrl: row.video_url }));
 }
 
-/** Salva (cria ou atualiza pelo nome) um exercício na biblioteca. */
+/** Salva (cria ou atualiza pelo nome) um exercício na biblioteca da própria organização. */
 export async function saveExerciseLibraryItem(input: {
   name: string;
   videoUrl: string | null;
 }): Promise<ExerciseLibraryItem> {
-  await requireCoachOrAdmin();
+  const { organizationId } = await requireCoachOrAdmin();
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("exercise_library")
-    .upsert({ name: input.name, video_url: input.videoUrl }, { onConflict: "name" })
+    .upsert(
+      { organization_id: organizationId, name: input.name, video_url: input.videoUrl },
+      { onConflict: "organization_id,name" }
+    )
     .select("id, name, video_url")
     .single();
 

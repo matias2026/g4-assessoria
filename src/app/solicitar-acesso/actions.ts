@@ -73,7 +73,16 @@ export async function submitAccessRequest(
   }
 
   const admin = createAdminClient();
+
+  // Link público de pedido de acesso ainda não é por organização (isso é
+  // o onboarding de uma assessoria nova, feature maior) — resolve pra
+  // primeira organização cadastrada, que hoje é a única que existe.
+  // Quando existir um link por assessoria de verdade, troca isso pelo id
+  // resolvido a partir da própria URL/subdomínio.
+  const { data: org } = await admin.from("organizations").select("id").order("created_at").limit(1).maybeSingle();
+
   const { error } = await admin.from("access_requests").insert({
+    organization_id: org?.id ?? null,
     full_name: fullName,
     email,
     password,

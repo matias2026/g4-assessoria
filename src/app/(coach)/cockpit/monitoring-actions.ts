@@ -1,5 +1,6 @@
 "use server";
 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { computeMonitoringSummary, type MonitoringSummary } from "@/lib/monitoring";
 import { requireCoachOrAdmin } from "./actions";
 
@@ -26,6 +27,14 @@ export type {
  * da trava de acesso.
  */
 export async function getMonitoringSummary(studentId: string, userId: string | null): Promise<MonitoringSummary> {
-  await requireCoachOrAdmin();
+  const { organizationId } = await requireCoachOrAdmin();
+
+  // Confirma que o aluno é da própria organização antes de calcular o
+  // resumo — sem isso, um treinador conseguiria ver carga/FC/ACWR de um
+  // aluno de outra organização só passando o id (service role ignora RLS).
+  const admin = createAdminClient();
+  const { data } = await admin.from("alunos").select("id").eq("id", studentId).eq("organization_id", organizationId).maybeSingle();
+  if (!data) throw new Error("Aluno não encontrado.");
+
   return computeMonitoringSummary(studentId, userId);
 }

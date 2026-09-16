@@ -236,19 +236,97 @@ export interface LastActivity {
 export interface Database {
   public: {
     Tables: {
-      profiles: {
+      organizations: {
         Row: {
           id: string;
-          role: ProfileRole;
-          full_name: string;
+          name: string;
+          logo_url: string | null;
+          contact_phone: string | null;
+          contact_email: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          logo_url?: string | null;
+          contact_phone?: string | null;
+          contact_email?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["organizations"]["Insert"]>;
+        Relationships: [];
+      };
+      plans: {
+        Row: {
+          id: string;
+          name: string;
+          max_athletes: number | null;
+          price_cents: number | null;
+          billing_period: "monthly" | "yearly";
           active: boolean;
           created_at: string;
         };
         Insert: {
+          id?: string;
+          name: string;
+          max_athletes?: number | null;
+          price_cents?: number | null;
+          billing_period?: "monthly" | "yearly";
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["plans"]["Insert"]>;
+        Relationships: [];
+      };
+      subscriptions: {
+        Row: {
           id: string;
+          organization_id: string;
+          plan_id: string | null;
+          status: "trialing" | "active" | "past_due" | "canceled";
+          trial_ends_at: string | null;
+          current_period_start: string | null;
+          current_period_end: string | null;
+          canceled_at: string | null;
+          payment_provider: string | null;
+          payment_provider_subscription_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          plan_id?: string | null;
+          status?: "trialing" | "active" | "past_due" | "canceled";
+          trial_ends_at?: string | null;
+          current_period_start?: string | null;
+          current_period_end?: string | null;
+          canceled_at?: string | null;
+          payment_provider?: string | null;
+          payment_provider_subscription_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["subscriptions"]["Insert"]>;
+        Relationships: [];
+      };
+      profiles: {
+        Row: {
+          id: string;
+          organization_id: string;
+          role: ProfileRole;
+          full_name: string;
+          active: boolean;
+          is_platform_admin: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          organization_id: string;
           role: ProfileRole;
           full_name?: string;
           active?: boolean;
+          is_platform_admin?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
@@ -257,6 +335,7 @@ export interface Database {
       alunos: {
         Row: {
           id: string;
+          organization_id: string;
           nome: string;
           whatsapp: string | null;
           modalidade: string | null;
@@ -279,6 +358,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          organization_id: string;
           nome: string;
           whatsapp?: string | null;
           modalidade?: string | null;
@@ -361,12 +441,14 @@ export interface Database {
       exercise_library: {
         Row: {
           id: string;
+          organization_id: string;
           name: string;
           video_url: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
+          organization_id: string;
           name: string;
           video_url?: string | null;
           created_at?: string;
@@ -391,6 +473,7 @@ export interface Database {
       access_requests: {
         Row: {
           id: string;
+          organization_id: string | null;
           full_name: string;
           email: string;
           password: string | null;
@@ -410,6 +493,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          organization_id?: string | null;
           full_name: string;
           email: string;
           password?: string | null;
@@ -454,100 +538,6 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["strava_tokens"]["Insert"]>;
-        Relationships: [];
-      };
-      workouts: {
-        Row: {
-          id: string;
-          profile_id: string;
-          coach_id: string;
-          title: string;
-          description: string | null;
-          discipline: string;
-          scheduled_date: string;
-          status: WorkoutStatus;
-          warmup_text: string | null;
-          main_set_text: string | null;
-          cooldown_text: string | null;
-          video_url: string | null;
-          planned_duration_seconds: number | null;
-          planned_distance_meters: number | null;
-          planned_tss: number | null;
-          planned_if: number | null;
-          planned_hr_min: number | null;
-          planned_hr_avg: number | null;
-          planned_hr_max: number | null;
-          structured_intervals: WorkoutInterval[] | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          profile_id: string;
-          coach_id: string;
-          title: string;
-          description?: string | null;
-          discipline?: string;
-          scheduled_date: string;
-          status?: WorkoutStatus;
-          warmup_text?: string | null;
-          main_set_text?: string | null;
-          cooldown_text?: string | null;
-          video_url?: string | null;
-          planned_duration_seconds?: number | null;
-          planned_distance_meters?: number | null;
-          planned_tss?: number | null;
-          planned_if?: number | null;
-          planned_hr_min?: number | null;
-          planned_hr_avg?: number | null;
-          planned_hr_max?: number | null;
-          structured_intervals?: WorkoutInterval[] | null;
-          created_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["workouts"]["Insert"]>;
-        Relationships: [];
-      };
-      workout_completions: {
-        Row: {
-          id: string;
-          workout_id: string;
-          profile_id: string;
-          source: WorkoutCompletionSource;
-          strava_activity_id: string | null;
-          duration_seconds: number | null;
-          distance_meters: number | null;
-          tss: number | null;
-          if_score: number | null;
-          hr_min: number | null;
-          hr_avg: number | null;
-          hr_max: number | null;
-          rpe: number | null;
-          feeling: number | null;
-          comments: string | null;
-          ai_feedback_draft: string | null;
-          coach_feedback: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          workout_id: string;
-          profile_id: string;
-          source?: WorkoutCompletionSource;
-          strava_activity_id?: string | null;
-          duration_seconds?: number | null;
-          distance_meters?: number | null;
-          tss?: number | null;
-          if_score?: number | null;
-          hr_min?: number | null;
-          hr_avg?: number | null;
-          hr_max?: number | null;
-          rpe?: number | null;
-          feeling?: number | null;
-          comments?: string | null;
-          ai_feedback_draft?: string | null;
-          coach_feedback?: string | null;
-          created_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["workout_completions"]["Insert"]>;
         Relationships: [];
       };
       strava_activities: {

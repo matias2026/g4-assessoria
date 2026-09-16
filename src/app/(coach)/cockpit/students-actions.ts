@@ -22,11 +22,15 @@ function translateAuthError(error: { code?: string; message: string }): string {
   return "Não foi possível criar a conta. Tente novamente.";
 }
 
-/** Lista os alunos cadastrados, em ordem alfabética. */
+/** Lista os alunos cadastrados na própria organização, em ordem alfabética. */
 export async function listStudents(): Promise<MockStudent[]> {
-  await requireCoachOrAdmin();
+  const { organizationId } = await requireCoachOrAdmin();
   const admin = createAdminClient();
-  const { data, error } = await admin.from("alunos").select("*").order("nome");
+  const { data, error } = await admin
+    .from("alunos")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("nome");
 
   if (error) throw new Error("Falha ao carregar os alunos cadastrados.");
 
@@ -104,9 +108,21 @@ export async function listTodayWorkouts(students: MockStudent[]): Promise<Record
  * de hoje, mesmo alvo que listTodayWorkouts busca.
  */
 export async function submitCoachFeedback(studentId: string, feedback: string): Promise<void> {
-  await requireCoachOrAdmin();
+  const { organizationId } = await requireCoachOrAdmin();
   const admin = createAdminClient();
   const todayIso = new Date().toISOString().slice(0, 10);
+
+  // Confirma que o aluno é da própria organização antes de gravar —
+  // sem isso, quem chamasse essa Server Action passando o id de um aluno
+  // de outra organização conseguiria escrever feedback lá (o client usa
+  // service role, que ignora RLS).
+  const { data: alunoRow } = await admin
+    .from("alunos")
+    .select("id")
+    .eq("id", studentId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (!alunoRow) throw new Error("Aluno não encontrado.");
 
   const { error } = await admin
     .from("treinos")
@@ -151,7 +167,7 @@ export interface CreateStudentInput {
  * `admin.auth.admin.createUser` + revert em falha; esta é a terceira.
  */
 export async function createStudentAccount(input: CreateStudentInput): Promise<MockStudent> {
-  await requireCoachOrAdmin();
+  const { organizationId } = await requireCoachOrAdmin();
 
   if (!input.email || !input.password || !input.name) {
     throw new Error("Preencha nome, e-mail e senha.");
@@ -173,7 +189,7 @@ export async function createStudentAccount(input: CreateStudentInput): Promise<M
 
   const { error: profileError } = await admin
     .from("profiles")
-    .insert({ id: created.user.id, role: "athlete", full_name: input.name });
+    .insert({ id: created.user.id, role: "athlete", full_name: input.name, organization_id: organizationId });
 
   if (profileError) {
     await admin.auth.admin.deleteUser(created.user.id);
@@ -187,6 +203,7 @@ export async function createStudentAccount(input: CreateStudentInput): Promise<M
   const { data: alunoRow, error: alunoError } = await admin
     .from("alunos")
     .insert({
+      organization_id: organizationId,
       user_id: created.user.id,
       nome: input.name,
       whatsapp: input.phone || null,
@@ -228,9 +245,12 @@ export type StudentProfileInput = Omit<CreateStudentInput, "email" | "password">
  * mexe em Auth/profiles, só atualiza a linha em alunos.
  */
 export async function completeStudentProfile(id: string, input: StudentProfileInput): Promise<MockStudent> {
-  await requireCoachOrAdmin();
+  const { organizationId } = await requireCoachOrAdmin();
   const admin = createAdminClient();
 
+  // organization_id no filtro do update impede um treinador de uma
+  // organização editar a ficha de um aluno de outra só sabendo o id
+  // (service role ignora RLS, então essa checagem tem que estar aqui).
   const { data: alunoRow, error } = await admin
     .from("alunos")
     .update({
@@ -252,6 +272,7 @@ export async function completeStudentProfile(id: string, input: StudentProfileIn
       coach_notes: input.coachNotes,
     })
     .eq("id", id)
+    .eq("organization_id", organizationId)
     .select("*")
     .single();
 
