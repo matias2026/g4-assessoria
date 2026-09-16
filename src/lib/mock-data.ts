@@ -685,6 +685,8 @@ export function buildPrescribedWorkout(
     sensacao?: number | null;
     comentarios?: string | null;
     atividade_fit?: UploadedActivity | null;
+    coach_feedback?: string | null;
+    ai_feedback_draft?: string | null;
   }
 ): MockWorkoutDetail {
   const conteudo = treino.conteudo ?? {};
@@ -727,20 +729,10 @@ export function buildPrescribedWorkout(
           rpe: treino.rpe_esforco ?? null,
           feeling: treino.sensacao ?? null,
           comments: treino.comentarios ?? null,
-          aiFeedbackDraft: null,
-          coachFeedback: null,
+          aiFeedbackDraft: treino.ai_feedback_draft ?? null,
+          coachFeedback: treino.coach_feedback ?? null,
         }
       : null,
     uploadedActivity: atividade,
   };
 }
-
-export const mockWeeklyHistory: { day: string; status: WorkoutStatus }[] = [
-  { day: "Seg", status: "done" },
-  { day: "Ter", status: "done" },
-  { day: "Qua", status: "missed" },
-  { day: "Qui", status: "done" },
-  { day: "Sex", status: "pending" },
-  { day: "Sáb", status: "pending" },
-  { day: "Dom", status: "pending" },
-];

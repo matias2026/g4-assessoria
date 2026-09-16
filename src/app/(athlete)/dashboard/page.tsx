@@ -14,16 +14,39 @@ import {
   DEFAULT_COACH_NAME,
   DEFAULT_COACH_PHONE,
   DEMO_WORKOUT_ID,
-  mockWeeklyHistory,
   mockWorkoutDetails,
   PREVIEW_DISCIPLINES,
   type MockWorkoutDetail,
 } from "@/lib/mock-data";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { PrescriptionContent, ProfileRole } from "@/lib/supabase/types";
+import type { PrescriptionContent, ProfileRole, WorkoutStatus } from "@/lib/supabase/types";
 
 const WEEKDAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const SHORT_WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+// Semana real do aluno (Seg-Dom) a partir dos treinos já enviados — dia sem
+// treino enviado fica "pending" (neutro), nunca inventa "concluído"/"perdido"
+// pra um dia que não teve prescrição nenhuma.
+function buildWeeklyHistory(weekTreinos: Treino[], reference: Date): { day: string; status: WorkoutStatus }[] {
+  const { startIso } = currentWeekRangeIso(reference);
+  const [y, m, d] = startIso.split("-").map(Number);
+  const monday = new Date(y, m - 1, d);
+  const todayIso = reference.toISOString().slice(0, 10);
+  const byDate = new Map(weekTreinos.map((t) => [t.dataIso, t]));
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + i);
+    const iso = date.toISOString().slice(0, 10);
+    const label = SHORT_WEEKDAY_LABELS[date.getDay()];
+    const treino = byDate.get(iso);
+
+    if (!treino) return { day: label, status: "pending" as WorkoutStatus };
+    if (treino.concluido) return { day: label, status: "done" as WorkoutStatus };
+    return { day: label, status: (iso < todayIso ? "missed" : "pending") as WorkoutStatus };
+  });
+}
 
 // Segunda a domingo da semana de `reference`, em ISO (YYYY-MM-DD) — usado
 // pra buscar só os treinos já enviados dessa semana no carrossel da Home.
@@ -215,7 +238,9 @@ async function resolveWorkout(previewDiscipline?: string): Promise<ResolvedWorko
     // nunca aparece aqui, só depois de "Enviar treino").
     const { data: treinoData } = await supabase
       .from("treinos")
-      .select("titulo, modalidade, descricao, concluido, conteudo, rpe_esforco, sensacao, comentarios, atividade_fit")
+      .select(
+        "titulo, modalidade, descricao, concluido, conteudo, rpe_esforco, sensacao, comentarios, atividade_fit, coach_feedback, ai_feedback_draft"
+      )
       .eq("aluno_id", aluno.id)
       .eq("data", todayIso)
       .eq("enviado", true)
@@ -346,7 +371,7 @@ export default async function AthleteDashboardPage({
         <TreinoCarousel treinos={weekTreinos} onToggleComplete={setWeekWorkoutCompletion} />
       )}
       <TrainingSummaryCards isPreview={isAdmin} />
-      <WeeklyHistory days={mockWeeklyHistory} />
+      <WeeklyHistory days={buildWeeklyHistory(weekTreinos, new Date())} />
     </main>
   );
 }

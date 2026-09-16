@@ -10,6 +10,7 @@ import { ZonesChart } from "@/components/workout/ZonesChart";
 import { buildActivityDetailFromUpload } from "@/lib/activity-detail";
 import type { MockStudent, MockWorkoutDetail } from "@/lib/mock-data";
 import type { FeedbackDraftInput } from "@/lib/ai/gemini";
+import { submitCoachFeedback } from "@/app/(coach)/cockpit/students-actions";
 
 interface AnalyzeTabProps {
   students: MockStudent[];
@@ -129,6 +130,7 @@ export function AnalyzeTab({ students, workouts, selectedStudentId, onSelectStud
       <AiFeedbackComposer
         draftInput={draftInput}
         initialValue={workout.completed?.coachFeedback ?? workout.completed?.aiFeedbackDraft ?? ""}
+        onSend={(feedback) => submitCoachFeedback(student.id, feedback)}
       />
     </div>
   );

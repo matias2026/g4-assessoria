@@ -8,15 +8,16 @@ import type { FeedbackDraftInput } from "@/lib/ai/gemini";
 interface AiFeedbackComposerProps {
   draftInput: FeedbackDraftInput;
   initialValue: string;
+  onSend: (feedback: string) => Promise<void>;
 }
 
 // Composer do treinador: gera um rascunho com IA (Gemini), permite editar
 // e "enviar" — o texto final é o que aparece como Feedback do Professor
-// para o atleta. TODO: persistir em workout_completions.coach_feedback via
-// Supabase quando o projeto estiver conectado (hoje só atualiza a tela).
-export function AiFeedbackComposer({ draftInput, initialValue }: AiFeedbackComposerProps) {
+// para o atleta, salvo de verdade via onSend (treinos.coach_feedback).
+export function AiFeedbackComposer({ draftInput, initialValue, onSend }: AiFeedbackComposerProps) {
   const [text, setText] = useState(initialValue);
   const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +47,19 @@ export function AiFeedbackComposer({ draftInput, initialValue }: AiFeedbackCompo
     }
   }
 
+  async function handleSend() {
+    setError(null);
+    setSending(true);
+    try {
+      await onSend(text);
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha ao enviar o feedback.");
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <Card>
       <div className="flex items-center justify-between gap-4">
@@ -72,8 +86,8 @@ export function AiFeedbackComposer({ draftInput, initialValue }: AiFeedbackCompo
         <p className="text-xs text-g4-muted">
           O rascunho de IA é só o ponto de partida — revise antes de enviar.
         </p>
-        <Button variant="primary" className="px-5" onClick={() => setSent(true)} disabled={!text.trim()}>
-          {sent ? "Enviado ✓" : "Enviar ao atleta"}
+        <Button variant="primary" className="px-5" onClick={handleSend} disabled={!text.trim() || sending}>
+          {sending ? "Enviando..." : sent ? "Enviado ✓" : "Enviar ao atleta"}
         </Button>
       </div>
     </Card>

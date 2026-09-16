@@ -42,10 +42,7 @@ interface AddStudentModalProps {
  * Modal de cadastro/edição de aluno: dados corporais gerais + seções
  * específicas por modalidade (campos compartilhados com o autoatendimento
  * do aluno via StudentProfileFields), mais e-mail/senha (só ao criar
- * conta nova) e o comentário geral do treinador (só ao editar). TODO:
- * substituir onAddStudent por leitura real quando cockpit/page.tsx buscar
- * a lista de alunos por Supabase (já feito) — este modal só falta migrar
- * o resto do fluxo de prescrição.
+ * conta nova) e o comentário geral do treinador (só ao editar).
  */
 export function AddStudentModal({
   open,

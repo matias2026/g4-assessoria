@@ -63,7 +63,9 @@ export async function listTodayWorkouts(students: MockStudent[]): Promise<Record
   const todayIso = new Date().toISOString().slice(0, 10);
   const { data, error } = await admin
     .from("treinos")
-    .select("aluno_id, titulo, modalidade, descricao, concluido, conteudo, rpe_esforco, sensacao, comentarios, atividade_fit")
+    .select(
+      "aluno_id, titulo, modalidade, descricao, concluido, conteudo, rpe_esforco, sensacao, comentarios, atividade_fit, coach_feedback, ai_feedback_draft"
+    )
     .in(
       "aluno_id",
       students.map((s) => s.id)
@@ -92,6 +94,31 @@ export async function listTodayWorkouts(students: MockStudent[]): Promise<Record
   }
 
   return workouts;
+}
+
+/**
+ * Salva o feedback do treinador (com ou sem apoio de IA) no treino de hoje
+ * do aluno — antes o composer (AiFeedbackComposer.tsx) só marcava
+ * "Enviado ✓" na tela e nunca gravava nada, então o aluno nunca recebia o
+ * feedback de verdade e ele sumia ao recarregar a página. Sempre no treino
+ * de hoje, mesmo alvo que listTodayWorkouts busca.
+ */
+export async function submitCoachFeedback(studentId: string, feedback: string): Promise<void> {
+  await requireCoachOrAdmin();
+  const admin = createAdminClient();
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  const { error } = await admin
+    .from("treinos")
+    .update({ coach_feedback: feedback })
+    .eq("aluno_id", studentId)
+    .eq("data", todayIso)
+    .eq("enviado", true);
+
+  if (error) {
+    console.error("[cockpit] erro ao salvar feedback do treinador:", error.message);
+    throw new Error("Não foi possível salvar o feedback agora.");
+  }
 }
 
 export interface CreateStudentInput {

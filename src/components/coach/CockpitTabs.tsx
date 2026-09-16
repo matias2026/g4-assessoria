@@ -36,10 +36,11 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 /**
- * Shell do Cockpit do treinador: mantém o cadastro de alunos e as
- * prescrições em memória (useState) e distribui as funcionalidades em 4
- * abas, em vez de uma tela única com tudo misturado. TODO: substituir o
- * estado local por consultas/mutations reais via Supabase.
+ * Shell do Cockpit do treinador: os dados nascem de uma busca real no
+ * Supabase (cockpit/page.tsx) e ficam em cache local (useState) — cada
+ * mutação (addStudent, saveWorkout, sendWorkout etc.) chama uma Server
+ * Action de verdade e só depois atualiza o estado local, nunca o
+ * contrário.
  */
 export function CockpitTabs({
   initialStudents,

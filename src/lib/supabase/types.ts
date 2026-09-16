@@ -325,6 +325,8 @@ export interface Database {
           conteudo: PrescriptionContent;
           rascunho: PrescriptionDraft;
           enviado: boolean;
+          coach_feedback: string | null;
+          ai_feedback_draft: string | null;
           created_at: string;
         };
         Insert: {
@@ -349,6 +351,8 @@ export interface Database {
           conteudo?: PrescriptionContent;
           rascunho?: PrescriptionDraft;
           enviado?: boolean;
+          coach_feedback?: string | null;
+          ai_feedback_draft?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["treinos"]["Insert"]>;
