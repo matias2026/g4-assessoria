@@ -106,7 +106,7 @@ export function AthleteWorkoutView({ workout, isPreview = false, stravaConnected
         </div>
 
         <h1 className="mt-2 text-xl font-bold text-g4-ink">{workout.title}</h1>
-        <p className="mt-1 text-sm text-g4-muted">{workout.prescription.mainSet}</p>
+        {workout.description && <p className="mt-1 text-sm text-g4-muted">{workout.description}</p>}
         {/* Vídeo incorporado é uma experiência de Academia (exercícios com
             demonstração) — pra Ciclismo/Corrida o link de vídeo/preleção
             segue só na mensagem de WhatsApp, como já era antes. */}
@@ -147,6 +147,36 @@ export function AthleteWorkoutView({ workout, isPreview = false, stravaConnected
         </div>
         {syncMessage && <p className="mt-2 text-right text-xs text-g4-muted">{syncMessage}</p>}
       </Card>
+
+      {/* Aquecimento/parte principal/desaquecimento em blocos separados — antes só
+          "mainSet" aparecia (resumido, sem quebra de linha) e o resto do
+          treino só existia na mensagem de WhatsApp, então quem perdia/apagava
+          a conversa ficava sem saber o treino do dia dentro do próprio app. */}
+      {(workout.prescription.warmup || workout.prescription.mainSet || workout.prescription.cooldown) && (
+        <Card>
+          <CardTitle>Como treinar</CardTitle>
+          <div className="mt-3 flex flex-col gap-4 text-sm">
+            {workout.prescription.warmup && (
+              <div>
+                <p className="font-semibold text-g4-ink">🔥 Aquecimento</p>
+                <p className="mt-1 whitespace-pre-line text-g4-muted">{workout.prescription.warmup}</p>
+              </div>
+            )}
+            {workout.prescription.mainSet && (
+              <div>
+                <p className="font-semibold text-g4-ink">💪 Parte principal</p>
+                <p className="mt-1 whitespace-pre-line text-g4-muted">{workout.prescription.mainSet}</p>
+              </div>
+            )}
+            {workout.prescription.cooldown && (
+              <div>
+                <p className="font-semibold text-g4-ink">🧊 Desaquecimento</p>
+                <p className="mt-1 whitespace-pre-line text-g4-muted">{workout.prescription.cooldown}</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       <AthleteTrainingSessions sessions={workout.trainingSessions} />
 
