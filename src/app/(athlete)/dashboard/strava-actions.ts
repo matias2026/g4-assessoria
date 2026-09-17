@@ -13,28 +13,30 @@ import {
 import { buildUploadedActivityFromStrava } from "@/lib/strava/activity-import";
 import { formatDurationLabel } from "@/lib/fit-import";
 
-// Janela de sincronização: só as atividades dos últimos 30 dias. Sem isso,
-// "sincronizar agora" traz até 30 atividades sempre, não importa a data —
-// pra quem treina bem pouco isso podia voltar meses no passado de uma vez.
-// 30 (em vez de 20) dá margem pra ter pelo menos 2 semanas fechadas de
-// carga e testar o Alerta de overtraining no Monitoramento.
-const SYNC_WINDOW_DAYS = 30;
+// Regra da sincronização: sempre as últimas 20 atividades do atleta,
+// independente de data — não uma janela de dias, que sub-sincronizava
+// quem treina raramente (período curto demais) ou trazia volume
+// desnecessário de quem treina todo dia. "Últimas 20" é sempre o mesmo
+// volume de chamadas à API, não importa o padrão de treino do aluno.
+const SYNC_LAST_N_ACTIVITIES = 20;
 
 /**
- * "Sincronizar agora" — puxa as atividades dos últimos SYNC_WINDOW_DAYS
- * dias do Strava sob demanda (não existia nenhum gatilho pra isso antes; a
+ * "Sincronizar agora" — puxa as últimas SYNC_LAST_N_ACTIVITIES atividades
+ * do Strava sob demanda (não existia nenhum gatilho pra isso antes; a
  * conexão OAuth em si já funcionava, só nunca buscava atividade nenhuma).
- * Renova o token
- * automaticamente quando expirado, mesma lógica que estava parada e sem uso
- * em api/strava/sync/route.ts (removida — virou este Server Action, no
- * mesmo padrão do resto do app).
+ * Renova o token automaticamente quando expirado, mesma lógica que estava
+ * parada e sem uso em api/strava/sync/route.ts (removida — virou este
+ * Server Action, no mesmo padrão do resto do app).
  *
- * Quando uma atividade cai num dia que já tinha um treino prescrito ainda
- * não concluído, busca os streams (potência/FC/cadência/altimetria ponto a
- * ponto) e completa esse treino igual a um upload de .FIT — sem isso, quem
- * só conecta a Strava nunca teria os gráficos de "Analisar treino do aluno",
- * só o resumo. Nunca sobrescreve um treino já concluído (RPE ou .FIT
- * anterior tem prioridade sobre o que a Strava sincronizou depois).
+ * Todas as atividades buscadas são sempre gravadas em `strava_activities`
+ * (usada pro cálculo de carga/ACWR no Monitoramento, ver
+ * src/lib/monitoring.ts — conta cada atividade, mesmo mais de uma no
+ * mesmo dia). Só a ligação com o treino prescrito do dia (que dá os
+ * gráficos ponto a ponto de "Analisar treino do aluno") é 1 por dia — se o
+ * aluno registrou mais de uma atividade no mesmo dia, escolhe a de maior
+ * duração (a sessão principal), não a primeira que a API devolveu. Nunca
+ * sobrescreve um treino já concluído por outra fonte (RPE manual ou .FIT
+ * enviado tem prioridade sobre o que a Strava sincronizou depois).
  */
 /**
  * "Desconectar" — apaga o vínculo do Strava dessa conta. Sem isso, quem
@@ -110,14 +112,9 @@ export async function syncStravaNow(): Promise<{ synced: number }> {
       .eq("profile_id", user.id);
   }
 
-  const after = Math.floor((Date.now() - SYNC_WINDOW_DAYS * 24 * 60 * 60 * 1000) / 1000);
-
   let activities;
   try {
-    // per_page alto o bastante pra cobrir a janela mesmo pra quem treina
-    // 2x/dia (Strava limita a 200 por página) — quem filtra de verdade é o
-    // "after".
-    activities = await fetchAthleteActivities(accessToken, { after, perPage: 100 });
+    activities = await fetchAthleteActivities(accessToken, { perPage: SYNC_LAST_N_ACTIVITIES });
   } catch (e) {
     console.error("[strava] erro ao buscar atividades:", e instanceof Error ? e.message : e);
     throw new Error("Não foi possível buscar as atividades do Strava agora. Tente de novo em instantes.");
@@ -181,9 +178,22 @@ export async function syncStravaNow(): Promise<{ synced: number }> {
   const { data: aluno } = await admin.from("alunos").select("id").eq("user_id", user.id).maybeSingle();
 
   if (aluno) {
+    // Um treino é 1 linha por dia — se o aluno registrou mais de uma
+    // atividade na Strava no mesmo dia (ex.: pedal de manhã + academia à
+    // tarde), só dá pra anexar uma a esse treino. Antes, "uma" significava
+    // a primeira do array (a mais recente do dia, já que a Strava devolve
+    // em ordem decrescente) — trocado pela de maior duração, que é a
+    // sessão principal do dia na maioria dos casos.
+    const mainActivityByDate = new Map<string, (typeof activities)[number]>();
     for (const activity of activities) {
       const dateIso = activity.start_date_local.slice(0, 10);
+      const current = mainActivityByDate.get(dateIso);
+      if (!current || activity.moving_time > current.moving_time) {
+        mainActivityByDate.set(dateIso, activity);
+      }
+    }
 
+    for (const [dateIso, activity] of mainActivityByDate) {
       const { data: treino } = await admin
         .from("treinos")
         .select("concluido")
