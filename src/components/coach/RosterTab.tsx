@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { AddStudentModal } from "@/components/coach/AddStudentModal";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusDot } from "@/components/ui/StatusDot";
 import type { MockStudent } from "@/lib/mock-data";
-import type { CreateStudentInput, StudentProfileInput } from "@/app/(coach)/cockpit/students-actions";
+import {
+  syncAllStudentsStrava,
+  type CreateStudentInput,
+  type StudentProfileInput,
+} from "@/app/(coach)/cockpit/students-actions";
 
 interface RosterTabProps {
   students: MockStudent[];
@@ -39,6 +43,24 @@ export function RosterTab({ students, onAddStudent, onSaveProfile }: RosterTabPr
   // logo depois de fechar sem salvar, então o formulário nunca reaparece
   // com dados de uma edição anterior descartada.
   const [openCount, setOpenCount] = useState(0);
+  const [syncing, startSyncTransition] = useTransition();
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  function handleSyncAllStrava() {
+    setSyncMessage(null);
+    startSyncTransition(async () => {
+      try {
+        const { studentsSynced, activitiesSynced } = await syncAllStudentsStrava();
+        setSyncMessage(
+          studentsSynced === 0
+            ? "Nenhum aluno com Strava conectado ainda."
+            : `${activitiesSynced} atividade(s) atualizada(s) de ${studentsSynced} aluno(s).`
+        );
+      } catch {
+        setSyncMessage("Não foi possível atualizar agora. Tente de novo em instantes.");
+      }
+    });
+  }
 
   function openNewStudent() {
     setEditingStudent(null);
@@ -59,10 +81,16 @@ export function RosterTab({ students, onAddStudent, onSaveProfile }: RosterTabPr
           <h2 className="text-lg font-bold text-g4-ink">Alunos cadastrados ({students.length})</h2>
           <p className="text-sm text-g4-muted">Cadastro geral: FTP, peso, modalidade e status do dia.</p>
         </div>
-        <Button variant="primary" className="w-full sm:w-auto sm:px-4" onClick={openNewStudent}>
-          + Adicionar novo aluno
-        </Button>
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <Button variant="secondary" className="w-full sm:w-auto sm:px-4" onClick={handleSyncAllStrava} disabled={syncing}>
+            {syncing ? "Atualizando Strava..." : "Atualizar Strava de todos"}
+          </Button>
+          <Button variant="primary" className="w-full sm:w-auto sm:px-4" onClick={openNewStudent}>
+            + Adicionar novo aluno
+          </Button>
+        </div>
       </div>
+      {syncMessage && <p className="text-sm text-g4-muted">{syncMessage}</p>}
 
       {/* key muda a cada abertura — remonta o modal do zero, garantindo que
           o formulário nasça com os dados certos sem precisar de um

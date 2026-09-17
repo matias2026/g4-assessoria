@@ -1,8 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mapAlunoRow } from "@/lib/map-aluno-row";
 import { buildPrescribedWorkout, type MockStudent, type MockWorkoutDetail } from "@/lib/mock-data";
+import { refreshStravaToken } from "@/lib/strava/client";
+import { pullStravaActivities } from "@/lib/strava/sync";
 import { requireCoachOrAdmin } from "./actions";
 
 // Mesmo mapa de códigos estáveis do Supabase Auth usado em
@@ -282,4 +285,69 @@ export async function completeStudentProfile(id: string, input: StudentProfileIn
   }
 
   return mapAlunoRow(alunoRow);
+}
+
+// Igual à sincronização automática da conexão (ver api/strava/callback/
+// route.ts) — 30 pra trazer um histórico útil de quem já estava conectado
+// antes dessa quantidade existir, não só as próximas 20 do botão manual do
+// aluno.
+const BULK_SYNC_ACTIVITIES_PER_STUDENT = 30;
+
+export interface SyncAllStudentsStravaResult {
+  studentsSynced: number;
+  activitiesSynced: number;
+}
+
+/**
+ * "Atualizar Strava de todos" no Cockpit — puxa atividades de todo aluno
+ * da organização que já tem o Strava conectado, sem esperar o próprio
+ * aluno clicar em "Sincronizar agora" (dashboard/strava-actions.ts). Usa a
+ * mesma lógica de busca/gravação (src/lib/strava/sync.ts), só trocando de
+ * quem é "o usuário logado" pra "cada aluno com strava_tokens" — útil
+ * sobretudo pra atualizar de uma vez quem conectou antes de alguma
+ * melhoria na sincronização existir.
+ */
+export async function syncAllStudentsStrava(): Promise<SyncAllStudentsStravaResult> {
+  const { organizationId } = await requireCoachOrAdmin();
+  const admin = createAdminClient();
+
+  const { data: alunos } = await admin.from("alunos").select("user_id").eq("organization_id", organizationId);
+  const userIds = (alunos ?? []).map((a) => a.user_id).filter((id): id is string => id != null);
+
+  if (userIds.length === 0) return { studentsSynced: 0, activitiesSynced: 0 };
+
+  const { data: tokenRows } = await admin.from("strava_tokens").select("*").in("profile_id", userIds);
+
+  let studentsSynced = 0;
+  let activitiesSynced = 0;
+
+  for (const tokenRow of tokenRows ?? []) {
+    try {
+      let accessToken = tokenRow.access_token;
+      const isExpired = new Date(tokenRow.expires_at).getTime() <= Date.now();
+
+      if (isExpired) {
+        const refreshed = await refreshStravaToken(tokenRow.refresh_token);
+        accessToken = refreshed.access_token;
+        await admin
+          .from("strava_tokens")
+          .update({
+            access_token: refreshed.access_token,
+            refresh_token: refreshed.refresh_token,
+            expires_at: new Date(refreshed.expires_at * 1000).toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("profile_id", tokenRow.profile_id);
+      }
+
+      const { synced } = await pullStravaActivities(admin, tokenRow.profile_id, accessToken, BULK_SYNC_ACTIVITIES_PER_STUDENT);
+      studentsSynced += 1;
+      activitiesSynced += synced;
+    } catch (e) {
+      console.error("[cockpit] erro ao sincronizar Strava em lote para", tokenRow.profile_id, ":", e instanceof Error ? e.message : e);
+    }
+  }
+
+  revalidatePath("/cockpit");
+  return { studentsSynced, activitiesSynced };
 }

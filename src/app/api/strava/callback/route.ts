@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { exchangeStravaCode } from "@/lib/strava/client";
+import { pullStravaActivities } from "@/lib/strava/sync";
+
+// Assim que a conta conecta, já traz um histórico maior (30, mais que as
+// 20 do botão manual "Sincronizar agora") — sem isso, o aluno conectava o
+// Strava e via a tela vazia até clicar em sincronizar, o que muita gente
+// nem sabe que precisa fazer. Nunca depende de o aluno já ter um treino
+// prescrito: toda atividade buscada é gravada de qualquer forma (ver
+// src/lib/strava/sync.ts).
+const CONNECT_INITIAL_SYNC_COUNT = 30;
 
 // Recebe o retorno do Strava e troca o code por tokens. O `state` que o
 // Strava ecoa de volta é só um valor que /api/strava/connect gerou e nunca
@@ -45,6 +54,14 @@ export async function GET(request: Request) {
     );
 
     if (error) throw error;
+
+    // Falha aqui não desfaz a conexão — o token já está salvo e "Sincronizar
+    // agora" continua disponível pro aluno tentar de novo manualmente.
+    try {
+      await pullStravaActivities(admin, user.id, tokens.access_token, CONNECT_INITIAL_SYNC_COUNT);
+    } catch (e) {
+      console.error("[strava] falha ao sincronizar histórico inicial (conexão salva mesmo assim):", e);
+    }
 
     return NextResponse.redirect(new URL("/dashboard?strava=conectado", request.url));
   } catch {
