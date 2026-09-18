@@ -1,6 +1,7 @@
 import { AdminPreviewSwitcher } from "@/components/athlete/AdminPreviewSwitcher";
 import { AthleteHeader } from "@/components/athlete/AthleteHeader";
 import { NoWorkoutCard } from "@/components/athlete/NoWorkoutCard";
+import { StravaConnectCard } from "@/components/athlete/StravaConnectCard";
 import { TrainingSummaryCards } from "@/components/athlete/TrainingSummaryCards";
 import { WeeklyHistory } from "@/components/athlete/WeeklyHistory";
 import { AthleteWorkoutView } from "@/components/workout/AthleteWorkoutView";
@@ -365,7 +366,10 @@ export default async function AthleteDashboardPage({
           hrMax={hrMax}
         />
       ) : (
-        <NoWorkoutCard talkToCoachLink={talkToCoachLink} coachName={coachName} />
+        <>
+          <NoWorkoutCard talkToCoachLink={talkToCoachLink} coachName={coachName} />
+          <StravaConnectCard connected={stravaConnected} />
+        </>
       )}
       {weekTreinos.length > 0 && (
         <TreinoCarousel treinos={weekTreinos} onToggleComplete={setWeekWorkoutCompletion} />

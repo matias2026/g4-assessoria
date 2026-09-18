@@ -14,9 +14,9 @@ import { VideoEmbed } from "@/components/workout/VideoEmbed";
 import { buildHrZoneTableLines } from "@/lib/hr-zones";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { formatDistance, formatDuration } from "@/lib/workout-metrics";
+import { useStravaConnect } from "@/lib/useStravaConnect";
 import type { MockWorkoutDetail } from "@/lib/mock-data";
 import { completeOwnWorkout } from "@/app/(athlete)/dashboard/profile-actions";
-import { disconnectStrava, syncStravaNow } from "@/app/(athlete)/dashboard/strava-actions";
 
 const GARMIN_CONNECT_URL = "https://connect.garmin.com/modern/";
 
@@ -54,14 +54,17 @@ export function AthleteWorkoutView({
   const [modalOpen, setModalOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  // Espelha a prop em estado local pra atualizar o badge na hora ao
-  // desconectar, sem depender de recarregar a página inteira.
-  const [connected, setConnected] = useState(stravaConnected);
-  const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
-  const [disconnectError, setDisconnectError] = useState<string | null>(null);
+  const {
+    connected,
+    syncing,
+    syncMessage,
+    confirmingDisconnect,
+    disconnecting,
+    disconnectError,
+    handleSync,
+    handleDisconnect,
+    setConfirmingDisconnect,
+  } = useStravaConnect(stravaConnected);
 
   const talkToCoachLink = buildWhatsAppLink(
     workout.coachPhone,
@@ -97,38 +100,6 @@ export function AthleteWorkoutView({
       setCompleteError(e instanceof Error ? e.message : "Não foi possível registrar a conclusão do treino.");
     } finally {
       setCompleting(false);
-    }
-  }
-
-  async function handleSync() {
-    setSyncMessage(null);
-    setSyncing(true);
-    try {
-      const { synced } = await syncStravaNow();
-      setSyncMessage(
-        synced > 0 ? `${synced} atividade${synced > 1 ? "s" : ""} sincronizada${synced > 1 ? "s" : ""}.` : "Nenhuma atividade nova."
-      );
-    } catch (e) {
-      setSyncMessage(e instanceof Error ? e.message : "Não foi possível sincronizar agora.");
-    } finally {
-      setSyncing(false);
-    }
-  }
-
-  // Desfaz a conexão com o Strava — pra quem conectou a conta errada e
-  // ficava sem jeito nenhum de trocar, já que só existia o botão "Conectar".
-  async function handleDisconnect() {
-    setDisconnectError(null);
-    setDisconnecting(true);
-    try {
-      await disconnectStrava();
-      setConnected(false);
-      setConfirmingDisconnect(false);
-      setSyncMessage(null);
-    } catch (e) {
-      setDisconnectError(e instanceof Error ? e.message : "Não foi possível desconectar agora.");
-    } finally {
-      setDisconnecting(false);
     }
   }
 
