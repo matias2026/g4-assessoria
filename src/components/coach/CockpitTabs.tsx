@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { AnalyzeTab } from "@/components/coach/AnalyzeTab";
 import { MonitoringTab } from "@/components/coach/MonitoringTab";
+import { PhysiologyTab } from "@/components/coach/PhysiologyTab";
 import { PrescribeTab } from "@/components/coach/PrescribeTab";
 import { PrescribedWorkoutsTab } from "@/components/coach/PrescribedWorkoutsTab";
 import { RosterTab } from "@/components/coach/RosterTab";
@@ -24,7 +25,7 @@ interface CockpitTabsProps {
   initialExerciseLibrary: ExerciseLibraryItem[];
 }
 
-type TabKey = "roster" | "prescribe" | "workouts" | "today" | "analyze" | "monitoring";
+type TabKey = "roster" | "prescribe" | "workouts" | "today" | "analyze" | "monitoring" | "physiology";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "roster", label: "Alunos cadastrados" },
@@ -33,6 +34,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "today", label: "Acompanhamento do dia" },
   { key: "analyze", label: "Analisar treino do aluno" },
   { key: "monitoring", label: "Monitoramento do aluno" },
+  { key: "physiology", label: "Fisiologia" },
 ];
 
 /**
@@ -178,6 +180,14 @@ export function CockpitTabs({
 
       {activeTab === "monitoring" && (
         <MonitoringTab
+          students={students}
+          selectedStudentId={selectedStudentId}
+          onSelectStudent={setSelectedStudentId}
+        />
+      )}
+
+      {activeTab === "physiology" && (
+        <PhysiologyTab
           students={students}
           selectedStudentId={selectedStudentId}
           onSelectStudent={setSelectedStudentId}

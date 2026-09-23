@@ -355,6 +355,25 @@ resultado no `CoachFeedbackCard`: o comentário final do treinador, com um
 selo "✨ com apoio de IA" quando houve rascunho, mais o RPE/sensação que ele
 mesmo registrou.
 
+## Avaliação fisiológica (lactato/glicemia)
+
+Aba "Fisiologia" no Cockpit — registro de teste incremental (degraus de
+potência/pace, glicemia, FC, lactato, PSE por estágio), gráfico da curva
+de lactato (`Recharts`) e os limiares LT1/LT2 marcados **manualmente**
+pelo treinador sobre o gráfico. Primeira versão, deliberadamente enxuta:
+
+- Sem detecção automática de limiar (Dmax/OBLA/log-log) — o treinador
+  decide olhando a curva, evita publicar um número calculado sem validar
+  a fórmula com quem usa de verdade.
+- Sem parecer gerado por IA, sem HRV, sem exportação em PDF.
+- Não atualiza as zonas de treino do aluno automaticamente — isso
+  continua manual em "Alunos cadastrados" > ficha do aluno.
+- Não aparece pro atleta (só o treinador vê) nesta versão.
+
+Schema em `avaliacoes_fisiologicas` (cabeçalho do teste, com os campos de
+LT1/LT2) e `estagios_teste_lactato` (uma linha por estágio coletado) —
+`supabase/migrations/0026_avaliacao_fisiologica.sql`.
+
 ## Estrutura de pastas
 
 ```

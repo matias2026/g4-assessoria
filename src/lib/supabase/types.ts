@@ -472,6 +472,64 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["aluno_notes"]["Insert"]>;
         Relationships: [];
       };
+      avaliacoes_fisiologicas: {
+        Row: {
+          id: string;
+          aluno_id: string;
+          data_avaliacao: string;
+          tipo_teste: "ciclismo" | "corrida" | "outro";
+          observacoes: string | null;
+          lt1_potencia: number | null;
+          lt1_fc: number | null;
+          lt2_potencia: number | null;
+          lt2_fc: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          aluno_id: string;
+          data_avaliacao?: string;
+          tipo_teste?: "ciclismo" | "corrida" | "outro";
+          observacoes?: string | null;
+          lt1_potencia?: number | null;
+          lt1_fc?: number | null;
+          lt2_potencia?: number | null;
+          lt2_fc?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["avaliacoes_fisiologicas"]["Insert"]>;
+        Relationships: [];
+      };
+      estagios_teste_lactato: {
+        Row: {
+          id: string;
+          avaliacao_id: string;
+          estagio_numero: number;
+          tempo_minutos: number | null;
+          potencia_watts: number | null;
+          pace: string | null;
+          glicemia: number | null;
+          fc_bpm: number | null;
+          lactato_mmol: number | null;
+          pse: number | null;
+        };
+        Insert: {
+          id?: string;
+          avaliacao_id: string;
+          estagio_numero: number;
+          tempo_minutos?: number | null;
+          potencia_watts?: number | null;
+          pace?: string | null;
+          glicemia?: number | null;
+          fc_bpm?: number | null;
+          lactato_mmol?: number | null;
+          pse?: number | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["estagios_teste_lactato"]["Insert"]>;
+        Relationships: [];
+      };
       access_requests: {
         Row: {
           id: string;
