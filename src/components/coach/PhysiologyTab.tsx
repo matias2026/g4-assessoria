@@ -858,7 +858,7 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
                 (7 colunas + remover) só cabe rolando na horizontal, o que é
                 ruim pra digitar valor de lactímetro/glicosímetro durante o
                 teste. Mesmo padrão de dupla listagem do RosterTab.tsx. */}
-            <div className="flex flex-col gap-4 p-4 sm:hidden">
+            <div className="flex flex-col gap-4 p-4 pb-0 sm:hidden">
               {openAssessment.stages.length === 0 && (
                 <p className="text-center text-sm text-g4-muted">Nenhum estágio ainda — toque em &ldquo;+ Adicionar estágio&rdquo;.</p>
               )}
