@@ -369,6 +369,35 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
             </label>
           </Card>
 
+          {(student.cycling?.ftpWatts != null ||
+            student.cycling?.hrMax != null ||
+            student.running?.hrMax != null ||
+            student.running?.thresholdPace) && (
+            <Card className="bg-g4-surface-alt">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wide text-lime-deep">
+                  Já cadastrado na ficha
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-g4-ink">
+                {openAssessment.tipoTeste === "corrida" ? (
+                  <>
+                    {student.running?.hrMax != null && <>FC máxima: <strong>{student.running.hrMax} bpm</strong>. </>}
+                    {student.running?.thresholdPace && <>Pace de limiar: <strong>{student.running.thresholdPace}/km</strong>.</>}
+                  </>
+                ) : (
+                  <>
+                    {student.cycling?.ftpWatts != null && <>FTP: <strong>{student.cycling.ftpWatts} W</strong>. </>}
+                    {student.cycling?.hrMax != null && <>FC máxima: <strong>{student.cycling.hrMax} bpm</strong>.</>}
+                  </>
+                )}
+              </p>
+              <p className="mt-1 text-xs text-g4-muted">
+                Referência da ficha do aluno, não uma estimativa — compare com o que a avaliação encontrar.
+              </p>
+            </Card>
+          )}
+
           <Card>
             <CardTitle>Limiares (marcados pelo treinador)</CardTitle>
             <p className="mt-1 text-xs text-g4-muted">
@@ -441,14 +470,113 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
             </Card>
           )}
 
-          <Card className="overflow-x-auto p-0">
+          <Card className="p-0">
             <div className="flex items-center justify-between gap-4 p-4 pb-0">
               <CardTitle>Estágios coletados</CardTitle>
               <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={addStage}>
                 + Adicionar estágio
               </Button>
             </div>
-            <table className="mt-3 w-full min-w-[720px] text-left text-sm">
+
+            {/* Celular: cards empilhados, um estágio por vez — a tabela larga
+                (7 colunas + remover) só cabe rolando na horizontal, o que é
+                ruim pra digitar valor de lactímetro/glicosímetro durante o
+                teste. Mesmo padrão de dupla listagem do RosterTab.tsx. */}
+            <div className="flex flex-col gap-4 p-4 sm:hidden">
+              {openAssessment.stages.length === 0 && (
+                <p className="text-center text-sm text-g4-muted">Nenhum estágio ainda — toque em &ldquo;+ Adicionar estágio&rdquo;.</p>
+              )}
+              {openAssessment.stages.map((stage, index) => (
+                <div key={index} className="rounded-xl border border-g4-border p-3">
+                  <div className="flex items-center justify-between border-b border-g4-border pb-2">
+                    <span className="text-xs font-bold text-lime-deep">Estágio {stage.estagioNumero}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeStage(index)}
+                      className="text-xs font-medium text-status-missed underline underline-offset-2 focus-ring"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-4">
+                    <label>
+                      <span className={labelClass}>Tempo (min)</span>
+                      <input
+                        type="number"
+                        value={stage.tempoMinutos ?? ""}
+                        onChange={(e) => updateStage(index, { tempoMinutos: parseNumberOrNull(e.target.value) })}
+                        className={fieldClass}
+                      />
+                    </label>
+                    {openAssessment.tipoTeste === "corrida" ? (
+                      <label>
+                        <span className={labelClass}>Pace</span>
+                        <input
+                          type="text"
+                          placeholder="4:30/km"
+                          value={stage.pace ?? ""}
+                          onChange={(e) => updateStage(index, { pace: e.target.value || null })}
+                          className={fieldClass}
+                        />
+                      </label>
+                    ) : (
+                      <label>
+                        <span className={labelClass}>Potência (W)</span>
+                        <input
+                          type="number"
+                          value={stage.potenciaWatts ?? ""}
+                          onChange={(e) => updateStage(index, { potenciaWatts: parseNumberOrNull(e.target.value) })}
+                          className={fieldClass}
+                        />
+                      </label>
+                    )}
+                    <label>
+                      <span className={labelClass}>Lactato (mmol/L)</span>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={stage.lactatoMmol ?? ""}
+                        onChange={(e) => updateStage(index, { lactatoMmol: parseNumberOrNull(e.target.value) })}
+                        className={fieldClass}
+                      />
+                    </label>
+                    <label>
+                      <span className={labelClass}>Glicemia</span>
+                      <input
+                        type="number"
+                        value={stage.glicemia ?? ""}
+                        onChange={(e) => updateStage(index, { glicemia: parseNumberOrNull(e.target.value) })}
+                        className={fieldClass}
+                      />
+                    </label>
+                    <label>
+                      <span className={labelClass}>FC (bpm)</span>
+                      <input
+                        type="number"
+                        value={stage.fcBpm ?? ""}
+                        onChange={(e) => updateStage(index, { fcBpm: parseNumberOrNull(e.target.value) })}
+                        className={fieldClass}
+                      />
+                    </label>
+                    <label>
+                      <span className={labelClass}>PSE</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={10}
+                        value={stage.pse ?? ""}
+                        onChange={(e) => updateStage(index, { pse: parseNumberOrNull(e.target.value) })}
+                        className={fieldClass}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop/tablet: tabela completa, um estágio por linha. */}
+            <div className="mt-3 hidden overflow-x-auto sm:block">
+            <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="bg-g4-surface-alt text-g4-muted">
                 <tr>
                   <th className="px-3 py-2 font-medium">Estágio</th>
@@ -552,6 +680,7 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
                 )}
               </tbody>
             </table>
+            </div>
             <div className="flex items-center justify-end gap-4 p-4">
               {saveError && <p className="text-sm text-status-missed">{saveError}</p>}
               <Button variant="primary" onClick={handleSave} disabled={saving}>
