@@ -483,6 +483,13 @@ export interface Database {
           lt1_fc: number | null;
           lt2_potencia: number | null;
           lt2_fc: number | null;
+          ai_report_draft: string | null;
+          ai_report_final: string | null;
+          hrv_rmssd_rest: number | null;
+          hrv_sdnn_rest: number | null;
+          hrv_notes: string | null;
+          applied_to_ficha_at: string | null;
+          published: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -496,6 +503,13 @@ export interface Database {
           lt1_fc?: number | null;
           lt2_potencia?: number | null;
           lt2_fc?: number | null;
+          ai_report_draft?: string | null;
+          ai_report_final?: string | null;
+          hrv_rmssd_rest?: number | null;
+          hrv_sdnn_rest?: number | null;
+          hrv_notes?: string | null;
+          applied_to_ficha_at?: string | null;
+          published?: boolean;
           created_at?: string;
           updated_at?: string;
         };

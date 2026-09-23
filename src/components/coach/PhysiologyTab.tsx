@@ -6,13 +6,19 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
+import { detectThresholds } from "@/lib/lactate-threshold";
+import { generatePhysiologyReportPdf } from "@/lib/physiology-pdf";
 import type { MockStudent } from "@/lib/mock-data";
 import {
+  applyThresholdsToFicha,
   createPhysiologyAssessment,
   deletePhysiologyAssessment,
+  generatePhysiologyReportDraft,
   getPhysiologyAssessment,
   listPhysiologyAssessments,
+  saveFinalPhysiologyReport,
   savePhysiologyAssessment,
+  setPhysiologyAssessmentPublished,
   type PhysiologyAssessmentDetail,
   type PhysiologyAssessmentSummary,
   type PhysiologyStage,
@@ -58,12 +64,13 @@ function parseNumberOrNull(raw: string): number | null {
 
 /**
  * Aba "Fisiologia": avaliação de limiar de lactato/glicemia — registro dos
- * estágios de um teste incremental (potência ou pace, glicemia, FC,
- * lactato, PSE), gráfico da curva de lactato e os limiares LT1/LT2
- * marcados manualmente pelo treinador sobre o gráfico. Primeira versão
- * enxuta: sem detecção automática de limiar, sem parecer por IA, sem
- * HRV/PDF — só o registro e a visualização, que já é o que falta pra
- * substituir uma planilha solta.
+ * estágios de um teste incremental, gráfico da curva, detecção automática
+ * de LT1/LT2 (OBLA + Dmax modificado, ver src/lib/lactate-threshold.ts —
+ * sempre uma sugestão, o campo manual é o que vale), HRV de repouso
+ * digitado à mão (nenhuma fonte de sinal bruto pra calcular isso de
+ * verdade), parecer técnico com rascunho por IA (revisado antes de
+ * salvar), publicação controlada pro aluno ver na própria área, aplicar
+ * limiar à ficha (sempre com confirmação explícita) e exportação em PDF.
  */
 export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: PhysiologyTabProps) {
   const student = students.find((s) => s.id === selectedStudentId) ?? students[0];
@@ -79,6 +86,14 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
   const [creating, setCreating] = useState(false);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportText, setReportText] = useState("");
+  const [savingReport, setSavingReport] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [confirmingApplyFicha, setConfirmingApplyFicha] = useState(false);
+  const [applyingFicha, setApplyingFicha] = useState(false);
+  const [applyFichaError, setApplyFichaError] = useState<string | null>(null);
 
   const assessmentsLoaded = studentId !== undefined && Object.prototype.hasOwnProperty.call(assessmentsByStudent, studentId);
   const assessments = studentId !== undefined ? (assessmentsByStudent[studentId] ?? []) : [];
@@ -100,11 +115,20 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentId]);
 
+  function resetEditorState() {
+    setReportText("");
+    setReportError(null);
+    setConfirmingApplyFicha(false);
+    setApplyFichaError(null);
+  }
+
   async function handleOpen(assessmentId: string) {
     setOpenError(null);
     try {
       const detail = await getPhysiologyAssessment(assessmentId);
       setOpenAssessment(detail);
+      resetEditorState();
+      setReportText(detail.aiReportFinal ?? detail.aiReportDraft ?? "");
     } catch (e) {
       setOpenError(e instanceof Error ? e.message : "Não foi possível abrir a avaliação.");
     }
@@ -119,7 +143,16 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
       setAssessmentsByStudent((prev) => ({
         ...prev,
         [studentId]: [
-          { id: created.id, dataAvaliacao: created.dataAvaliacao, tipoTeste: created.tipoTeste, lt1Potencia: null, lt1Fc: null, lt2Potencia: null, lt2Fc: null },
+          {
+            id: created.id,
+            dataAvaliacao: created.dataAvaliacao,
+            tipoTeste: created.tipoTeste,
+            lt1Potencia: null,
+            lt1Fc: null,
+            lt2Potencia: null,
+            lt2Fc: null,
+            published: false,
+          },
           ...(prev[studentId] ?? []),
         ],
       }));
@@ -183,6 +216,9 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
         lt1Fc: openAssessment.lt1Fc,
         lt2Potencia: openAssessment.lt2Potencia,
         lt2Fc: openAssessment.lt2Fc,
+        hrvRmssdRest: openAssessment.hrvRmssdRest,
+        hrvSdnnRest: openAssessment.hrvSdnnRest,
+        hrvNotes: openAssessment.hrvNotes,
         stages: openAssessment.stages.map(({ id: _id, ...rest }) => rest),
       });
       setAssessmentsByStudent((prev) => ({
@@ -197,6 +233,7 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
                 lt1Fc: openAssessment.lt1Fc,
                 lt2Potencia: openAssessment.lt2Potencia,
                 lt2Fc: openAssessment.lt2Fc,
+                published: a.published,
               }
             : a
         ),
@@ -208,6 +245,87 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
     }
   }
 
+  // Publicar/despublicar pro aluno — a avaliação só fica visível na área
+  // dele quando `published = true` (ver migração 0027). Nunca automático:
+  // é sempre um clique deliberado do treinador.
+  async function handlePublishToggle() {
+    if (!openAssessment) return;
+    setPublishing(true);
+    try {
+      const nextPublished = !openAssessment.published;
+      await setPhysiologyAssessmentPublished(openAssessment.id, nextPublished);
+      updateOpenAssessment({ published: nextPublished });
+      if (studentId) {
+        setAssessmentsByStudent((prev) => ({
+          ...prev,
+          [studentId]: (prev[studentId] ?? []).map((a) => (a.id === openAssessment.id ? { ...a, published: nextPublished } : a)),
+        }));
+      }
+    } catch (e) {
+      setOpenError(e instanceof Error ? e.message : "Não foi possível atualizar a publicação.");
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  // Gera o rascunho com Gemini — sempre editável antes de salvar como
+  // parecer final (nunca vai pro aluno sem o treinador revisar).
+  async function handleGenerateReport() {
+    if (!openAssessment) return;
+    setGeneratingReport(true);
+    setReportError(null);
+    try {
+      const draft = await generatePhysiologyReportDraft(openAssessment.id);
+      setReportText(draft);
+      updateOpenAssessment({ aiReportDraft: draft });
+    } catch (e) {
+      setReportError(e instanceof Error ? e.message : "Não foi possível gerar o rascunho agora.");
+    } finally {
+      setGeneratingReport(false);
+    }
+  }
+
+  async function handleSaveReport() {
+    if (!openAssessment) return;
+    setSavingReport(true);
+    setReportError(null);
+    try {
+      await saveFinalPhysiologyReport(openAssessment.id, reportText);
+      updateOpenAssessment({ aiReportFinal: reportText });
+    } catch (e) {
+      setReportError(e instanceof Error ? e.message : "Não foi possível salvar o parecer.");
+    } finally {
+      setSavingReport(false);
+    }
+  }
+
+  // Grava o(s) limiar(es) marcados na ficha do aluno — só depois de o
+  // treinador confirmar explicitamente o que vai mudar (ver
+  // confirmingApplyFicha/renderApplyFichaSummary abaixo).
+  async function handleApplyToFicha() {
+    if (!openAssessment) return;
+    setApplyingFicha(true);
+    setApplyFichaError(null);
+    try {
+      await applyThresholdsToFicha(openAssessment.id, {
+        ftpWatts: openAssessment.tipoTeste === "ciclismo" ? openAssessment.lt2Potencia : null,
+        thresholdPace: null,
+        hrThreshold: openAssessment.lt2Fc,
+      });
+      updateOpenAssessment({ appliedToFichaAt: new Date().toISOString() });
+      setConfirmingApplyFicha(false);
+    } catch (e) {
+      setApplyFichaError(e instanceof Error ? e.message : "Não foi possível atualizar a ficha do aluno.");
+    } finally {
+      setApplyingFicha(false);
+    }
+  }
+
+  function handleGeneratePdf() {
+    if (!openAssessment || !student) return;
+    generatePhysiologyReportPdf(student.name, openAssessment);
+  }
+
   if (!student) {
     return <p className="text-sm text-g4-muted">Cadastre um aluno para liberar a aba de fisiologia.</p>;
   }
@@ -217,6 +335,15 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
         .filter((s) => s.lactatoMmol != null)
         .map((s) => ({ x: s.potenciaWatts ?? s.tempoMinutos ?? s.estagioNumero, lactato: s.lactatoMmol, glicemia: s.glicemia }))
     : [];
+
+  // Detecção automática (OBLA 2.0/4.0 mmol/L + Dmax modificado, ver
+  // src/lib/lactate-threshold.ts) — só funciona pra teste por potência
+  // (ciclismo); é sempre uma sugestão, nunca sobrescreve o campo manual
+  // sozinha, o treinador clica em "Usar" se concordar.
+  const detected =
+    openAssessment && openAssessment.tipoTeste !== "corrida"
+      ? detectThresholds(openAssessment.stages.map((s) => ({ intensity: s.potenciaWatts, lactate: s.lactatoMmol, fc: s.fcBpm })))
+      : { lt1Intensity: null, lt1Fc: null, lt2Intensity: null, lt2Fc: null };
 
   return (
     <div className="flex flex-col gap-4">
@@ -265,7 +392,8 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
                   <div>
                     <p className="text-sm font-medium text-g4-ink">
                       {new Date(`${a.dataAvaliacao}T00:00:00`).toLocaleDateString("pt-BR")} ·{" "}
-                      <Badge tone="neutral">{TIPO_TESTE_LABEL[a.tipoTeste]}</Badge>
+                      <Badge tone="neutral">{TIPO_TESTE_LABEL[a.tipoTeste]}</Badge>{" "}
+                      <Badge tone={a.published ? "lime" : "neutral"}>{a.published ? "Publicada" : "Rascunho"}</Badge>
                     </p>
                     <p className="mt-1 text-xs text-g4-muted">
                       {a.lt1Potencia != null || a.lt1Fc != null ? (
@@ -325,13 +453,22 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
           <Card>
             <div className="flex items-center justify-between gap-4">
               <CardTitle>Dados da avaliação</CardTitle>
-              <button
-                type="button"
-                onClick={() => setOpenAssessment(null)}
-                className="text-xs font-semibold text-g4-muted underline underline-offset-2 focus-ring"
-              >
-                ← Voltar
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={handleGeneratePdf}
+                  className="text-xs font-semibold text-lime-deep underline underline-offset-2 focus-ring"
+                >
+                  Gerar PDF do relatório
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpenAssessment(null)}
+                  className="text-xs font-semibold text-g4-muted underline underline-offset-2 focus-ring"
+                >
+                  ← Voltar
+                </button>
+              </div>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-4">
               <label>
@@ -399,10 +536,11 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
           )}
 
           <Card>
-            <CardTitle>Limiares (marcados pelo treinador)</CardTitle>
+            <CardTitle>Limiares</CardTitle>
             <p className="mt-1 text-xs text-g4-muted">
-              Olhe a curva abaixo e digite onde você identifica o LT1 (limiar aeróbico) e o LT2 (limiar
-              anaeróbico) — não é calculado automaticamente nesta versão.
+              {openAssessment.tipoTeste === "corrida"
+                ? "Teste por pace não tem detecção automática nesta versão — marque olhando a curva."
+                : "Sugestão automática (OBLA 2.0/4.0 mmol/L + Dmax modificado) ao lado — clique em \"Usar\" se concordar, ou digite o seu."}
             </p>
             <div className="mt-3 grid grid-cols-2 gap-4">
               <label>
@@ -413,6 +551,15 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
                   onChange={(e) => updateOpenAssessment({ lt1Potencia: parseNumberOrNull(e.target.value) })}
                   className={fieldClass}
                 />
+                {detected.lt1Intensity != null && (
+                  <button
+                    type="button"
+                    onClick={() => updateOpenAssessment({ lt1Potencia: detected.lt1Intensity, lt1Fc: detected.lt1Fc })}
+                    className="mt-1 text-xs text-lime-deep underline underline-offset-2 focus-ring"
+                  >
+                    Sugestão: {detected.lt1Intensity} W{detected.lt1Fc != null ? ` (${detected.lt1Fc} bpm)` : ""} — usar
+                  </button>
+                )}
               </label>
               <label>
                 <span className={labelClass}>LT1 — FC (bpm)</span>
@@ -431,6 +578,15 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
                   onChange={(e) => updateOpenAssessment({ lt2Potencia: parseNumberOrNull(e.target.value) })}
                   className={fieldClass}
                 />
+                {detected.lt2Intensity != null && (
+                  <button
+                    type="button"
+                    onClick={() => updateOpenAssessment({ lt2Potencia: detected.lt2Intensity, lt2Fc: detected.lt2Fc })}
+                    className="mt-1 text-xs text-lime-deep underline underline-offset-2 focus-ring"
+                  >
+                    Sugestão: {detected.lt2Intensity} W{detected.lt2Fc != null ? ` (${detected.lt2Fc} bpm)` : ""} — usar
+                  </button>
+                )}
               </label>
               <label>
                 <span className={labelClass}>LT2 — FC (bpm)</span>
@@ -442,6 +598,43 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
                 />
               </label>
             </div>
+          </Card>
+
+          <Card>
+            <CardTitle>HRV de repouso (opcional)</CardTitle>
+            <p className="mt-1 text-xs text-g4-muted">
+              Digitado de um app/dispositivo externo (Kubios, Elite HRV etc.) — o app não mede HRV
+              diretamente, não calcula nada aqui.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-4">
+              <label>
+                <span className={labelClass}>RMSSD (ms)</span>
+                <input
+                  type="number"
+                  value={openAssessment.hrvRmssdRest ?? ""}
+                  onChange={(e) => updateOpenAssessment({ hrvRmssdRest: parseNumberOrNull(e.target.value) })}
+                  className={fieldClass}
+                />
+              </label>
+              <label>
+                <span className={labelClass}>SDNN (ms)</span>
+                <input
+                  type="number"
+                  value={openAssessment.hrvSdnnRest ?? ""}
+                  onChange={(e) => updateOpenAssessment({ hrvSdnnRest: parseNumberOrNull(e.target.value) })}
+                  className={fieldClass}
+                />
+              </label>
+            </div>
+            <label className="mt-3 block">
+              <span className={labelClass}>Notas de HRV</span>
+              <textarea
+                rows={2}
+                value={openAssessment.hrvNotes}
+                onChange={(e) => updateOpenAssessment({ hrvNotes: e.target.value })}
+                className={fieldClass}
+              />
+            </label>
           </Card>
 
           {chartData.length > 1 && (
@@ -467,6 +660,97 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
                   </LineChart>
                 </ResponsiveContainer>
               </div>
+            </Card>
+          )}
+
+          <Card>
+            <div className="flex items-center justify-between gap-4">
+              <CardTitle>Parecer técnico (rascunho por IA)</CardTitle>
+              <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={handleGenerateReport} disabled={generatingReport}>
+                {generatingReport ? "Gerando..." : "Gerar rascunho com IA"}
+              </Button>
+            </div>
+            <p className="mt-1 text-xs text-g4-muted">
+              Rascunho editável — o aluno só vê a versão que você salvar aqui, e só depois de publicar a
+              avaliação (abaixo).
+            </p>
+            <textarea
+              rows={5}
+              value={reportText}
+              onChange={(e) => setReportText(e.target.value)}
+              placeholder="Gere um rascunho com IA ou escreva o parecer você mesmo."
+              className={cn(fieldClass, "mt-3")}
+            />
+            <div className="mt-3 flex items-center justify-end gap-4">
+              {reportError && <p className="text-sm text-status-missed">{reportError}</p>}
+              <Button variant="primary" className="px-3 py-1.5 text-xs" onClick={handleSaveReport} disabled={savingReport || !reportText.trim()}>
+                {savingReport ? "Salvando..." : "Salvar parecer"}
+              </Button>
+            </div>
+          </Card>
+
+          <Card>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <CardTitle>Publicar pro aluno</CardTitle>
+                <p className="mt-1 text-xs text-g4-muted">
+                  {openAssessment.published
+                    ? "O aluno já vê esta avaliação (estágios, gráfico e parecer salvo) em \"Meu perfil\"."
+                    : "O aluno ainda não vê esta avaliação — é um rascunho seu."}
+                </p>
+              </div>
+              <Button variant={openAssessment.published ? "secondary" : "primary"} onClick={handlePublishToggle} disabled={publishing}>
+                {publishing ? "Atualizando..." : openAssessment.published ? "Despublicar" : "Publicar pro aluno"}
+              </Button>
+            </div>
+          </Card>
+
+          {(openAssessment.lt2Potencia != null || openAssessment.lt2Fc != null) && (
+            <Card>
+              <CardTitle>Aplicar à ficha do aluno</CardTitle>
+              {openAssessment.appliedToFichaAt && (
+                <p className="mt-1 text-xs text-g4-muted">
+                  Última vez aplicado em {new Date(openAssessment.appliedToFichaAt).toLocaleString("pt-BR")}.
+                </p>
+              )}
+              {!confirmingApplyFicha ? (
+                <Button variant="secondary" className="mt-3 px-3 py-1.5 text-xs" onClick={() => setConfirmingApplyFicha(true)}>
+                  Aplicar limiares à ficha
+                </Button>
+              ) : (
+                <div className="mt-3 rounded-xl border border-g4-border bg-g4-surface-alt p-3">
+                  <p className="text-sm text-g4-ink">Isso vai atualizar na ficha do aluno:</p>
+                  <ul className="mt-2 flex flex-col gap-4 text-sm text-g4-ink">
+                    {openAssessment.tipoTeste === "ciclismo" && openAssessment.lt2Potencia != null && (
+                      <li>
+                        FTP: <span className="text-g4-muted">{student.cycling?.ftpWatts ?? "—"} W</span> →{" "}
+                        <strong>{openAssessment.lt2Potencia} W</strong>
+                      </li>
+                    )}
+                    {openAssessment.lt2Fc != null && (
+                      <li>
+                        FC de limiar: <span className="text-g4-muted">
+                          {(openAssessment.tipoTeste === "corrida" ? student.running?.hrThreshold : student.cycling?.hrThreshold) ?? "—"} bpm
+                        </span>{" "}
+                        → <strong>{openAssessment.lt2Fc} bpm</strong>
+                      </li>
+                    )}
+                  </ul>
+                  {applyFichaError && <p className="mt-2 text-sm text-status-missed">{applyFichaError}</p>}
+                  <div className="mt-3 flex items-center gap-4">
+                    <Button variant="primary" className="px-3 py-1.5 text-xs" onClick={handleApplyToFicha} disabled={applyingFicha}>
+                      {applyingFicha ? "Aplicando..." : "Confirmar"}
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingApplyFicha(false)}
+                      className="text-xs text-g4-muted underline underline-offset-2 focus-ring"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
             </Card>
           )}
 

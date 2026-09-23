@@ -14,6 +14,7 @@ interface AthleteMenuProps {
 const MENU_ROUTES = [
   { path: "/dashboard", hash: "", label: "Treinos" },
   { path: "/dashboard/ficha", hash: "", label: "Minha ficha" },
+  { path: "/dashboard/fisiologia", hash: "", label: "Avaliação fisiológica" },
   { path: "/dashboard/senha", hash: "", label: "Alterar senha" },
   { path: "/dashboard/relatorio", hash: "#meu-relatorio", label: "Relatório" },
   { path: "/dashboard/relatorio", hash: "#relatorio-treinador", label: "Relatório do treinador" },

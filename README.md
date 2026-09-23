@@ -359,20 +359,49 @@ mesmo registrou.
 
 Aba "Fisiologia" no Cockpit — registro de teste incremental (degraus de
 potência/pace, glicemia, FC, lactato, PSE por estágio), gráfico da curva
-de lactato (`Recharts`) e os limiares LT1/LT2 marcados **manualmente**
-pelo treinador sobre o gráfico. Primeira versão, deliberadamente enxuta:
+de lactato (`Recharts`) e os limiares LT1/LT2.
 
-- Sem detecção automática de limiar (Dmax/OBLA/log-log) — o treinador
-  decide olhando a curva, evita publicar um número calculado sem validar
-  a fórmula com quem usa de verdade.
-- Sem parecer gerado por IA, sem HRV, sem exportação em PDF.
-- Não atualiza as zonas de treino do aluno automaticamente — isso
-  continua manual em "Alunos cadastrados" > ficha do aluno.
-- Não aparece pro atleta (só o treinador vê) nesta versão.
+- **Detecção automática de limiar** (`src/lib/lactate-threshold.ts`,
+  puro TypeScript, sem dependência externa) — só pra teste por potência
+  (ciclismo):
+  - LT1: OBLA (Onset of Blood Lactate Accumulation) em 2.0 mmol/L, por
+    interpolação linear entre os dois estágios que cercam esse valor.
+  - LT2: Dmax modificado (Bishop et al. 1998) — ajusta um polinômio de 3º
+    grau aos pontos a partir da primeira subida sustentada de lactato
+    (≥0.4 mmol/L entre estágios), traça uma reta do primeiro ao último
+    ponto dessa faixa e acha o ponto da curva mais distante dela (eixos
+    normalizados, senão a escala de potência dominaria a de lactato).
+  - Sempre uma **sugestão** ao lado do campo manual ("Usar") — nunca
+    sobrescreve sozinho; teste por pace (corrida) não tem detecção
+    automática nesta versão, o treinador marca manualmente.
+- **Parecer técnico com IA** (Gemini, mesmo padrão de
+  `src/lib/ai/gemini.ts` usado no feedback pós-treino) — sempre um
+  rascunho editável (`ai_report_draft`); só vira o que o aluno lê
+  (`ai_report_final`) depois de o treinador revisar e salvar.
+- **HRV de repouso** — campos RMSSD/SDNN digitados manualmente (o app não
+  tem nenhuma fonte de RR intervals/sinal bruto pra calcular isso de
+  verdade; se o treinador usa Kubios/Elite HRV/etc., digita o resultado
+  aqui como referência).
+- **Publicação controlada pro aluno** — a avaliação nasce como rascunho
+  (`published = false`); só fica visível em "Meu perfil" > "Avaliação
+  fisiológica" (`/dashboard/fisiologia`, só leitura) depois de o
+  treinador publicar. O aluno nunca vê o rascunho de IA, observações
+  internas do treinador ou uma avaliação ainda não publicada — RLS
+  (`supabase/migrations/0027_avaliacao_fisiologica_completa.sql`) e a
+  Server Action do lado do aluno (`dashboard/physiology-actions.ts`)
+  reforçam isso em duas camadas.
+- **Aplicar à ficha do aluno** — grava LT2 (potência → FTP em ciclismo,
+  FC → FC de limiar em qualquer modalidade) direto no perfil do aluno,
+  sempre atrás de uma confirmação mostrando exatamente "de X para Y"
+  antes de gravar; nunca automático ao salvar a avaliação. Exige que o
+  aluno já tenha o perfil da modalidade cadastrado na ficha.
+- **PDF do relatório** — gerado inteiro no navegador (`jsPDF` +
+  `jspdf-autotable`, sem round-trip pro servidor), com estágios, limiares
+  e o parecer técnico.
 
-Schema em `avaliacoes_fisiologicas` (cabeçalho do teste, com os campos de
-LT1/LT2) e `estagios_teste_lactato` (uma linha por estágio coletado) —
-`supabase/migrations/0026_avaliacao_fisiologica.sql`.
+Schema em `avaliacoes_fisiologicas` (cabeçalho — `supabase/migrations/
+0026_avaliacao_fisiologica.sql` e `0027_avaliacao_fisiologica_completa.sql`)
+e `estagios_teste_lactato` (uma linha por estágio coletado).
 
 ## Estrutura de pastas
 
