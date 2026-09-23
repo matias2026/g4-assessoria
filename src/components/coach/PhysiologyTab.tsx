@@ -400,6 +400,12 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
     openAssessment && openAssessment.tipoTeste !== "corrida"
       ? detectThresholds(openAssessment.stages.map((s) => ({ intensity: s.potenciaWatts, lactate: s.lactatoMmol, fc: s.fcBpm })))
       : { lt1Intensity: null, lt1Fc: null, lt2Intensity: null, lt2Fc: null };
+  // Quantos estágios têm os dois campos que a detecção automática precisa
+  // — usado só pra explicar por que a sugestão não apareceu, quando não
+  // aparece (ver mensagens abaixo dos campos de LT1/LT2).
+  const validStageCount = openAssessment
+    ? openAssessment.stages.filter((s) => s.potenciaWatts != null && s.lactatoMmol != null).length
+    : 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -607,15 +613,22 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
                   onChange={(e) => updateOpenAssessment({ lt1Potencia: parseNumberOrNull(e.target.value) })}
                   className={fieldClass}
                 />
-                {detected.lt1Intensity != null && (
-                  <button
-                    type="button"
-                    onClick={() => updateOpenAssessment({ lt1Potencia: detected.lt1Intensity, lt1Fc: detected.lt1Fc })}
-                    className="mt-1 text-xs text-lime-deep underline underline-offset-2 focus-ring"
-                  >
-                    Sugestão: {detected.lt1Intensity} W{detected.lt1Fc != null ? ` (${detected.lt1Fc} bpm)` : ""} — usar
-                  </button>
-                )}
+                {openAssessment.tipoTeste !== "corrida" &&
+                  (detected.lt1Intensity != null ? (
+                    <button
+                      type="button"
+                      onClick={() => updateOpenAssessment({ lt1Potencia: detected.lt1Intensity, lt1Fc: detected.lt1Fc })}
+                      className="mt-1 text-xs text-lime-deep underline underline-offset-2 focus-ring"
+                    >
+                      Sugestão: {detected.lt1Intensity} W{detected.lt1Fc != null ? ` (${detected.lt1Fc} bpm)` : ""} — usar
+                    </button>
+                  ) : (
+                    <p className="mt-1 text-xs text-g4-muted">
+                      {validStageCount < 2
+                        ? "Sem sugestão: preencha potência e lactato em pelo menos 2 estágios."
+                        : "Sem sugestão: o lactato não cruza 2.0 mmol/L nos estágios preenchidos."}
+                    </p>
+                  ))}
               </label>
               <label>
                 <span className={labelClass}>LT1 — FC (bpm)</span>
@@ -634,15 +647,22 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
                   onChange={(e) => updateOpenAssessment({ lt2Potencia: parseNumberOrNull(e.target.value) })}
                   className={fieldClass}
                 />
-                {detected.lt2Intensity != null && (
-                  <button
-                    type="button"
-                    onClick={() => updateOpenAssessment({ lt2Potencia: detected.lt2Intensity, lt2Fc: detected.lt2Fc })}
-                    className="mt-1 text-xs text-lime-deep underline underline-offset-2 focus-ring"
-                  >
-                    Sugestão: {detected.lt2Intensity} W{detected.lt2Fc != null ? ` (${detected.lt2Fc} bpm)` : ""} — usar
-                  </button>
-                )}
+                {openAssessment.tipoTeste !== "corrida" &&
+                  (detected.lt2Intensity != null ? (
+                    <button
+                      type="button"
+                      onClick={() => updateOpenAssessment({ lt2Potencia: detected.lt2Intensity, lt2Fc: detected.lt2Fc })}
+                      className="mt-1 text-xs text-lime-deep underline underline-offset-2 focus-ring"
+                    >
+                      Sugestão: {detected.lt2Intensity} W{detected.lt2Fc != null ? ` (${detected.lt2Fc} bpm)` : ""} — usar
+                    </button>
+                  ) : (
+                    <p className="mt-1 text-xs text-g4-muted">
+                      {validStageCount < 4
+                        ? `Sem sugestão: precisa de pelo menos 4 estágios com potência e lactato (tem ${validStageCount}).`
+                        : "Sem sugestão: não deu pra ajustar uma curva confiável com esses pontos."}
+                    </p>
+                  ))}
               </label>
               <label>
                 <span className={labelClass}>LT2 — FC (bpm)</span>
