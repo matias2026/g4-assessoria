@@ -398,6 +398,13 @@ de lactato (`Recharts`) e os limiares LT1/LT2.
 - **PDF do relatório** — gerado inteiro no navegador (`jsPDF` +
   `jspdf-autotable`, sem round-trip pro servidor), com estágios, limiares
   e o parecer técnico.
+- **Importar estágios de um .FIT** (`src/lib/fit-import.ts`,
+  `parseFitLapsForPhysiology`) — preenche tempo/potência/FC de cada
+  estágio a partir das voltas (laps) gravadas no ciclocomputador/relógio
+  durante o teste, desde que uma volta tenha sido marcada por degrau; sem
+  isso, ou pra teste gravado sem marcar lap nenhum, os estágios continuam
+  digitados à mão. Nunca traz lactato/glicemia/PSE — vêm de picada de
+  dedo, nenhum sensor de ciclocomputador grava isso.
 
 Schema em `avaliacoes_fisiologicas` (cabeçalho — `supabase/migrations/
 0026_avaliacao_fisiologica.sql` e `0027_avaliacao_fisiologica_completa.sql`)

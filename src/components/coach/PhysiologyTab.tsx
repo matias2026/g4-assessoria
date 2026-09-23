@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +16,7 @@ import {
   generatePhysiologyReportDraft,
   getPhysiologyAssessment,
   listPhysiologyAssessments,
+  parsePhysiologyFitFile,
   saveFinalPhysiologyReport,
   savePhysiologyAssessment,
   setPhysiologyAssessmentPublished,
@@ -94,6 +95,9 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
   const [confirmingApplyFicha, setConfirmingApplyFicha] = useState(false);
   const [applyingFicha, setApplyingFicha] = useState(false);
   const [applyFichaError, setApplyFichaError] = useState<string | null>(null);
+  const [importingFit, setImportingFit] = useState(false);
+  const [importFitError, setImportFitError] = useState<string | null>(null);
+  const fitInputRef = useRef<HTMLInputElement>(null);
 
   const assessmentsLoaded = studentId !== undefined && Object.prototype.hasOwnProperty.call(assessmentsByStudent, studentId);
   const assessments = studentId !== undefined ? (assessmentsByStudent[studentId] ?? []) : [];
@@ -201,6 +205,58 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
 
   function removeStage(index: number) {
     setOpenAssessment((prev) => (prev ? { ...prev, stages: prev.stages.filter((_, i) => i !== index) } : prev));
+  }
+
+  // Importa estágios de um .FIT (potência/tempo/FC por volta/lap) — só
+  // funciona se o aparelho gravou uma volta por degrau do teste. Lactato/
+  // glicemia/PSE nunca vêm daqui, ficam pro treinador preencher depois.
+  // Substitui os estágios atuais (confirma antes se já havia algum
+  // preenchido, pra não perder lactato já digitado sem querer).
+  async function handleImportFit(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !openAssessment) return;
+
+    if (openAssessment.stages.length > 0) {
+      const confirmed = window.confirm(
+        "Isso substitui os estágios atuais pelos importados do .FIT (tempo/potência/FC). Lactato, glicemia e PSE já digitados nesses estágios serão perdidos. Continuar?"
+      );
+      if (!confirmed) return;
+    }
+
+    setImportFitError(null);
+    setImportingFit(true);
+    try {
+      const laps = await parsePhysiologyFitFile(file);
+      if (laps.length === 0) {
+        setImportFitError(
+          "Nenhuma volta (lap) encontrada nesse arquivo — grave marcando lap a cada estágio do teste, ou adicione os estágios manualmente."
+        );
+        return;
+      }
+      setOpenAssessment((prev) =>
+        prev
+          ? {
+              ...prev,
+              stages: laps.map((lap, i) => ({
+                id: null,
+                estagioNumero: i + 1,
+                tempoMinutos: lap.tempoMinutos,
+                potenciaWatts: lap.potenciaWatts,
+                pace: null,
+                glicemia: null,
+                fcBpm: lap.fcBpm,
+                lactatoMmol: null,
+                pse: null,
+              })),
+            }
+          : prev
+      );
+    } catch (err) {
+      setImportFitError(err instanceof Error ? err.message : "Não foi possível ler esse arquivo .FIT.");
+    } finally {
+      setImportingFit(false);
+    }
   }
 
   async function handleSave() {
@@ -755,12 +811,28 @@ export function PhysiologyTab({ students, selectedStudentId, onSelectStudent }: 
           )}
 
           <Card className="p-0">
-            <div className="flex items-center justify-between gap-4 p-4 pb-0">
+            <div className="flex flex-wrap items-center justify-between gap-4 p-4 pb-0">
               <CardTitle>Estágios coletados</CardTitle>
-              <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={addStage}>
-                + Adicionar estágio
-              </Button>
+              <div className="flex items-center gap-4">
+                <input ref={fitInputRef} type="file" accept=".fit,application/octet-stream" className="hidden" onChange={handleImportFit} />
+                <Button
+                  variant="secondary"
+                  className="px-3 py-1.5 text-xs"
+                  onClick={() => fitInputRef.current?.click()}
+                  disabled={importingFit}
+                >
+                  {importingFit ? "Importando..." : "Importar .FIT"}
+                </Button>
+                <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={addStage}>
+                  + Adicionar estágio
+                </Button>
+              </div>
             </div>
+            {importFitError && <p className="px-4 text-sm text-status-missed">{importFitError}</p>}
+            <p className="px-4 text-xs text-g4-muted">
+              Importar preenche tempo/potência/FC de cada volta (lap) do arquivo — lactato, glicemia e PSE
+              continuam sendo digitados à mão, nenhum sensor de ciclocomputador grava isso.
+            </p>
 
             {/* Celular: cards empilhados, um estágio por vez — a tabela larga
                 (7 colunas + remover) só cabe rolando na horizontal, o que é

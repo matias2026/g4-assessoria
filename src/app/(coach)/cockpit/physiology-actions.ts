@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generatePhysiologyReportDraft as generateReportDraftFromGemini } from "@/lib/ai/gemini";
+import { parseFitLapsForPhysiology, type FitLapStage } from "@/lib/fit-import";
 import { requireCoachOrAdmin } from "./actions";
 
 // Confirma que o aluno é da própria organização antes de ler/gravar
@@ -444,4 +445,20 @@ export async function applyThresholdsToFicha(assessmentId: string, input: ApplyT
   }
 
   await admin.from("avaliacoes_fisiologicas").update({ applied_to_ficha_at: new Date().toISOString() }).eq("id", assessmentId);
+}
+
+/**
+ * Extrai um estágio por volta (lap) de um .FIT — decodificado aqui pra não
+ * expor a lib de parsing no cliente. Só requer treinador/admin autenticado
+ * (não lê/escreve nada em avaliação nenhuma, então não precisa de checagem
+ * de organização); quem decide o que fazer com o resultado é a UI
+ * (PhysiologyTab), que sempre deixa o treinador revisar antes de salvar.
+ */
+export async function parsePhysiologyFitFile(file: File): Promise<FitLapStage[]> {
+  await requireCoachOrAdmin();
+  try {
+    return parseFitLapsForPhysiology(await file.arrayBuffer());
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : "Não foi possível ler esse arquivo .FIT.");
+  }
 }

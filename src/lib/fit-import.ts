@@ -89,3 +89,45 @@ export function parseFitFile(bytes: ArrayBuffer): ParsedFitActivity {
     trainingStressScore: session?.trainingStressScore ?? null,
   };
 }
+
+export interface FitLapStage {
+  tempoMinutos: number | null;
+  potenciaWatts: number | null;
+  fcBpm: number | null;
+}
+
+/**
+ * Extrai um estágio por "volta" (lap) de um .FIT — pré-preenche os
+ * estágios de uma avaliação fisiológica (ver physiology-actions.ts) a
+ * partir do arquivo gravado no ciclocomputador/relógio durante o teste,
+ * desde que o treinador/aluno tenha marcado lap a cada degrau. Nunca traz
+ * lactato/glicemia/PSE — nenhum sensor de ciclocomputador grava isso
+ * (vem de picada de dedo), continua sempre digitado à mão depois de
+ * importar.
+ */
+export function parseFitLapsForPhysiology(bytes: ArrayBuffer): FitLapStage[] {
+  const stream = Stream.fromArrayBuffer(bytes);
+  if (!Decoder.isFIT(stream)) {
+    throw new Error("Esse arquivo não parece ser um .FIT válido.");
+  }
+
+  const decoder = new Decoder(stream);
+  const { messages, errors } = decoder.read();
+  if (errors.length > 0) {
+    console.error(
+      "[fit-import] erros ao decodificar .FIT (laps):",
+      errors.map((e) => e.message)
+    );
+  }
+
+  const laps = messages.lapMesgs ?? [];
+
+  return laps.map((lap) => {
+    const seconds = lap.totalTimerTime ?? lap.totalElapsedTime ?? null;
+    return {
+      tempoMinutos: seconds != null ? Math.round((seconds / 60) * 10) / 10 : null,
+      potenciaWatts: lap.avgPower != null ? Math.round(lap.avgPower) : null,
+      fcBpm: lap.avgHeartRate != null ? Math.round(lap.avgHeartRate) : null,
+    };
+  });
+}
